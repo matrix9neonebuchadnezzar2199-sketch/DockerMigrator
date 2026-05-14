@@ -1,0 +1,36 @@
+# dmig 動作確認用サンプル
+# - build context (web サービス)
+# - 既存イメージ (db サービス)
+# - named volume (pgdata)
+# - bind mount (./logs)
+# - .env 参照
+#
+# 起動: cd docs/samples/myapp && docker compose up -d
+# これで dmig がプロジェクトを検出可能になる
+
+name: myapp-dev
+
+services:
+  web:
+    build: ./web
+    image: myapp-web:dev
+    ports:
+      - "8080:80"
+    environment:
+      - APP_ENV=${APP_ENV}
+      - API_KEY=${API_KEY}
+    volumes:
+      - ./logs:/var/log/app
+    depends_on:
+      - db
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=myapp
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

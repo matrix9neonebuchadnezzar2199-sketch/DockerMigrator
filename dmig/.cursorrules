@@ -1,0 +1,118 @@
+# dmig - Docker Desktop Migration Tool - Project Rules
+
+あなたは dmig プロジェクトの開発を支援する AI です。以下の規約を厳守してください。
+
+## プロジェクト概要
+- 端末A↔端末B間で Docker Desktop の資産を USB 経由で移行するツール
+- 対象OS: Windows 10/11 (WSL2), Linux
+- 技術スタック: Electron 39 + React 18 + TypeScript + dockerode 4
+- 圧縮: node:zlib の createZstdCompress/Decompress を優先、simple-zstd フォールバック
+- Node.js >= 22.0.0
+
+## ディレクトリ構造
+- src/main/         : Electron Main Process（Node.js環境）
+  - core/           : ビジネスロジック（Docker操作・パック生成等）
+    - errors/       : DmigError と codes
+    - compression/  : zstdStreams.ts（zlib優先のラッパ）
+- src/preload/      : contextBridge で Renderer に API 公開
+- src/renderer/     : React UI（ブラウザ環境、Node API 使用不可）
+  - pages/          : ページコンポーネント
+  - components/     : 共通コンポーネント
+- src/shared/       : Main/Renderer 共通の型定義のみ
+
+## コーディング規約
+
+### エラーハンドリング
+- すべての例外は `DmigError` に正規化する
+- new DmigError(ErrorCodes.XXX, { detail, phase, cause }) の形で投げる
+- エラーコードは src/main/core/errors/codes.ts に集約（E1xxx〜E9xxx）
+- **E91xx**: Renderer / UI バリデーション専用帯（IPC 外の入力チェック）。新規追加時は必ず `ErrorMessages` に文言を追加する
+- IPC ハンドラは必ず try/catch して `{ ok: true, data }` または `{ ok: false, error: payload }` を返す
+- payload 変換は `wrapError` / `DmigError.toPayload()` を使う
+- 日本語エラーメッセージは codes.ts の ErrorMessages のみで管理（散在禁止）
+
+### 進捗通知
+- 長時間処理は EventEmitter を継承し 'progress' イベントを発火
+- ProgressEvent 型に従う（taskId, phase, current, total, percentage, message）
+- message は日本語
+- IPC 経由で 'dmig:progress' チャネルに転送
+- リスナは finally で必ず off する（メモリリーク防止）
+
+### Docker 操作
+- 必ず DockerAdapter 経由で行う（dockerode を直接使わない）
+- save/load は stream ベース（メモリに全展開しない）
+
+### 圧縮
+- 必ず src/main/core/compression/zstdStreams.ts の createZstdCompressStream / createZstdDecompressStream を使う
+- simple-zstd や zlib を直接 import しない
+
+### 型
+- 共通型は src/shared/types.ts に集約
+- Main/Renderer 両方から import される型は必ずここに置く
+
+### Renderer (React)
+- Node.js API は使わない（fs, path, child_process 等）
+- 全ての OS 操作は window.dmig.* 経由で Main に依頼
+- スタイルは src/renderer/styles.css（Catppuccin Mocha 配色）
+
+### 命名
+- ファイル名: PascalCase.ts（クラス・コンポーネント）/ camelCase.ts（ユーティリティ）
+- 型: PascalCase
+- 定数: SCREAMING_SNAKE_CASE
+- ErrorCodes は SCREAMING_SNAKE_CASE のキー、値は "EXXXX" 文字列
+
+## 機能フラグ（Phase別）
+- Phase 1 (完了): Image の export/import
+- Phase 5 (完了): Compose プロジェクトまるごとパック
+  - 検出: ラベル com.docker.compose.project 逆引きのみ（未起動プロジェクトは対象外）
+  - ビルドコンテキスト: tar 化して同梱
+  - named volume: 常に同梱
+  - bind mount: ユーザー選択（同梱 or パス記録）
+  - シークレット: 3択（同梱/マスク/除外）、デフォルト除外
+
+- Phase 5.1 (進行中): キャンセル（jobToken + AbortSignal）、Exporter 単体 API、ESLint
+
+## Phase 6 規約（差分・再開）
+
+### machine-id
+- OS の machine-id は使用しない。初回起動時に `crypto.randomUUID()` で生成し、`userData/machine-id` に JSON 保存する。
+- アクセスは `SnapshotStore` シングルトン経由（直接ファイル読み込みは避ける）。
+
+### スナップショット
+- 保存先: `app.getPath('userData')/snapshots/<id>.json`（`id` の `:` はファイル名では `-` に置換）。
+- デフォルト保持件数は 10 件。`pruneOld(keepCount?)` で古いものを削除する。
+- `list()` で破損ファイルはスキップし、警告ログのみ出力する。
+
+### manifest スキーマバージョン
+- 新規書き出しは次フェーズ以降 `schemaVersion: '1.1'` を既定とする（`ManifestV11.toV11`）。
+- 読み込み時に `schemaVersion` が無ければ `'1.0'` として `ManifestV11.normalizeManifest()` で正規化する。
+- v1.0 パッケージは差分の基底にできない（`canBeBaseForDelta` が false、各 entry の `kind` は実質 `full`）。
+
+### エラーコード帯（Phase 6 追加）
+- E2050–E2059: スナップショット系
+- E2060–E2069: 差分計算・スナップショット互換（E2060 差分失敗、E2061 machine-id 不一致、E2062 基底なし）
+- E5040–E5049: 差分インポート（基底パッケージ）系
+- E6020–E6029: 再開機能系
+
+## .dmig パッケージ構造
+```
+mypack.dmig/
+├── manifest.json
+├── checksums.sha256
+├── images/*.tar.zst
+├── volumes/*.tar.zst + *.meta.json
+└── compose/<project>/
+    ├── project-manifest.json
+    ├── compose.yaml (and override)
+    ├── .env or .env.masked (or none)
+    ├── build-contexts/*.tar.zst
+    └── bind-mounts/*.tar.zst + bind-mounts.json
+```
+
+## やってはいけないこと
+- DmigError 以外を throw すること
+- 日本語メッセージをコード中に直書きすること（codes.ts 以外で）
+- Renderer から fs/path/child_process を import すること
+- progress リスナを off せずに完了すること
+- console.log でデバッグ出力したまま放置すること（必要なら debug ライブラリを使う）
+- 既存のパッケージフォーマット (.dmig manifest schema) を後方互換性なく変更すること

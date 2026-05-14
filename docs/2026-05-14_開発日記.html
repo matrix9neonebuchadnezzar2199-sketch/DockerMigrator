@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>2026-05-14 開発日記 - DockerMigrator</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --heading: #cbd5e1;
+  --accent: #a78bfa;
+  --accent-deep: #7c3aed;
+  --border: #334155;
+  --code-bg: #0b1220;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --err: #f87171;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body.diary {
+  margin: 0;
+  padding: 40px 20px 80px;
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ===== Header ===== */
+body.diary > header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+body.diary > header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  color: var(--accent);
+  font-weight: 600;
+}
+body.diary > header .subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ===== Common ===== */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+}
+strong {
+  color: var(--heading);
+  font-weight: 600;
+}
+em.term {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 500;
+}
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* ===== TOC ===== */
+.diary-toc {
+  margin-bottom: 28px;
+  padding: 16px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.diary-toc h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.diary-toc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.diary-toc th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.diary-toc td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.diary-toc tr:last-child td { border-bottom: none; }
+.diary-toc td:first-child {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.diary-toc a:hover { color: var(--accent); }
+
+/* ===== Entry Card ===== */
+.entry {
+  margin: 22px 0;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.entry h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.entry h2 a.anchor {
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: 8px;
+  border-bottom: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.entry:hover h2 a.anchor { opacity: 1; }
+
+.entry .meta {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.entry .meta .date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.entry h3 {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.entry h3:first-of-type {
+  margin-top: 0;
+}
+
+.entry p {
+  margin: 8px 0;
+}
+.entry ul, .entry ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.entry li {
+  margin: 4px 0;
+}
+
+/* ===== Tags / Pills ===== */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tag-scope {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tag-ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.tag-warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.tag-err {
+  border-color: var(--err);
+  color: var(--err);
+}
+.tag-type {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+/* ===== Code ===== */
+code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  color: var(--heading);
+}
+pre {
+  background: var(--code-bg);
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: inherit;
+}
+
+/* ===== Tables ===== */
+.entry table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.entry th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+.entry td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+.entry tr:last-child td { border-bottom: none; }
+
+/* ===== Inline bar chart (CSS only) ===== */
+.bar-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 60px;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 13px;
+}
+.bar-row .bar-track {
+  height: 8px;
+  background: var(--code-bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-row .bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.bar-row .bar-value {
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Callouts ===== */
+.callout {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: rgba(167, 139, 250, 0.05);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+}
+.callout.warn { border-left-color: var(--warn); background: rgba(251, 191, 36, 0.05); }
+.callout.err { border-left-color: var(--err); background: rgba(248, 113, 113, 0.05); }
+.callout.ok { border-left-color: var(--ok); background: rgba(52, 211, 153, 0.05); }
+.callout .callout-label {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+/* ===== Changes list (file ops) ===== */
+.changes {
+  list-style: none;
+  padding-left: 0;
+  margin: 8px 0;
+}
+.changes li {
+  padding: 3px 0;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+}
+.changes .op {
+  display: inline-block;
+  width: 24px;
+  text-align: center;
+  margin-right: 6px;
+  font-family: system-ui, sans-serif;
+}
+.changes .op-add { color: var(--ok); }
+.changes .op-mod { color: var(--warn); }
+.changes .op-del { color: var(--err); }
+.changes .op-ren { color: var(--accent); }
+
+/* ===== Footer ===== */
+body.diary > footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+</style>
+</head>
+<body class="diary">
+<header>
+  <h1>2026-05-14 開発日記</h1>
+  <p class="subtitle">DockerMigrator — dmig Phase 1 PoC</p>
+</header>
+
+<section class="diary-toc">
+  <h2>目次</h2>
+  <table>
+    <thead>
+      <tr><th>時刻</th><th>概要</th><th>ステータス</th><th>詳細</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>13:43</td>
+        <td><code>dmig</code> Phase 1 PoC（Images のみ・zlib zstd 優先 + simple-zstd フォールバック）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1343">詳細</a></td>
+      </tr>
+      <tr>
+        <td>13:55</td>
+        <td>Phase 5 第1回: 基盤整備（.cursorrules / types / codes / samples）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1355">詳細</a></td>
+      </tr>
+      <tr>
+        <td>14:28</td>
+        <td>Phase 5 第2回: コアモジュール（DockerAdapter 拡張 / SecretScanner / VolumeExporter / ComposeExporter・Importer）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1428">詳細</a></td>
+      </tr>
+      <tr>
+        <td>14:36</td>
+        <td>Phase 5 第3回: IPC / Preload（Compose・ボリューム・シークレットスキャン・フォルダ選択）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1436">詳細</a></td>
+      </tr>
+      <tr>
+        <td>14:45</td>
+        <td>Phase 5 第4回（最終）: Compose UI 一式・E9101–E9103 バリデーション・PHASE5-TESTING.md</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1445">詳細</a></td>
+      </tr>
+      <tr>
+        <td>15:05</td>
+        <td>Phase 5 完了記録: 所感・E91xx 帯正式採用・Phase 5.1 / Phase 6 / lint 方針メモ</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1505">詳細</a></td>
+      </tr>
+      <tr>
+        <td>15:25</td>
+        <td>Phase 5.1 第1回: ESLint / Cancellable・JobRegistry / exportSingleImagePublic / IPC cancel / Compose 中止 UI</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1525">詳細</a></td>
+      </tr>
+      <tr>
+        <td>15:40</td>
+        <td>Phase 5.1 第2回: TarBackend（system / tar-stream）・<code>DMIG_TAR_BACKEND</code>・ComposeExporter/Importer 統合</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1540">詳細</a></td>
+      </tr>
+      <tr>
+        <td>16:05</td>
+        <td>Phase 5.1 第3回（最終）: preflight・空き容量・ErrorReporter（JSZip）・ProgressTracker・Compose UI</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1605">詳細</a></td>
+      </tr>
+      <tr>
+        <td>16:39</td>
+        <td>Phase 6 第1回: スナップショット型・<code>SnapshotStore</code>・<code>ManifestV11</code>・manifest v1.1 フィールド・<code>phase-core-entry</code> リネーム</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1639">詳細</a></td>
+      </tr>
+      <tr>
+        <td>16:52</td>
+        <td>Phase 6 第2回前半: <code>Snapshotter</code>・<code>DiffEngine</code>・<code>DiffPreview</code>・差分型・<code>ProgressEvent.snapshot</code></td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1652">詳細</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<main>
+<section class="entry" id="entry-1343">
+  <h2><code>dmig</code> Phase 1 PoC 実装</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 13:43</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>Phase 1 PoC を <code>F:\Cursor\DockerMigrator\dmig\</code> に新規作成。<strong>docker save → zstd → ファイル → SHA-256 → zstd 展開 → docker load</strong> のパイプライン、<code>DmigError</code> 正規化、Electron IPC、最小 React UI を配置した。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li><strong>圧縮</strong>: <code>node:zlib</code> の <code>createZstdCompress</code> / <code>createZstdDecompress</code> を第一選択（失敗時のみ <code>simple-zstd</code>）。Electron <code>^39</code>（Node 22 同梱）でネイティブ zstd を想定</li>
+    <li><strong>日記の保存場所</strong>: 本ツールの作業ログは <code>DockerMigrator/docs/</code> に置く（<code>04-diary-workflow</code> のツール名判定）。git 外フォールバックで <code>F:\Cursor\docs</code> に誤追記した行は削除済み</li>
+    <li><strong>IPC</strong>: export/import 完了後に <code>progress</code> リスナを <code>off</code></li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>F:\Cursor\DockerMigrator\dmig\</code> 一式</li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/compression/zstdStreams.ts</code></li>
+    <li><span class="op op-add">+</span> <code>F:\Cursor\DockerMigrator\docs\2026-05-14_開発日記.html</code>（本ファイル）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run build</code> / <code>npm run typecheck</code> 成功（<code>dmig</code> ディレクトリ）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1355">
+  <h2>Phase 5 第1回 — 基盤整備</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 13:55</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>dmig</code> に <code>.cursorrules</code>、Phase 5 用の <code>types.ts</code> / <code>codes.ts</code> 差分、<code>docs/samples/myapp</code> 検証用 Compose を追加。<code>DmigManifest.contents</code> に <code>volumes?</code> / <code>composeProjects?</code> を optional で拡張。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run build</code> 成功</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1428">
+  <h2>Phase 5 第2回 — コアモジュール</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 14:28</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>DockerAdapter</code> にボリューム・Compose 検出・<code>inspectVolume</code> / <code>ensureImage</code> を追加。<code>SecretScanner</code>、<code>VolumeExporter</code>、<code>ComposeExporter</code>、<code>ComposeImporter</code> を新規作成。main バンドルに取り込むため <code>phase5-core-entry.ts</code> を <code>index.ts</code> から import。</p>
+
+  <h3>設計判断（仕様からの差分）</h3>
+  <ul>
+    <li><strong>ボリューム復元</strong>: stdin 多重化の複雑さを避け、<code>putArchive</code>（plain tar）で <code>/vol</code> に展開。上書き時は TTY 付き <code>exec</code> で <code>/vol</code> を空にしてから put</li>
+    <li><strong>listVolumes 失敗</strong>: 一覧取得失敗を <code>VOLUME_NOT_FOUND</code> にしないよう <code>DOCKER_API_ERROR</code> にマッピング</li>
+    <li><strong>ComposeImporter</strong>: イメージ <code>importImages</code> は全プロジェクト分を事前に dedupe して一度だけ実行。宛先ディレクトリ非空は第1稿の throw を外し（仕様メモの「ログのみ続行」に寄せ）、mkdir 失敗のみ <code>DESTINATION_DIR_INVALID</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run build</code> 成功（main は 13 modules に増加）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1436">
+  <h2>Phase 5 第3回 — IPC / Preload</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 14:36</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>ipc.ts</code> に <code>dmig:listComposeProjects</code> / <code>scanSecrets</code> / <code>listVolumes</code> / <code>exportCompose</code> / <code>importCompose</code> / <code>selectDirectory</code> を追加。<code>preload/index.ts</code> の <code>DmigAPI</code> と実装を対応付け。手動エラー応答は <code>ErrorMessages</code> 参照に統一。<code>toPayload</code> の未知例外メッセージも <code>ErrorMessages[E9001]</code> に合わせた。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run build</code> 成功</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1445">
+  <h2>Phase 5 第4回 — UI 一式（最終）</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 14:45</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>Sidebar</code> / <code>App</code> に Compose ページ、<code>ComposePage</code>・カード・シークレット/bind ダイアログ、<code>styles.css</code> 追記、<code>dmig/docs/PHASE5-TESTING.md</code> を追加。Renderer バリデーション用に <code>ErrorCodes.UI_COMPOSE_*</code>（E9101–E9103）と <code>ErrorMessages</code> を拡張。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li><strong>BindMountDialog</strong>: レンダー内 <code>setTimeout</code> による即確定は React 非推奨のため削除。親は bind がある場合のみ <code>bindDlg</code> を表示</li>
+    <li><strong>ComposePage</strong>: 全フックを先頭に集約。<code>codes.ts</code> を renderer から相対 import（文言単一ソース）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run build</code> 成功（renderer 40 modules）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1505">
+  <h2>Phase 5 完了 — 所感・次期方針メモ</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 15:05</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要（マスター所感・転記）</h3>
+  <blockquote style="margin: 12px 0; padding: 12px 16px; border-left: 4px solid #89b4fa; background: #313244; color: #cdd6f4;">
+    <p>Phase 5 完了。Compose プロジェクトのまるごとパックという Goal 機能が、想定したパッケージ構造（images/volumes/compose 三層）どおりに動作することを確認できたのは大きい。特に SecretScanner と BindMountDialog のユーザー選択フローは、転送経路が USB という前提における安全性をユーザーに「考えさせる」UIになっており、当初の F機能（警告でOK）よりも踏み込んだ設計に着地できた。実装中に Cursor が自然に生んだ細部の改善（フック集約、E91xx 帯確保、setTimeout 削除など）は、本ツールの品質を実用ラインに引き上げた。次の Phase 5.1 では tar 依存の解消とキャンセル可能性の獲得で「実運用に耐えるツール」へ昇格させる。</p>
+  </blockquote>
+
+  <h3>設計判断（記録）</h3>
+  <ul>
+    <li><strong>エラーコード体系</strong>: <code>E91xx</code> を <strong>UI / Renderer バリデーション専用帯</strong>として正式採用。<code>dmig/.cursorrules</code> に明記し、以降の UI 入力エラーはこの帯に割り当てる</li>
+    <li><strong>Phase 5.1 のスコープ（6項目）</strong>: 第一〜第四（<code>tar-stream</code> フォールバック、<code>exportSingleImage</code> 切り出し、空き容量、キャンセル＋cleanup）は <strong>同一マイルストンに含める</strong>ことを推奨。第五（エラー報告 ZIP）は問い合わせ対応に効くため <strong>同梱推奨</strong>。第六（ETA）は型拡張が軽く UX 効果が大きいため <strong>同梱可</strong>。スケジュールが厳しければ第五・第六を <code>5.1b</code> に滑らせる分割も可</li>
+    <li><strong>Phase 6 の優先</strong>: 当初順（A→I→B→L）から、<strong>B（差分・再開）を最優先</strong>へ寄せる案に同意。Phase 5.1 で中止・シグナル・cleanup の契約を Exporter / Importer 全体に通したうえで B に入ると実装が一貫する</li>
+    <li><strong>Lint</strong>: <strong>導入推奨</strong>。ESLint 9 系 flat config + <code>eslint-plugin-react-hooks</code> + <code>@typescript-eslint</code> を <code>dmig</code> に追加し、<code>npm run lint</code> を CI / 手元のゲートにする。Phase 5.1 第1回の前後どちらでも可だが、<strong>5.1 着手と同時期が望ましい</strong>（以降の自動生成コードのフック違反を早期検出）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1525">
+  <h2>Phase 5.1 第1回 — 契約の固定化</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 15:25</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>ESLint 9 flat config、<code>Cancellable</code> / <code>JobToken</code> / <code>CancelResult</code>、E6010–E6012、<code>JobRegistry</code>、<code>dmig:cancel</code>、<code>exportSingleImagePublic</code> と Compose からの利用、<code>VolumeExporter</code> / compose <code>tarDirectoryZstd</code> の <code>pipeline({ signal })</code>、IPC の register/unregister、<code>ComposePage</code> の中止ボタン。<code>Importer</code> は manifest の <code>filename</code> が <code>images/</code> 付きでも正しく解決。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm install</code> / <code>npm run typecheck</code> / <code>npm run build</code> / <code>npm run lint</code> 成功（main 14 modules）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1540">
+  <h2>Phase 5.1 第2回 — tar 依存の解消</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 15:40</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>TarBackend</code> / <code>SystemTarBackend</code> / <code>TarStreamBackend</code>（<code>tar-stream</code> v3）/ <code>selectTarBackend</code>（<code>DMIG_TAR_BACKEND</code> + probe + キャッシュ）を追加。<code>ComposeExporter.tarDirectoryZstd</code> は <code>pack</code> → <code>compressor.end()</code> → zstd 下流。<code>ComposeImporter.untarZstd</code> は zstd 復号と tar 展開を <code>PassThrough</code> で分離し、<code>pipeline(file, decompressor, tarPass)</code> と <code>extract(tarPass)</code> を <code>Promise.all</code> で並行（Transform の readable を二重消費しないための設計判断）。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/tar/TarBackend.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/tar/SystemTarBackend.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/tar/TarStreamBackend.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/tar/selectTarBackend.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/package.json</code>（<code>tar-stream</code> / <code>@types/tar-stream</code>）</li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code>（<code>TarBackendKind</code>）</li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/ComposeExporter.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/ComposeImporter.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/phase5-core-entry.ts</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（main 17 modules）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1605">
+  <h2>Phase 5.1 第3回（最終）— 実運用品質</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 16:05</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>check-disk-space</code> / <code>jszip</code> 依存追加。<code>SpaceChecker</code>・<code>SizeEstimator</code>・<code>ErrorReporter</code>・<code>ProgressTracker</code> を追加し、<code>dmig:preflight</code> / <code>dmig:saveErrorReport</code> IPC と Preload API を公開。<code>ProgressEvent</code> に <code>bytesPerSec</code> / <code>etaSeconds</code>。<code>ComposePage</code> のエクスポート開始前に事前検証（不足で E4002、警告で confirm）。<code>ipc.ts</code> の export/import/compose 各ハンドラで <code>ProgressTracker.enrich</code> を通過。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/SpaceChecker.ts</code> ほか 3 コア</li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/ipc.ts</code> / <code>preload/index.ts</code> / <code>shared/types.ts</code> / <code>errors/codes.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>renderer/ProgressBar.tsx</code> / <code>ErrorBox.tsx</code> / <code>ComposePage.tsx</code> / <code>styles.css</code></li>
+    <li><span class="op op-mod">~</span> <code>phase5-core-entry.ts</code> / <code>tar/SystemTarBackend.ts</code>（<code>Writable</code> 型 import 復帰）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（main 21 modules）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1639">
+  <h2>Phase 6 第1回 — 契約の固定化（スナップショット・manifest v1.1）</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 16:39</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>snapshot-types.ts</code> 新設、<code>DmigManifest</code> に <code>schemaVersion</code> / <code>previousPackage</code> / <code>baseRef</code>、各 manifest エントリに <code>kind</code> / <code>baseRef</code>。<code>ManifestV11</code>（正規化・<code>toV11</code>・<code>canBeBaseForDelta</code>）、<code>SnapshotStore</code>（<code>userData/machine-id</code>・<code>snapshots/*.json</code>、<code>pruneOld</code> 既定 10 件）。<code>phase5-core-entry.ts</code> を <code>phase-core-entry.ts</code> にリネームし Phase 6 モジュールを side-effect import。<code>index.ts</code> で <code>SnapshotStore.initialize</code>（失敗時は <code>console.error</code> のみで起動継続）。E2050–E2052 / E5040–E5041 / E6020–E6021 と <code>.cursorrules</code> Phase 6 節を追加。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/shared/snapshot-types.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/manifest/ManifestV11.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/snapshot/SnapshotStore.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/phase-core-entry.ts</code>（<code>phase5-core-entry.ts</code> からリネーム相当）</li>
+    <li><span class="op op-del">−</span> <code>dmig/src/main/phase5-core-entry.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code> / <code>dmig/src/main/core/errors/codes.ts</code> / <code>dmig/src/main/index.ts</code> / <code>dmig/.cursorrules</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（main 23 modules）。起動時 <code>machine-id</code> 生成は手元未確認（次回 <code>npm run dev</code> で確認可）</li>
+    <li>Commit: <code>pending</code>（リポジトリ未初期化または git 外の可能性）</li>
+  </ul>
+
+  <h3>原案からの差分</h3>
+  <p>既存 <code>DmigManifest</code> は <code>packageId</code> ではなく <code>dmigVersion</code> / <code>source</code> 構造のため、Phase 6 フィールドは実スキーマに合わせて追加。<code>SnapshotStore</code> の例外は <code>DmigError</code> / <code>wrapError</code> に統一。<code>console.log</code> は ESLint <code>no-console</code> のため 1 行だけ <code>eslint-disable-next-line</code> を付与。</p>
+</section>
+
+<section class="entry" id="entry-1652">
+  <h2>Phase 6 第2回前半 — 差分エンジン（バックエンドコア）</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 16:52</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>共有型に <code>DiffMode</code> / <code>VolumeDiffStrategy</code> / <code>DiffResult</code> 系と <code>DiffPreviewRequest</code> / <code>DiffPreviewResult</code>。<code>ExportRequest</code> に差分関連オプション。<code>ProgressEvent.phase</code> に <code>snapshot</code>。<code>Snapshotter</code>（<code>DockerAdapter</code>・厳密ボリュームは tar ハッシュ＋進捗 emit）、<code>DiffEngine</code>、<code>DiffPreview</code>（<code>SizeEstimator.estimateCompressedBytes</code> で圧縮推定を単一ソース化）。<code>DockerAdapter.resolveImageId</code> 追加。E2060–E2062。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/snapshot/Snapshotter.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/diff/DiffEngine.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/diff/DiffPreview.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code> / <code>dmig/src/main/core/errors/codes.ts</code> / <code>dmig/src/main/core/DockerAdapter.ts</code> / <code>dmig/src/main/core/SizeEstimator.ts</code> / <code>dmig/src/main/phase-core-entry.ts</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（main 26 modules）</li>
+  </ul>
+</section>
+</main>
+
+<footer>
+  <p>generated by Cursor / one-file HTML</p>
+</footer>
+</body>
+</html>

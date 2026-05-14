@@ -1,0 +1,30 @@
+import React, { useEffect, useState } from 'react';
+import { Sidebar } from './components/Sidebar.js';
+import { ExportPage } from './pages/ExportPage.js';
+import { ImportPage } from './pages/ImportPage.js';
+import { ComposePage } from './pages/ComposePage.js';
+
+export type PageKey = 'export' | 'import' | 'compose';
+
+export const App: React.FC = () => {
+  const [page, setPage] = useState<PageKey>('compose');
+  const [dockerVersion, setDockerVersion] = useState<string>('未接続');
+
+  useEffect(() => {
+    void window.dmig.ping().then((r) => {
+      if (r.ok) setDockerVersion(r.data.version);
+      else setDockerVersion(`エラー: ${r.error.code}`);
+    });
+  }, []);
+
+  return (
+    <>
+      <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
+      <div className="main">
+        {page === 'export' && <ExportPage />}
+        {page === 'import' && <ImportPage />}
+        {page === 'compose' && <ComposePage />}
+      </div>
+    </>
+  );
+};

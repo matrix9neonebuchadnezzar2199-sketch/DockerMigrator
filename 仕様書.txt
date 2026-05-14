@@ -1,0 +1,602 @@
+# Docker Desktop 引っ越しツール 設計提案
+
+承知しました。Docker Desktop の移行ツール、面白いテーマですね。まずは仕様を固めるため、技術的な前提整理と機能提案をさせてください。
+
+---
+
+## 1. 移行対象となる「データ」の整理
+
+Docker Desktop で「データ」と一口に言っても、複数のレイヤーがあります。どこまでを移行対象とするか決める必要があります。
+
+| # | データ種別 | 内容 | 移行難易度 |
+|---|---|---|---|
+| ① | **イメージ (Images)** | `docker image` で管理されるもの | 易（save/load, registry経由） |
+| ② | **コンテナ (Containers)** | 停止中/稼働中のコンテナ | 中（commit→save が現実的） |
+| ③ | **ボリューム (Volumes)** | 名前付きボリュームの中身 | 中（tar アーカイブ化） |
+| ④ | **ネットワーク (Networks)** | カスタムネットワーク定義 | 易（inspect→再作成） |
+| ⑤ | **Docker Compose プロジェクト** | compose.yaml と関連リソース | 中 |
+| ⑥ | **設定 (Settings)** | リソース割当、プロキシ、Kubernetes等 | 易（settings-store.json） |
+| ⑦ | **WSL2 ディストロ全体**（Win） | `docker-desktop-data` 仮想ディスク | 難（数十GB級） |
+| ⑧ | **Registry 認証情報** | `~/.docker/config.json` | 易（要暗号化転送） |
+| ⑨ | **Buildx / BuildKit キャッシュ** | ビルドキャッシュ | 中（任意） |
+| ⑩ | **Dev Environments / Extensions** | Docker Desktop独自機能 | 中 |
+
+**推奨アプローチ**: ⑦の「丸ごとVHDXコピー」方式は速いが OS/バージョン差異に弱いので、**①〜⑥, ⑧をオブジェクト単位で論理エクスポート/インポートする方式をデフォルト**、⑦は「完全クローンモード」としてオプション提供、という二段構えが安全です。
+
+---
+
+## 2. アーキテクチャ案
+
+```
+┌─────────────────── 端末A (Source) ───────────────────┐
+│  ┌────────────────────────────────────────┐         │
+│  │  Migration Tool (GUI)                  │         │
+│  │  ┌──────────┐  ┌─────────────────────┐ │         │
+│  │  │ Sidebar  │  │  Main View          │ │         │
+│  │  │ - Images │  │  [checkbox list]    │ │         │
+│  │  │ - Volumes│  │  [progress bars]    │ │         │
+│  │  │ - ...    │  │  [logs / errors]    │ │         │
+│  │  └──────────┘  └─────────────────────┘ │         │
+│  └────────────────────┬───────────────────┘         │
+│                       │ Docker Engine API           │
+│                       ▼                              │
+│              [Docker Desktop A]                     │
+└──────────────────────┬──────────────────────────────┘
+                       │  ※ 転送経路（3択）
+                       │   (a) 暗号化アーカイブ(.dmig) → USB/共有
+                       │   (b) Private Registry 経由
+                       │   (c) 端末間 直接 P2P (mTLS)
+                       ▼
+┌─────────────────── 端末B (Target) ───────────────────┐
+│   Migration Tool (GUI) → Docker Desktop B           │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. 技術スタック提案
+
+| 領域 | 採用候補 | 理由 |
+|---|---|---|
+| **GUI** | **Electron + React + TypeScript** または **Tauri + React** | クロスプラットフォーム(Win/Mac/Linux)、サイドバー型UIが作りやすい。Tauriは軽量、Electronは事例豊富。 |
+| **UIライブラリ** | Mantine / Chakra UI + react-icons | プログレスバー・チェックリストが標準で揃う |
+| **Docker操作** | **dockerode** (Node.js) または公式 Docker Engine SDK | GitHubで広く使われている定番。`apocas/dockerode` |
+| **配布形式** | Docker Desktop **Extension** としても提供 | Docker Desktop UI内に統合可能 (`docker/extensions-sdk`) |
+| **アーカイブ** | tar + zstd 圧縮 + AES-256-GCM 暗号化 | 大容量データの転送効率 |
+| **転送** | rsync 風差分転送 / Resilio 風 P2P (optional: `croc` を内蔵) | 中断再開可能 |
+
+### 既存OSS活用候補（GitHub）
+
+- **`apocas/dockerode`** … Docker API クライアントの定番
+- **`docker/extensions-sdk-samples`** … Docker Desktop Extension の公式サンプル
+- **`schollz/croc`** … 端末間のセキュアなファイル転送（Go製、組込可）
+- **`moby/moby`** の `docker save` / `docker load` 仕様準拠
+- **`containers/skopeo`** … イメージをレジストリ無しでコピー（OCI準拠）
+- **`docker/compose`** の YAML パーサ
+
+これらを薄くラップする方針で、車輪の再発明を避けます。
+
+---
+
+## 4. 画面設計（ワイヤーフレーム）
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  🐳 Docker Migrator         [端末A: SRC]  ⇄  [端末B: DST]   │
+├──────────┬───────────────────────────────────────────────────┤
+│ SIDEBAR  │  MAIN                                              │
+│          │                                                    │
+│ ◉ 概要   │   ■ エクスポート対象を選択                         │
+│ ○ Images │   ┌────────────────────────────────────────────┐  │
+│ ○ Volumes│   │☑ nginx:latest          142 MB             │  │
+│ ○ Conts. │   │☑ postgres:16           438 MB             │  │
+│ ○ Networks  │☐ redis:7                32 MB              │  │
+│ ○ Compose│   │☑ myapp:dev            1.2 GB              │  │
+│ ○ Config │   └────────────────────────────────────────────┘  │
+│ ○ 転送   │                                                    │
+│ ○ ログ   │   合計: 1.78 GB    [全選択] [全解除] [▶ 開始]    │
+│ ─────    │                                                    │
+│ ⚙ 設定   │   進捗: ███████████░░░░░░░  62%   (1.10/1.78GB)  │
+│ ❓ ヘルプ │   現在: postgres:16 を圧縮中…  残り 約 1分30秒    │
+│          │                                                    │
+│          │   [E1003] ⚠ redis:7 のエクスポートに失敗しました │
+│          │           原因: ディスク空き容量不足              │
+└──────────┴───────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. エラーハンドリング設計
+
+エラーコード体系（例）:
+
+| 範囲 | カテゴリ |
+|---|---|
+| E1000番台 | Docker Engine 接続 |
+| E2000番台 | エクスポート処理 |
+| E3000番台 | 圧縮・暗号化 |
+| E4000番台 | 転送（ネットワーク） |
+| E5000番台 | インポート処理 |
+| E9000番台 | 想定外・致命的 |
+
+表示例: `[E2003] イメージ "postgres:16" のエクスポートに失敗しました。Dockerデーモンへの接続を確認してください。(詳細ログを開く)`
+
+全エラーは構造化ログ（JSON Lines）にも同時記録し、「エラーレポート出力」ボタンでZIP化してサポートに送れる仕組みを推奨します。
+
+
+============================
+
+十分な情報が集まりました。設計書をまとめます。
+
+---
+
+# 🐳 Docker Desktop 引っ越しツール `dmig` 詳細設計書
+
+## 0. プロジェクト概要
+
+| 項目 | 内容 |
+|---|---|
+| プロジェクト名 | **dmig** (Docker MIGration tool) |
+| 目的 | 端末A↔端末B間で Docker Desktop の資産を**USB経由**で安全・確実に移行する |
+| 対象OS | Windows 10/11 (WSL2)、Linux (Ubuntu/Debian系、Fedora系) |
+| 配布形態 | ① スタンドアロンGUI（Electron）／② Docker Desktop Extension（将来対応） |
+| ライセンス方針 | MIT（依存OSSと整合） |
+| GOAL | **G機能：Composeプロジェクトまるごとパック** が中核ユースケース |
+
+---
+
+## 1. 採用OSSの吸収戦略
+
+調査結果から、以下を「そのまま」または「薄いラッパー」で取り込みます。
+
+| 役割 | 採用OSS | ライセンス | 取り込み方 |
+|---|---|---|---|
+| Docker API 操作 | **apocas/dockerode** | Apache-2.0 | npm依存 |
+| Compose 解析・実行 | **apocas/dockerode-compose** | Apache-2.0 | npm依存 |
+| ボリュームバックアップ仕様 | **offen/docker-volume-backup** | MPL-2.0 | 仕様参考＋tarロジック移植 |
+| GUI 雛形 | **electron-react-boilerplate** | MIT | テンプレ採用 |
+| サイドバーUI | **tngan/sidebar-react-electron-boilerplate** | MIT | 構造参考 |
+| 圧縮 | **Stieneee/simple-zstd** | MIT | npm依存 |
+| 差分転送ロジック | **rsync アルゴリズム**（librsync相当） | LGPL | 概念採用、JS再実装 or node-rsync |
+| WSL2 操作 | `wsl --export/--import` ネイティブコマンド | OS標準 | child_process でラップ |
+| イメージ無レジストリ複製 | **containers/skopeo**（参考） | Apache-2.0 | アルゴリズム参考 |
+| Extension SDK（将来用） | **docker/extensions-sdk** | Apache-2.0 | 後日 |
+
+これにより、新規実装が必要なのは「**統合GUI・選択ロジック・パック形式定義・進捗管理・エラー体系**」のみとなり、コア処理は実績あるOSSに任せられます。
+
+---
+
+## 2. システム全体アーキテクチャ
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    dmig (Electron App)                          │
+│                                                                 │
+│  ┌──────────────────────┐    ┌──────────────────────────────┐   │
+│  │   Renderer (React)   │◀──▶│      Main Process (Node)     │   │
+│  │  - Sidebar           │IPC │   ┌────────────────────────┐ │   │
+│  │  - MainView          │    │   │   Core Modules         │ │   │
+│  │  - ProgressBar       │    │   │  ┌─────────────────┐   │ │   │
+│  │  - ErrorToast(i18n)  │    │   │  │ DockerAdapter   │   │ │   │
+│  └──────────────────────┘    │   │  │  (dockerode)    │   │ │   │
+│                              │   │  ├─────────────────┤   │ │   │
+│                              │   │  │ Exporter        │   │ │   │
+│                              │   │  │ Importer        │   │ │   │
+│                              │   │  │ Packer (.dmig)  │   │ │   │
+│                              │   │  │ DiffEngine      │   │ │   │
+│                              │   │  │ WSLBridge       │   │ │   │
+│                              │   │  │ Validator       │   │ │   │
+│                              │   │  │ Snapshotter     │   │ │   │
+│                              │   │  └─────────────────┘   │ │   │
+│                              │   └────────────────────────┘ │   │
+│                              └──────────────┬───────────────┘   │
+└─────────────────────────────────────────────┼───────────────────┘
+                                              │
+                                              ▼
+              ┌───────────────────────────────────────────┐
+              │  Docker Engine API (/var/run/docker.sock  │
+              │    または  //./pipe/docker_engine)        │
+              └───────────────────────────────────────────┘
+                                              │
+                                              ▼
+                                ┌─────────────────────────┐
+                                │  USB Drive (.dmig pkg)  │
+                                └─────────────────────────┘
+```
+
+---
+
+## 3. パッケージフォーマット `.dmig` 仕様
+
+USB に書き出される単一の論理パッケージ（実体はディレクトリ or 単一tar）。
+
+```
+mypack.dmig/
+├── manifest.json              # 全体メタデータ・SHA-256・バージョン・依存関係
+├── snapshot.json              # 端末A側の状態スナップショット（ロールバック用）
+├── images/
+│   ├── nginx_latest.tar.zst   # docker save → zstd 圧縮
+│   ├── postgres_16.tar.zst
+│   └── layers/                # 差分転送用：レイヤー単位キャッシュ（任意）
+├── volumes/
+│   ├── pgdata.tar.zst         # tar -C /var/lib/docker/volumes/<name>/_data
+│   └── ...
+├── containers/
+│   └── <name>.json            # inspect結果＋起動オプション（再生成用）
+├── networks/
+│   └── <name>.json
+├── compose/                   # 【GOAL: G機能】
+│   ├── <project>/
+│   │   ├── compose.yaml
+│   │   ├── .env.masked        # F機能：シークレットはマスク済み
+│   │   ├── build-context.tar.zst  # build: で参照されるコンテキスト
+│   │   └── project-manifest.json  # 関連イメージ・ボリューム・ネットワーク一覧
+├── config/
+│   ├── daemon.json            # 設定移行
+│   └── settings-store.json    # Docker Desktop settings
+├── checksums.sha256           # J機能：整合性検証
+└── dmig.lock                  # 書き込み中ロック
+```
+
+### manifest.json スキーマ（抜粋）
+
+```json
+{
+  "dmigVersion": "1.0.0",
+  "createdAt": "2026-05-14T10:00:00+09:00",
+  "source": {
+    "os": "windows", "arch": "amd64",
+    "dockerVersion": "27.0.3", "wslVersion": "2.1.5"
+  },
+  "contents": {
+    "images": [{"name": "nginx:latest", "size": 142000000, "sha256": "..."}],
+    "volumes": [...],
+    "composeProjects": [...]
+  },
+  "incremental": { "baseSnapshotId": "abc123", "diffOnly": true },
+  "encryption": null,
+  "totalSize": 1780000000
+}
+```
+
+---
+
+## 4. モジュール設計
+
+### 4.1 DockerAdapter（dockerode ラッパー）
+
+```typescript
+class DockerAdapter {
+  private docker: Docker;  // dockerode
+  constructor() {
+    this.docker = new Docker(
+      process.platform === 'win32'
+        ? { socketPath: '//./pipe/docker_engine' }
+        : { socketPath: '/var/run/docker.sock' }
+    );
+  }
+  async listImages(): Promise<ImageInfo[]> { ... }
+  async listVolumes(): Promise<VolumeInfo[]> { ... }
+  async listComposeProjects(): Promise<ComposeProject[]> { ... }  // labelで判定
+  async saveImage(name: string, dest: WriteStream, onProgress): Promise<void> { ... }
+  async loadImage(src: ReadStream, onProgress): Promise<void> { ... }
+  async exportVolume(name: string, dest: WriteStream): Promise<void> {
+    // 一時的にbusyboxコンテナを起動→ /vol を tar で stdout 出力
+  }
+}
+```
+
+### 4.2 Exporter / Importer
+
+責務：DockerAdapter から取得したストリームを Packer に流し、zstd 圧縮しつつ進捗を発行する EventEmitter。
+
+### 4.3 Packer / Unpacker
+
+責務：`.dmig` フォーマットの組み立て・展開、SHA-256 計算、`manifest.json` 生成。
+
+### 4.4 DiffEngine（B機能：差分・再開）
+
+- 前回エクスポート時に `snapshot.json` を USB に保存
+- 今回は Docker のイメージID／ボリュームのmtime＋サイズで差分判定
+- レイヤー単位で「既にUSB上にある」ものはスキップ
+- 転送中断時は `.part` ファイルでレジューム
+
+### 4.5 WSLBridge（L機能：丸ごとモード）
+
+```typescript
+// Windowsのみ
+async fullCloneExport(outPath: string, onProgress) {
+  // 1. Docker Desktop停止
+  await exec('"C:\\Program Files\\Docker\\Docker\\DockerCli.exe" -SwitchDaemon');
+  // 2. wsl --export docker-desktop-data <outPath>
+  // 3. wsl --export docker-desktop <outPath2>  (Win版のみ、optional)
+}
+async fullCloneImport(tarPath: string, installDir: string) {
+  // wsl --import docker-desktop-data <installDir> <tarPath> --version 2
+}
+```
+互換性チェック必須：OS種・WSLバージョン・Docker Desktopバージョンが一致しない場合は**警告ダイアログ**で続行確認。
+
+### 4.6 Validator（A機能：ドライラン）
+
+- 端末B側で実行：空き容量、Dockerバージョン、アーキテクチャ(amd64/arm64)、既存リソースとの衝突を事前検査
+- 結果を「✅ OK / ⚠ 警告 / ❌ 不可」の3段階で表示
+
+### 4.7 Snapshotter（I機能：ロールバック）
+
+- インポート開始前に端末B側の `docker system df` 等を記録
+- インポートしたリソースIDを `rollback.json` に保存
+- 失敗時 or ユーザー操作で削除し原状復帰
+
+### 4.8 SecretScanner（F機能：警告）
+
+- 取り込み対象の `.env`、`compose.yaml`、`config.json` を正規表現で走査
+  - パターン: `AWS_*`、`*_TOKEN`、`*_SECRET`、`*_PASSWORD`、`*_KEY`、JWT形式
+- ヒットしたら**赤色で一覧表示し「マスクして続行 / そのまま続行 / 中止」を選択**
+- マスク時は `.env.masked` を生成、元の値は移行しない
+
+### 4.9 SchedulerService（D機能）
+
+- Windows: `schtasks` / Linux: `cron` または `systemd --user` を裏で登録
+- GUIから「毎週日曜 23:00 に Eドライブへ自動エクスポート」等を設定
+
+### 4.10 ProfileStore（C機能：プリセット）
+
+- `%APPDATA%/dmig/profiles/*.json` に選択状態を保存・呼び出し
+
+### 4.11 UsageAnalyzer（N機能：お掃除レポート）
+
+- `dangling images`、未使用ボリューム、6ヶ月以上未起動コンテナ、巨大ボリュームTOP10 を集計
+- 「移行を機にクリーンアップしますか？」を提示
+
+### 4.12 i18n（K機能）
+
+- `i18next` で `ja.json` / `en.json` を切替
+- エラーメッセージもキー化（`error.E2003`）
+
+---
+
+## 5. エラーコード体系（確定版）
+
+| コード | カテゴリ | 例 |
+|---|---|---|
+| E1001 | Docker未起動 | `Docker Desktop が起動していません。起動してから再試行してください。` |
+| E1002 | Engine API接続失敗 | `Docker Engine に接続できません (socket=%s)` |
+| E1003 | 権限不足 | `Dockerソケットへのアクセス権限がありません。` |
+| E2001 | イメージ列挙失敗 | |
+| E2002 | イメージsave失敗 | |
+| E2003 | ボリュームexport失敗 | |
+| E2004 | composeプロジェクト解析失敗 | |
+| E3001 | zstd圧縮失敗 | |
+| E3002 | SHA-256計算失敗 | |
+| E4001 | USBドライブ未検出 | `指定されたドライブ %s が見つかりません。` |
+| E4002 | 空き容量不足 | `必要 %dGB / 空き %dGB` |
+| E4003 | 書き込み中断 | `書き込みが中断されました。再開可能です。[再開]` |
+| E5001 | dmig形式不正 | |
+| E5002 | バージョン非互換 | `このパッケージは dmig %s 以上が必要です。` |
+| E5003 | リソース名衝突 | `イメージ %s は既に存在します。[上書き/スキップ/別名]` |
+| E5004 | アーキテクチャ不一致 | `arm64イメージをamd64ホストにロードしようとしています。` |
+| E6001 | WSL未インストール | |
+| E6002 | wsl --export失敗 | |
+| E7001 | スナップショット作成失敗 | |
+| E7002 | ロールバック失敗 | |
+| E8001 | 整合性検証エラー(SHA不一致) | |
+| E9001 | 想定外例外 | スタックトレースを `error-report.zip` に保存 |
+
+エラー表示UI仕様：
+```
+┌─ エラーが発生しました ─────────────────────────┐
+│ [E2003] ボリューム "pgdata" のエクスポートに失敗 │
+│                                                 │
+│ 原因: コンテナがボリュームを使用中のため        │
+│ 対処: 該当コンテナを停止してください            │
+│                                                 │
+│ [詳細ログを開く] [エラー報告を保存] [閉じる]    │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. 画面遷移・UI設計
+
+### 6.1 画面一覧
+
+| # | 画面名 | 役割 |
+|---|---|---|
+| S0 | スプラッシュ / 初回セットアップ | Docker接続確認、言語選択 |
+| S1 | モード選択 | 「エクスポート(送信側)」「インポート(受信側)」「スケジュール管理」「プロファイル管理」 |
+| S2 | エクスポート対象選択 | サイドバー＋メイン（チェックボックス） |
+| S3 | プリセット読込/保存 | C機能 |
+| S4 | 事前検証（ドライラン） | A機能、警告一覧 |
+| S5 | シークレットスキャン結果 | F機能 |
+| S6 | エクスポート実行（プログレス） | 進捗バー・残時間・現在処理ファイル |
+| S7 | USB書き込み完了サマリ | |
+| S8 | インポート：パッケージ読込 | manifest表示 |
+| S9 | インポート対象選択（個別チェック可） | |
+| S10 | インポート互換性チェック | A機能 |
+| S11 | インポート実行（プログレス） | |
+| S12 | ロールバック確認 | I機能 |
+| S13 | クリーンアップレポート | N機能 |
+| S14 | スケジュール設定 | D機能 |
+| S15 | エラー詳細 | エラーNo＋日本語＋詳細ログ |
+| S16 | 設定（言語・テーマ・既定USBパス） | K機能 |
+
+### 6.2 メイン画面ワイヤーフレーム（S2）
+
+```
+╔══════════════════════════════════════════════════════════════════════╗
+║ 🐳 dmig v1.0    [端末A: SOURCE] → [USB: E:\backup.dmig]   🌙 ⚙ ❓  ║
+╠══════════════╦═══════════════════════════════════════════════════════╣
+║ SIDEBAR      ║ MAIN VIEW                                             ║
+║              ║                                                       ║
+║ 🏠 ホーム    ║ ▌エクスポート対象を選択                              ║
+║ ─────────    ║                                                       ║
+║ ▼ エクスポート ║ [タブ] Compose | Images | Volumes | Networks | Config ║
+║   ● 対象選択  ║                                                       ║
+║   ○ 検証      ║ ┌─ Compose プロジェクト (GOAL機能) ──────────────┐  ║
+║   ○ 実行      ║ │ ☑ myapp-dev      3 services  1.2GB  最終起動: 2日前│  ║
+║ ▼ インポート ║ │   ├─ images: nginx, postgres:16, redis:7        │  ║
+║   ○ 読込      ║ │   ├─ volumes: pgdata(420MB), redis-data(12MB)   │  ║
+║   ○ 実行      ║ │   └─ networks: myapp_default                    │  ║
+║ ─────────    ║ │ ☐ legacy-app     2 services  840MB  最終起動: 半年前║
+║ 📋 プロファイル║ │ ☑ docs-site      1 service   180MB              │  ║
+║ ⏰ スケジュール║ └──────────────────────────────────────────────────┘  ║
+║ 🧹 お掃除    ║                                                       ║
+║ ─────────    ║ ┌─ 個別 Images ───────────────────────────────────┐  ║
+║ ⚙ 設定       ║ │ ☐ ubuntu:22.04   77MB    ☑ myapp:dev   1.2GB    │  ║
+║ ❓ ヘルプ     ║ │ ☐ alpine:3.19    7MB     ☐ node:20     1.0GB    │  ║
+║              ║ └──────────────────────────────────────────────────┘  ║
+║              ║                                                       ║
+║              ║ 選択合計: 1.78 GB / USB空き: 28.4 GB ✅              ║
+║              ║                                                       ║
+║              ║ [📂 プリセット読込] [💾 保存]  [▶ 検証へ進む]        ║
+╚══════════════╩═══════════════════════════════════════════════════════╝
+```
+
+### 6.3 進捗画面（S6）
+
+```
+║ 全体進捗  ████████████░░░░░░░░  62%   1.10 / 1.78 GB   残り 約1分30秒 ║
+║                                                                       ║
+║ 現在のタスク:                                                         ║
+║   📦 postgres:16 をエクスポート中... (saving layers 4/7)             ║
+║   ███████████████░░░░░░░░░░  58%                                     ║
+║                                                                       ║
+║ 完了:                                                                 ║
+║   ✅ nginx:latest         142 MB   12秒                              ║
+║   ✅ myapp:dev          1,200 MB   1分08秒                           ║
+║   ⏳ postgres:16          438 MB   進行中                            ║
+║   ⏸ docs-site            180 MB   待機                              ║
+║                                                                       ║
+║ [⏸ 一時停止] [⏹ 中止]                                               ║
+```
+
+---
+
+## 7. ディレクトリ構成
+
+```
+dmig/
+├── package.json
+├── tsconfig.json
+├── electron.vite.config.ts
+├── src/
+│   ├── main/                       # Electron Main Process
+│   │   ├── index.ts
+│   │   ├── ipc.ts                  # Rendererとの通信ハンドラ
+│   │   └── core/
+│   │       ├── DockerAdapter.ts
+│   │       ├── Exporter.ts
+│   │       ├── Importer.ts
+│   │       ├── Packer.ts
+│   │       ├── DiffEngine.ts
+│   │       ├── WSLBridge.ts
+│   │       ├── Validator.ts
+│   │       ├── Snapshotter.ts
+│   │       ├── SecretScanner.ts
+│   │       ├── SchedulerService.ts
+│   │       ├── ProfileStore.ts
+│   │       ├── UsageAnalyzer.ts
+│   │       └── errors/
+│   │           ├── DmigError.ts
+│   │           └── codes.ts        # E1001〜E9001の定義
+│   ├── renderer/                   # React UI
+│   │   ├── App.tsx
+│   │   ├── components/
+│   │   │   ├── Sidebar.tsx
+│   │   │   ├── ProgressBar.tsx
+│   │   │   ├── ResourceList.tsx
+│   │   │   ├── ErrorDialog.tsx
+│   │   │   └── ComposeProjectCard.tsx
+│   │   ├── pages/
+│   │   │   ├── ExportSelect.tsx
+│   │   │   ├── ExportProgress.tsx
+│   │   │   ├── ImportSelect.tsx
+│   │   │   ├── Schedule.tsx
+│   │   │   ├── Cleanup.tsx
+│   │   │   └── Settings.tsx
+│   │   ├── i18n/
+│   │   │   ├── ja.json
+│   │   │   └── en.json
+│   │   └── store/                  # zustand
+│   └── shared/
+│       ├── types.ts                # Manifest, ImageInfo 等
+│       └── constants.ts
+├── scripts/
+│   ├── build-win.ps1
+│   └── build-linux.sh
+├── tests/
+│   ├── unit/
+│   └── e2e/
+└── docs/
+    ├── ARCHITECTURE.md
+    ├── DMIG-FORMAT.md
+    └── ERROR-CODES.md
+```
+
+---
+
+## 8. 主要処理シーケンス（GOAL: G機能の例）
+
+```
+[ユーザー]   [UI]        [Main]      [DockerAdapter]   [Exporter]    [Packer]    [USB]
+   │ 選択     │             │              │                │            │         │
+   │────────▶│ IPC:export  │              │                │            │         │
+   │         │────────────▶│ getCompose() │                │            │         │
+   │         │             │─────────────▶│ listProjects() │            │         │
+   │         │             │              │ (labelで集約)  │            │         │
+   │         │             │◀─────────────│ projects[]     │            │         │
+   │         │             │ scanSecrets()                 │            │         │
+   │         │ 警告表示    │                                            │         │
+   │◀────────│             │                                            │         │
+   │ OK      │             │                                            │         │
+   │────────▶│             │ for each project:                          │         │
+   │         │             │   saveImages()─▶                           │         │
+   │         │             │                 │ docker save │            │         │
+   │         │             │                 │────────────▶│ zstd圧縮   │         │
+   │         │             │                 │            │───────────▶│ 書込    │
+   │         │ progress    │◀───────────────────────────────────────────│         │
+   │         │             │   exportVolumes()─▶ (busybox tar)          │         │
+   │         │             │   copyComposeYaml()                        │         │
+   │         │             │   maskEnv()                                │         │
+   │         │             │ writeManifest()─────────────▶│             │         │
+   │         │             │ computeChecksums()                         │         │
+   │         │ 完了        │                                            │         │
+   │◀────────│             │                                            │         │
+```
+
+---
+
+## 9. 開発フェーズ計画
+
+| フェーズ | 期間目安 | 内容 |
+|---|---|---|
+| **Phase 0** | 1週 | リポジトリ初期化、electron-react-boilerplate導入、CI設定 |
+| **Phase 1** | 2週 | DockerAdapter / Exporter / Importer 最小版（Images のみ）+ CLI動作確認 |
+| **Phase 2** | 2週 | Packer (.dmig) フォーマット確定、SHA検証(J)、エラー体系実装 |
+| **Phase 3** | 2週 | GUI（サイドバー・プログレス・選択画面）+ i18n(K) |
+| **Phase 4** | 2週 | Volumes / Networks / Config 対応、SecretScanner(F) |
+| **Phase 5** | 2週 | 🎯 **G機能：Composeまるごとパック** |
+| **Phase 6** | 1週 | A: ドライラン、I: ロールバック |
+| **Phase 7** | 2週 | B: 差分・再開（最優先要件のためテスト厚め） |
+| **Phase 8** | 1週 | L: WSL2丸ごとモード（Windowsのみ） |
+| **Phase 9** | 1週 | C: プロファイル、D: スケジュール、N: お掃除レポート |
+| **Phase 10** | 1週 | E2Eテスト、ドキュメント、インストーラ作成 |
+| **Phase 11+** | 将来 | M: Docker Desktop Extension化 |
+
+**合計：約17週（約4ヶ月）** で v1.0 リリース見込み。
+
+---
+
+## 10. リスクと対策
+
+| リスク | 影響 | 対策 |
+|---|---|---|
+| WSL2 ディストロのexport中にDocker破損 | 高 | 必ず事前停止＋ロールバック用VHDXコピー保持 |
+| 大容量(100GB+)で中断 | 中 | B機能（再開）必須、チャンク単位コミット |
+| Apple Silicon ⇄ Intel間（今回対象外だがLinux ARMもあり得る） | 中 | Validatorで警告、`--platform`指定をmanifestに保存 |
+| シークレット漏洩 | 高 | F機能の必須化、デフォルトで「マスクして続行」を推奨選択 |
+| Docker Desktop バージョン差 | 中 | manifestにバージョン記録、メジャー差は警告 |
+| USBの書込速度ボトルネック | 低 | zstd圧縮レベルを自動調整、進捗に転送速度表示 |
+
+---

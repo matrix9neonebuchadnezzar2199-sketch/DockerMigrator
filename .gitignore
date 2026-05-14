@@ -1,0 +1,10 @@
+# dmig (Electron / Node)
+dmig/node_modules/
+dmig/out/
+dmig/release/
+dmig/dist/
+
+# ログ・OS
+*.log
+.DS_Store
+Thumbs.db
