@@ -1,0 +1,532 @@
+---
+description: 汎用 Python ツール制作の Docker 運用規約。イメージ命名・save/load・volume バックアップ・Compose・マルチステージ・移行ツール定型パターン・Windows / Linux 差分・SDK 選定。
+globs: ["**/Dockerfile", "**/Dockerfile.*", "**/docker-compose*.yml", "**/compose*.yaml", "**/.dockerignore", "**/docker*.py"]
+alwaysApply: false
+---
+
+# Docker 運用規約
+
+マスター作業領域の「Docker で SQL コンテナを動かして別端末に移動するツール」のような移行系ツール作成、および解析環境（FLARE-VM / REMnux）の Docker 運用全般。
+
+## 関連ルール
+- `10-tool-design.mdc`: CLI 設計
+- `11-python-tooling.mdc`: docker-py / subprocess の選択
+- `14-data-integrity.mdc`: 移行時の整合性検証
+- `15-idempotency-rollback.mdc`: 中断・resume
+- `17-cross-platform.mdc`: Windows / Linux ホスト差
+- `90-security-ethics.mdc`: 解析環境隔離（最優先）
+
+---
+
+## 1. イメージ命名
+
+### 1.1 必須形式
+```
+<registry>/<org>/<name>:<version>
+```
+
+例: `ghcr.io/masterneo/mytool:1.2.3`
+
+### 1.2 バージョン規約
+
+| タグ | 用途 | 自動 push |
+|---|---|---|
+| `:1.2.3` | リリース版（SemVer） | ◎（必須） |
+| `:1.2` | minor 系列の最新 | ◯ |
+| `:1` | major 系列の最新 | ◯ |
+| `:latest` | 最新版（**開発時のみ、本番禁止**）| × |
+| `:dev` | 開発中（HEAD） | × |
+| `:<short-sha>` | コミットハッシュ | ◎ |
+
+**`latest` 本番禁止理由**: バージョン特定不能、再現性破壊、ロールバック不能。
+
+### 1.3 `.dockerignore` 必須
+
+```dockerignore
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# VCS
+.git/
+.gitignore
+.github/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+credentials*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docs（イメージに含めない）
+docs/
+README.md
+CHANGELOG.md
+
+# Tests（本番イメージに含めない）
+tests/
+
+# Local data
+data/
+output/
+samples/
+```
+
+---
+
+## 2. save/load vs commit
+
+### 2.1 第一選択: `docker save` / `docker load`
+**Dockerfile から再現可能** な image のみ移行する:
+
+```bash
+# 保存（移送可能なアーカイブ）
+docker save mytool:1.2.3 | gzip > mytool-1.2.3.tar.gz
+
+# 読み込み
+docker load < mytool-1.2.3.tar.gz
+```
+
+### 2.2 `docker commit` は非推奨
+コンテナの状態スナップショットを image 化。**再現性なし、Dockerfile に痕跡が残らない**。
+
+許容ケース:
+- 一時的なデバッグ用 snapshot
+- 仕方なく外部から得た「Dockerfile 不明のコンテナ」を保存
+- マスター明示要求時
+
+非推奨である旨を必ず警告:
+```python
+def docker_commit(container: str, image: str) -> None:
+    logger.warning(
+        "docker commit は再現性を損ないます。"
+        "可能なら Dockerfile から再ビルドしてください。"
+    )
+    subprocess.run(["docker", "commit", container, image], check=True)
+```
+
+---
+
+## 3. volume vs bind mount
+
+| 用途 | 採用 | 理由 |
+|---|---|---|
+| データ永続化（DB, アプリ data） | **名前付き volume** | Docker 管理、移植性、バックアップ容易 |
+| ホスト ↔ コンテナのリアルタイム同期 | **bind mount** | 開発時のホットリロード |
+| 設定ファイル（読み取り専用） | **bind mount + `:ro`** | ホスト側で編集、コンテナは read only |
+| 一時データ | **tmpfs** | メモリ上、再起動で消える |
+
+Compose 例:
+```yaml
+services:
+  db:
+    image: postgres:16
+    volumes:
+      - db_data:/var/lib/postgresql/data  # 名前付き volume
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro  # bind mount, read-only
+
+volumes:
+  db_data:
+```
+
+---
+
+## 4. volume バックアップ・移送
+
+### 4.1 定型パターン: tar 経由
+
+**エクスポート**:
+```bash
+docker run --rm \
+  -v <volume-name>:/data:ro \
+  -v "$(pwd)":/backup \
+  alpine \
+  tar -czf /backup/<volume-name>.tar.gz -C /data .
+```
+
+**インポート**:
+```bash
+docker volume create <volume-name>
+docker run --rm \
+  -v <volume-name>:/data \
+  -v "$(pwd)":/backup \
+  alpine \
+  tar -xzf /backup/<volume-name>.tar.gz -C /data
+```
+
+### 4.2 Python ラッパー例（移行ツールのコア）
+
+```python
+import subprocess
+from pathlib import Path
+from .exceptions import ExternalCommandError
+
+def export_volume(volume: str, output: Path, *, dry_run: bool = False) -> None:
+    """volume を tar.gz にエクスポート。"""
+    cmd = [
+        "docker", "run", "--rm",
+        "-v", f"{volume}:/data:ro",
+        "-v", f"{output.parent.resolve()}:/backup",
+        "alpine",
+        "tar", "-czf", f"/backup/{output.name}", "-C", "/data", ".",
+    ]
+    if dry_run:
+        logger.info(f"[DRY-RUN] {' '.join(cmd)}")
+        return
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    if result.returncode != 0:
+        raise ExternalCommandError(cmd, result.returncode, result.stderr)
+
+def import_volume(volume: str, archive: Path, *, dry_run: bool = False) -> None:
+    """tar.gz から volume を復元。volume は新規作成。"""
+    if not dry_run:
+        subprocess.run(["docker", "volume", "create", volume], check=True)
+    cmd = [
+        "docker", "run", "--rm",
+        "-v", f"{volume}:/data",
+        "-v", f"{archive.parent.resolve()}:/backup",
+        "alpine",
+        "tar", "-xzf", f"/backup/{archive.name}", "-C", "/data",
+    ]
+    if dry_run:
+        logger.info(f"[DRY-RUN] {' '.join(cmd)}")
+        return
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=3600)
+    if result.returncode != 0:
+        raise ExternalCommandError(cmd, result.returncode, result.stderr)
+```
+
+---
+
+## 5. Compose 構成
+
+### 5.1 ファイル命名
+- **`compose.yaml`** または **`compose.yml`**（Compose Spec v2、推奨）
+- 旧 `docker-compose.yml` も動くが新規は `compose.yaml`
+- `version: "3.8"` フィールドは **削除**（Compose v2 で deprecated）
+
+```yaml
+# compose.yaml
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+    ports:
+      - "8080:8080"
+
+volumes:
+  db_data:
+```
+
+### 5.2 環境変数は `.env` から
+```bash
+# .env (リポジトリ管理外、18-config-secrets 参照)
+DB_NAME=mydb
+DB_USER=admin
+DB_PASSWORD=changeme
+```
+
+### 5.3 サービス分離原則
+1 service = 1 process。DB + アプリ + Redis なら 3 service。
+
+---
+
+## 6. マルチステージビルド
+
+### 6.1 Python 向け定型
+
+```dockerfile
+# syntax=docker/dockerfile:1.7
+
+# === Builder stage ===
+FROM python:3.12-slim AS builder
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    UV_LINK_MODE=copy
+
+# uv インストール
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+WORKDIR /app
+
+# 依存だけ先にインストール（レイヤキャッシュ最大活用）
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-install-project --no-dev
+
+# アプリコードをコピー
+COPY src ./src
+RUN uv sync --frozen --no-dev
+
+# === Runtime stage ===
+FROM python:3.12-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+WORKDIR /app
+
+# venv だけコピー（最小サイズ）
+COPY --from=builder /app/.venv /app/.venv
+COPY --from=builder /app/src /app/src
+
+# 非 root ユーザーで実行
+RUN useradd --uid 1000 --create-home --no-log-init appuser
+USER appuser
+
+ENTRYPOINT ["python", "-m", "my_tool"]
+```
+
+### 6.2 重要ポイント
+- ベースは `python:3.12-slim`（Alpine は glibc 互換問題で避ける）
+- `uv sync --frozen` でロックファイル厳密
+- runtime ステージには **venv とコードのみ** をコピー
+- 非 root ユーザーで実行（セキュリティ）
+
+---
+
+## 7. サイズ最適化
+
+### 7.1 ベースイメージ比較
+
+| ベース | サイズ | 用途 |
+|---|---|---|
+| `python:3.12` | 1.0 GB | 開発・デバッグ用 |
+| `python:3.12-slim` | **150 MB** | **本番第一選択** |
+| `python:3.12-alpine` | 50 MB | glibc 互換問題あり、注意 |
+| `gcr.io/distroless/python3` | 50 MB | shell なし、デバッグ困難 |
+
+### 7.2 不要パッケージ削除
+```dockerfile
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+`--no-install-recommends` で推奨パッケージを除外、`/var/lib/apt/lists/*` で apt cache 削除。
+
+### 7.3 `.dockerignore` でビルドコンテキスト最小化
+（§1.3 参照）
+
+---
+
+## 8. 移行ツール定型パターン（export → transfer → import）
+
+**マスターの SQL コンテナ移行ツール想定の正式フロー**:
+
+```
+src host                                        dst host
+  │                                                │
+  ├─ 1. snapshot 作成（DB 停止 or pg_dump）         │
+  ├─ 2. volume を tar.gz でエクスポート              │
+  ├─ 3. metadata.json 作成                         │
+  │   {                                            │
+  │     "tool": "docker-migrate",                  │
+  │     "version": "1.2.3",                        │
+  │     "exported_at": "2026-05-13T11:00:00Z",    │
+  │     "source_host": "src-server",               │
+  │     "volumes": [                               │
+  │       {"name": "db_data", "size": ..., "sha256": ...} │
+  │     ],                                         │
+  │     "images": [                                │
+  │       {"tag": "postgres:16", "id": ..., "sha256": ...} │
+  │     ],                                         │
+  │     "compose": "compose.yaml"                  │
+  │   }                                            │
+  ├─ 4. image を `docker save` で tar.gz            │
+  ├─ 5. 全ファイルのまとめ manifest 作成             │
+  ├─ 6. tar -czf migration.tar.gz {すべて}          │
+  │                                                │
+  └────────── transfer (scp / rsync) ─────────────►│
+                                                   │
+                                                   ├─ 7. 受信時 hash 照合
+                                                   ├─ 8. tar -xzf migration.tar.gz
+                                                   ├─ 9. metadata.json を読んで再現
+                                                   ├─ 10. docker load < image.tar.gz
+                                                   ├─ 11. docker volume create + import
+                                                   ├─ 12. compose up -d
+                                                   └─ 13. ヘルスチェック確認
+```
+
+### 8.1 metadata.json 仕様
+```json
+{
+  "schema_version": "1.0",
+  "tool": "docker-migrate",
+  "tool_version": "1.2.3",
+  "exported_at": "2026-05-13T11:00:00Z",
+  "source": {
+    "hostname": "src-server",
+    "os": "Linux 5.15",
+    "docker_version": "24.0.7"
+  },
+  "volumes": [
+    {
+      "name": "db_data",
+      "size_bytes": 1234567890,
+      "file": "volumes/db_data.tar.gz",
+      "sha256": "abc..."
+    }
+  ],
+  "images": [
+    {
+      "repository": "postgres",
+      "tag": "16",
+      "id": "sha256:...",
+      "size_bytes": 240000000,
+      "file": "images/postgres_16.tar.gz",
+      "sha256": "def..."
+    }
+  ],
+  "compose_file": "compose.yaml"
+}
+```
+
+### 8.2 各 phase で `14-data-integrity` と連携
+- volume export 後 → sha256 計算 → metadata に記録
+- import 時 → sha256 照合 → 不一致は abort
+- 完了マーカー `migration.ok` を最後に書く
+
+### 8.3 `15-idempotency-rollback` と連携
+- state file `migration.state.json` で phase 管理
+- 中断時の resume サブコマンドで再開
+- volume 作成失敗時の rollback（作成済み volume の削除）
+
+---
+
+## 9. Windows / Linux ホスト差分
+
+### 9.1 主な差分表
+
+| 観点 | Docker Desktop (Windows) | Native Docker (Linux) |
+|---|---|---|
+| 実行基盤 | WSL2 VM 内で動作 | ホスト kernel 直接 |
+| volume 物理位置 | WSL2 内 ext4 | ホスト ext4 |
+| bind mount 性能 | 遅い（VFS over 9p） | 高速 |
+| 改行コード | CRLF が混入する可能性 | LF |
+| Linux パス変換 | `/c/Users/...` 自動変換 | 不要 |
+| ホスト → コンテナ シェル | PowerShell 経由 | bash |
+
+### 9.2 改行コード対策
+```dockerfile
+# Dockerfile 内で CRLF を LF に変換
+COPY scripts/ /scripts/
+RUN find /scripts -type f -name '*.sh' -exec sed -i 's/\r$//' {} +
+```
+
+または `.gitattributes` で:
+```
+*.sh text eol=lf
+```
+
+### 9.3 パス変換
+Windows ホストの bind mount は **絶対パス必須**:
+```bash
+# Windows PowerShell
+docker run -v "${PWD}:/data" ...  # PowerShell の絶対パス
+
+# Linux bash
+docker run -v "$(pwd):/data" ...
+```
+
+Python 側ラッパーでは `path.resolve()` で吸収。
+
+---
+
+## 10. SDK 選定
+
+### 10.1 採用基準
+
+| 操作 | 採用 | 理由 |
+|---|---|---|
+| 単純なコマンド（save / load / run） | **subprocess + docker CLI** | 依存なし、docs と一致 |
+| 複雑な操作（イメージ build, exec, log stream） | **docker-py（`docker` パッケージ）** | エラーハンドリング・型あり |
+| Compose 操作 | **subprocess + docker compose CLI** | docker-py に Compose v2 サポートなし |
+| Kubernetes 連携 | **kubernetes-py** | Docker SDK ではない |
+
+### 10.2 subprocess パターン
+```python
+import subprocess
+from .exceptions import ExternalCommandError
+
+def docker_save(image: str, output: Path) -> None:
+    cmd = ["docker", "save", image]
+    with output.open("wb") as f:
+        result = subprocess.run(cmd, stdout=f, stderr=subprocess.PIPE, text=False)
+    if result.returncode != 0:
+        raise ExternalCommandError(cmd, result.returncode, result.stderr.decode())
+```
+
+### 10.3 docker-py パターン
+```python
+# uv add docker
+import docker
+
+client = docker.from_env()
+volume = client.volumes.get("db_data")
+```
+
+### 10.4 docker daemon が起動していない場合
+```python
+def check_docker_available() -> None:
+    try:
+        subprocess.run(["docker", "info"], capture_output=True, check=True, timeout=5)
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        raise ExternalCommandError(
+            ["docker", "info"], 1,
+            "Docker daemon にアクセスできません。Docker Desktop / dockerd を起動してください。"
+        )
+```
+
+---
+
+## 11. アンチパターン
+
+- ❌ `:latest` タグで本番運用（再現性なし）
+- ❌ `Dockerfile` で `apt-get install` 後に cache 削除しない（イメージ肥大）
+- ❌ `COPY . /app/` で全部コピー（`.dockerignore` 必須）
+- ❌ root ユーザーで実行（権限事故、コンテナエスケープ拡大）
+- ❌ `docker exec -it` 前提のツール（自動化不能）
+- ❌ secret を image に焼き込む（`build-arg` でも image layer に残る、`buildkit secret mount` か runtime 注入）
+- ❌ `docker commit` で本番 image 作成（再現性破壊）
+- ❌ bind mount で `/var/run/docker.sock` をマウント（コンテナエスケープ）
+- ❌ volume 名を hardcode（環境変数化 or 設定ファイル経由）

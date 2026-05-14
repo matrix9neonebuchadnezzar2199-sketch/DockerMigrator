@@ -1,0 +1,60 @@
+---
+description: 開発日記 HTML のスタイル仕様（カラーパレット・タイポグラフィ・レイアウト・コンポーネント・ユニバーサルカラーデザイン）。日記 HTML を新規作成・スタイル変更する時のみ適用。テンプレート (`F:\Cursor\.cursor\templates\diary-template.html`) で大半は自動充当されるため、テンプレートを更新する場合や、テンプレートが存在しない環境で 0 から起こす場合の参照仕様。
+globs: ["**/docs/*_開発日記.html", "**/.cursor/templates/diary-template.html"]
+alwaysApply: false
+---
+
+# 開発日記 HTML スタイル仕様
+
+`04-diary-workflow.mdc` の付属仕様。日記 HTML の見た目（CSS / レイアウト / コンポーネント）を規定する。記録条件・エントリ構造・タグ運用は本体ルール側に残し、本ファイルは「ピクセルレベルの体裁」だけを扱う。
+
+## ファイル構成
+- **1 ファイル完結**: HTML + `<style>` インライン
+- **外部依存禁止**: 外部 CSS / JS / フォント / 画像 CDN すべて使わない
+- 文字コード: UTF-8 (BOM なし)
+- 言語: `<html lang="ja">`
+- `<body class="diary">` を付与
+
+## カラーパレット（ダークモード固定）
+```css
+:root {
+  --bg: #0f172a;          /* 背景 */
+  --card: #1e293b;        /* カード */
+  --text: #e2e8f0;        /* 本文 */
+  --muted: #94a3b8;       /* ミュート */
+  --heading: #cbd5e1;     /* h3 */
+  --accent: #a78bfa;      /* 紫アクセント（タイトル・リンク） */
+  --accent-deep: #7c3aed;
+  --border: #334155;      /* ボーダー */
+  --code-bg: #0b1220;     /* コード背景 */
+  --ok: #34d399;          /* 緑 */
+  --warn: #fbbf24;        /* 黄 */
+  --err: #f87171;         /* 赤 */
+}
+```
+
+## タイポグラフィ
+- フォント: `system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif`
+- 本文サイズ: 15px
+- 行間: 1.7
+- h2: 紫（`--accent`）、ページ内アンカー付き
+- h3: ミュート寄り（`--heading`）、12-14px、`letter-spacing: 0.3px`、`text-transform: uppercase` 風
+
+## レイアウト
+- 横幅 `max-width: 960px`、センター揃え
+- セクション間余白 22px
+- カード角丸 10px、薄いボーダー `--border`、ボックスシャドウなし
+
+## コンポーネント
+- `.tag`: pill 形（角丸 999px、padding 2px 8px、12px 文字、scope/ok/warn/err の枠色）
+- `code`: 背景 `--code-bg`、padding 1px 6px
+- `pre`: 背景 `--code-bg`、padding 12px 14px、横スクロール可
+- `table`: 角丸なし、行ごとに下線、見出しはミュート色
+
+## ユニバーサルカラーデザイン
+- ステータス pill には**必ず文字ラベル**を併記（色だけに依存しない）
+- 緑/赤の同時使用時は文字 + 形状で識別可能にする
+- 強調は色 + 太字の組み合わせ（色だけの強調は禁止）
+
+## 関連ルール
+- `04-diary-workflow.mdc`: 日記運用本体（記録条件・エントリ構造・テンプレート運用）

@@ -1,0 +1,146 @@
+---
+description: Git 運用規約（Conventional Commits、ブランチ命名、PR テンプレ、解析プロジェクト向け scope と OPSEC 連携：内部識別子使用）。コミット作成、PR 作成、ブランチ命名、レビュー、マージ、git ログ確認など Git 操作を行う時に適用する。コミットメッセージや PR 本文のレビューにも使う。
+alwaysApply: false
+---
+
+# Git Conventions
+
+## 関連ルール
+- `04-diary-workflow.mdc`: 開発日記でコミットハッシュ取得
+- `08-ai-opsec.mdc`: ハッシュ・実検体名をコミットに残さない
+- `19-docs-readme.mdc`: CHANGELOG 形式（Keep a Changelog）
+- `51-code-review.mdc`: PR レビュー観点・Bugbot 連携
+- `52-ci-cd.mdc`: CI 連動（PR 作成時の lint / test）
+
+## 1. コミットメッセージ — Conventional Commits
+
+```
+<type>(<scope>): <subject>
+
+<body, 任意, 折り返し 72>
+
+<footer, 任意: BREAKING CHANGE / refs #123>
+```
+
+### 1.1 type（限定リスト）
+
+| type | 用途 |
+|---|---|
+| `feat` | 機能追加 |
+| `fix` | バグ修正 |
+| `refactor` | 振る舞い不変の構造改変 |
+| `perf` | 性能改善 |
+| `test` | テストの追加・修正のみ |
+| `docs` | ドキュメントのみ |
+| `chore` | ビルド・依存・雑務 |
+| `ci` | CI 設定 |
+| `style` | フォーマットのみ（ロジック不変） |
+| `revert` | 取り消し |
+
+リスト外の type は使わない。
+
+### 1.2 scope（任意、推奨）
+
+汎用ツール開発の例:
+- `cli`, `core`, `db`, `api`, `docs`, `deps`
+
+解析プロジェクトの例:
+- `triage`: triage パイプライン
+- `yara`: YARA ルール
+- `capa`: capa ルール
+- `ida`: IDAPython スクリプト
+- `ghidra`: Ghidra スクリプト
+- `notes`: 解析ノート
+
+scope は **不要なら省略可**。
+
+### 1.3 件名（subject）規律
+
+- 命令形・現在形（"add", "fix"。"added" / "fixes" 不可）
+- 末尾ピリオドなし
+- 50 文字以内推奨、72 文字超は禁止
+- 1 行目に要約、詳細は body へ
+
+### 1.4 本文（body）規律
+
+- **「何を」より「なぜ」** を書く（コード差分から読めることを再記述しない）
+- 解析作業のコミットでは観察した挙動と参照リソース（capa rule 名 / ATT&CK ID）を 1 行で添える
+
+### 1.5 例
+
+```
+feat(triage): add PE rich-header parser
+
+Needed for grouping samples by linker fingerprint.
+Refs: T1027.
+```
+
+```
+fix(yara): tighten Emotet_v5 string to reduce FP
+
+The $s1 substring also matched legitimate Office macros built with
+the same obfuscator. Anchor to the loader stub instead.
+```
+
+```
+refactor(core): split parse_pe into header/section parsers
+
+No behavior change. mypy --strict still passes.
+```
+
+## 2. ブランチ命名
+
+`<type>/<scope>-<short-topic>` を基本形:
+
+| 例 | 用途 |
+|---|---|
+| `feat/triage-rich-header` | 新規機能 |
+| `fix/yara-emotet-fp` | バグ修正 |
+| `notes/sample-001` | 解析メモ専用 |
+| `chore/uv-bump` | 依存更新 |
+| `refactor/cli-args` | 構造改変 |
+
+### 2.1 OPSEC 連携（重要）
+
+ハッシュ・実検体名・実 C2 ホスト名・被害組織名を **ブランチ名に書かない**（`08-ai-opsec.mdc` 連動）。代わりに **内部識別子** を使う:
+
+- ❌ `notes/abc123def456789...` （実ハッシュ）
+- ❌ `notes/emotet-victim-corp` （被害組織名）
+- ✅ `notes/sample-001` （内部 ID）
+- ✅ `notes/case-2026-05-a` （案件 ID）
+
+ブランチ名は git remote / GitHub UI / CI ログに永続するため、後から消せない。
+
+## 3. PR テンプレート
+
+```markdown
+## 目的
+（1〜3 行で「なぜ」を）
+
+## 変更点
+- ...
+
+## 検証
+- `uv run ruff check` ✅
+- `uv run mypy --strict` ✅
+- `uv run pytest` ✅（X passed）
+
+## 解析プロジェクトのみ
+- 観察した挙動: ...
+- 参照: capa rule / YARA rule / ATT&CK ID
+- 公開して問題ない情報のみを含むか: ✅ / ⚠️
+
+## 残課題
+- ...
+```
+
+汎用ツール PR では「解析プロジェクトのみ」セクションを省略可。
+
+## 4. やらない
+
+- "WIP" / "fix bug" / "update" などの無情報コミット
+- 1 コミットに複数 type を混ぜる（`feat: add X and fix Y` は分割する）
+- 検体ハッシュ・実 C2・被害組織名をコミットメッセージに残す
+- `--amend` で push 済みコミットを書き換える（force push が必要になる、Karpathy ガイドラインで原則禁止）
+- フォーマット変更とロジック変更を同一コミットに混ぜる（`style:` と `feat:` は分離）
+- マージコミットを通常コミットと同列に扱う（`Merge branch ...` は自動生成、手動編集しない）

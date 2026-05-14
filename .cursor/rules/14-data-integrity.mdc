@@ -1,0 +1,340 @@
+---
+description: 汎用 Python ツール制作のデータ整合性検証規約。ハッシュ照合、件数照合、スキーマ照合、原子的ファイル書き込み、検証フェーズ分離、完了マーカー。
+globs: ["**/migrate*.py", "**/export*.py", "**/import*.py", "**/verify*.py", "**/integrity*.py"]
+alwaysApply: false
+---
+
+# データ整合性検証規約
+
+データ移行・エクスポート・インポート時の整合性確保。Docker 移行・DB 移行・ファイル変換など、データを失えない処理での必須規約。
+
+## 関連ルール
+- `12-error-logging.mdc`: 検証失敗時のエラー処理
+- `15-idempotency-rollback.mdc`: 失敗時の rollback
+- `16-docker-ops.mdc`: Docker 移行での適用
+- `17-cross-platform.mdc`: ファイル操作の OS 差
+
+---
+
+## 1. ハッシュ照合
+
+### 1.1 第一選択: SHA-256
+標準ライブラリ `hashlib`、十分な衝突耐性、業界標準:
+
+```python
+import hashlib
+from pathlib import Path
+
+def sha256_file(path: Path, chunk_size: int = 65536) -> str:
+    """ファイルの SHA-256 を計算（大ファイル対応・ストリーミング）。"""
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        while chunk := f.read(chunk_size):
+            h.update(chunk)
+    return h.hexdigest()
+```
+
+### 1.2 高速性が必要な場合: BLAKE3
+SHA-256 の 5-10 倍速、暗号学的に安全:
+```python
+# uv add blake3
+import blake3
+
+def blake3_file(path: Path) -> str:
+    h = blake3.blake3()
+    with path.open("rb") as f:
+        h.update_mmap(f.fileno())  # mmap で高速化
+    return h.hexdigest()
+```
+
+採用基準: ファイル 1 GB 超 or 大量のファイルを照合する場合のみ。それ未満は SHA-256 で十分。
+
+### 1.3 非採用
+- ❌ MD5（衝突攻撃あり、整合性検証にも使わない）
+- ❌ SHA-1（衝突攻撃確認済み）
+- ❌ CRC32（衝突確率高すぎ、誤検出リスク）
+
+### 1.4 manifest ファイル形式
+複数ファイル照合は manifest にまとめる:
+
+```python
+import json
+from pathlib import Path
+
+def write_manifest(files: list[Path], output: Path) -> None:
+    """ファイル一覧の hash manifest を JSON Lines で書き出す。"""
+    with output.open("w", encoding="utf-8", newline="") as f:
+        for path in files:
+            entry = {
+                "path": str(path.relative_to(path.parent.parent)),
+                "size": path.stat().st_size,
+                "sha256": sha256_file(path),
+            }
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+def verify_manifest(manifest: Path, base_dir: Path) -> list[str]:
+    """manifest と実ファイルを照合。差異リストを返す。"""
+    errors: list[str] = []
+    with manifest.open(encoding="utf-8") as f:
+        for line in f:
+            entry = json.loads(line)
+            path = base_dir / entry["path"]
+            if not path.exists():
+                errors.append(f"Missing: {entry['path']}")
+                continue
+            if path.stat().st_size != entry["size"]:
+                errors.append(f"Size mismatch: {entry['path']}")
+                continue
+            if sha256_file(path) != entry["sha256"]:
+                errors.append(f"Hash mismatch: {entry['path']}")
+    return errors
+```
+
+---
+
+## 2. 件数・行数照合
+
+### 2.1 DB ダンプ・リストア
+```python
+def count_table_rows(conn, table: str) -> int:
+    cur = conn.execute(f"SELECT COUNT(*) FROM {table}")
+    return cur.fetchone()[0]
+
+# 移行前後で全テーブルの件数を照合
+def verify_row_counts(src_conn, dst_conn, tables: list[str]) -> list[str]:
+    errors: list[str] = []
+    for table in tables:
+        src = count_table_rows(src_conn, table)
+        dst = count_table_rows(dst_conn, table)
+        if src != dst:
+            errors.append(f"{table}: src={src} dst={dst}")
+    return errors
+```
+
+不一致は **ERROR で停止**。続行は data loss を意味する。
+
+### 2.2 CSV / JSONL の行数照合
+```python
+def count_lines(path: Path) -> int:
+    """効率的な行数カウント（メモリ消費少）。"""
+    with path.open("rb") as f:
+        return sum(1 for _ in f)
+```
+
+---
+
+## 3. スキーマ照合
+
+### 3.1 PostgreSQL / MySQL
+```python
+def get_table_schema(conn, table: str) -> dict:
+    """information_schema からテーブルスキーマを取得。"""
+    cur = conn.execute("""
+        SELECT column_name, data_type, is_nullable, column_default
+        FROM information_schema.columns
+        WHERE table_name = %s
+        ORDER BY ordinal_position
+    """, (table,))
+    return {row["column_name"]: row for row in cur.fetchall()}
+
+def verify_schema(src_conn, dst_conn, tables: list[str]) -> list[str]:
+    errors: list[str] = []
+    for table in tables:
+        src = get_table_schema(src_conn, table)
+        dst = get_table_schema(dst_conn, table)
+        if src != dst:
+            errors.append(f"{table}: schema mismatch")
+    return errors
+```
+
+### 3.2 JSON Schema
+構造化データには `jsonschema` でスキーマ検証:
+```python
+# uv add jsonschema
+import jsonschema
+jsonschema.validate(data, schema)
+```
+
+---
+
+## 4. 原子的ファイル書き込み（atomic write）
+
+途中で失敗しても、**完全な古いファイル** か **完全な新しいファイル** のどちらかしか残らないようにする:
+
+### 4.1 tempfile + os.replace パターン
+
+```python
+import os
+import tempfile
+from pathlib import Path
+
+def atomic_write(target: Path, data: bytes) -> None:
+    """target を atomic に書き換える。"""
+    # 同じディレクトリに一時ファイルを作る（同一ファイルシステム前提）
+    fd, tmp_path = tempfile.mkstemp(
+        dir=target.parent,
+        prefix=f".{target.name}.",
+        suffix=".tmp",
+    )
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())  # OS バッファを実ディスクに書き込む
+        # rename は同一 FS では atomic
+        os.replace(tmp_path, target)
+    except Exception:
+        Path(tmp_path).unlink(missing_ok=True)
+        raise
+```
+
+### 4.2 なぜ `os.rename` でなく `os.replace` か
+- `os.rename` は Windows で **既存ファイル上書き不可** → 失敗する
+- `os.replace` は **クロスプラットフォーム** で常に上書き
+
+### 4.3 クロスデバイス制限
+`os.replace` は **同一ファイルシステム** でのみ atomic。別ドライブに rename すると内部で copy → delete になり atomic 性が失われる。
+
+→ 一時ファイルは必ず **target と同じディレクトリ** に作る。
+
+### 4.4 PowerShell での確認
+```powershell
+# 一時ファイルが残っていないかチェック
+Get-ChildItem -Path . -Filter ".*.tmp" -Force
+```
+
+---
+
+## 5. トランザクション境界
+
+### 5.1 明示的なトランザクション
+データ操作は **明示的トランザクション** で囲む:
+
+```python
+# DB
+conn.execute("BEGIN")
+try:
+    for row in data:
+        conn.execute("INSERT INTO ...", row)
+    conn.execute("COMMIT")
+except Exception:
+    conn.execute("ROLLBACK")
+    raise
+
+# ファイルシステム: 検証フェーズで分離
+# write → verify → commit（rename）
+```
+
+### 5.2 ネットワーク I/O
+HTTP API は **冪等性キー**（idempotency key）で重複防止:
+```python
+import uuid
+headers = {"Idempotency-Key": str(uuid.uuid4())}
+requests.post(url, json=data, headers=headers)
+```
+
+`15-idempotency-rollback.mdc` も参照。
+
+---
+
+## 6. 検証フェーズ分離（write → verify → commit）
+
+### 6.1 3 フェーズパターン
+
+```python
+def export_with_verify(source: Path, output: Path) -> None:
+    tmp = output.with_suffix(output.suffix + ".tmp")
+    
+    # Phase 1: Write to tmp
+    write_data(source, tmp)
+    
+    # Phase 2: Verify (read back & compare hash)
+    expected_hash = sha256_file(source)
+    actual_hash = sha256_file(tmp)
+    if expected_hash != actual_hash:
+        tmp.unlink()
+        raise ValidationError(f"Hash mismatch after write")
+    
+    # Phase 3: Commit (atomic rename)
+    tmp.replace(output)
+```
+
+### 6.2 検証失敗時の挙動
+- Phase 2 失敗: tmp 削除、エラー終了、output は **古いままで完全**
+- Phase 3 は失敗しない（atomic rename）
+
+---
+
+## 7. fail-fast vs continue-on-error
+
+### 7.1 デフォルトは fail-fast
+1 件でも失敗したら即停止。data 一貫性のため:
+
+```python
+@click.option("--continue-on-error", is_flag=True,
+              help="エラーが起きても続行（ログに記録のみ）。data integrity が犠牲になる")
+def migrate(continue_on_error: bool) -> None:
+    errors: list[str] = []
+    for item in items:
+        try:
+            process(item)
+        except Exception as e:
+            msg = f"Failed {item}: {e}"
+            logger.error(msg)
+            if not continue_on_error:
+                raise
+            errors.append(msg)
+    
+    if errors:
+        logger.warning(f"完了したが {len(errors)} 件のエラー")
+```
+
+### 7.2 continue-on-error 適用基準
+- バッチ処理で 1 件の失敗が全体に影響しない
+- 失敗件数をレポートに残せる
+- 失敗データは別ファイルに退避できる
+
+該当しない場合（DB 移行、整合性が必須な処理）は **`--continue-on-error` を実装しない**。
+
+---
+
+## 8. 完了マーカー
+
+### 8.1 `.ok` ファイル方式
+処理完了の証跡を別ファイルで残す:
+
+```python
+def export_with_marker(output: Path, data: bytes) -> None:
+    atomic_write(output, data)
+    
+    # 完了マーカー
+    marker = output.with_suffix(output.suffix + ".ok")
+    marker.write_text(
+        f"completed_at={datetime.now(timezone.utc).isoformat()}\n"
+        f"size={output.stat().st_size}\n"
+        f"sha256={sha256_file(output)}\n",
+        encoding="utf-8",
+    )
+```
+
+resume / verify 時に `.ok` の有無でフェーズ判定:
+```python
+if not (output.with_suffix(output.suffix + ".ok")).exists():
+    raise ValidationError("Marker missing, previous run incomplete")
+```
+
+### 8.2 manifest との併用
+複数ファイル出力時は `.ok` + manifest 両方:
+- manifest: 各ファイルの hash・size
+- `.ok`: 全体完了の最終マーカー
+
+---
+
+## 9. アンチパターン
+
+- ❌ MD5 / SHA-1 / CRC32 で整合性検証（衝突リスク）
+- ❌ `open(output, "w").write(data)` で直接書き込み（途中失敗で破損）
+- ❌ DB トランザクションなしで複数 INSERT（部分書き込みリスク）
+- ❌ 検証なしで `--continue-on-error`（silent data loss）
+- ❌ ハッシュ計算で全部メモリに load（大ファイルで OOM）
+- ❌ 完了マーカーを output と同名にする（atomic rename と衝突）

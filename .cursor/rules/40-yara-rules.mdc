@@ -1,0 +1,229 @@
+---
+description: YARAルール作成規約。Neo23x0 (Florian Roth) スタイル準拠、YARA 4.x前提、解析業務でのIoC検出ルール作成用。
+globs: ["**/*.yar", "**/*.yara"]
+alwaysApply: false
+---
+
+# YARA ルール作成規約
+
+`01-project-context.mdc` の一般規約と `90-security-ethics.mdc` の倫理規約を継承。本ファイルは YARA ルール作成特有の追加規約のみ記述する。実マルウェア検体・C2情報の取扱いは 90番 §5 を参照。
+
+## 1. 最優先警告
+
+- **YARA 4.5+ を前提**。3.x 互換は明示要件がある場合のみ別途対応
+- **`magic` モジュールは使用しない**（libmagic 環境依存）。代替として `uint16(0) == 0x5A4D` 等のマジックバイト直接比較
+- 実マルウェア検体由来のハッシュ・C2 文字列をルールに含める際は、配布対象（社内のみ / 公開）を明確にし、公開時は必要に応じ要約化
+- スコアリング基準は Florian Roth スタイル（70+ = 高確度、40-69 = 中確度、~39 = 参考）
+
+## 2. ファイル命名・組織
+
+```
+rules/
+├── apt/                    # APT グループ別
+│   ├── apt_lazarus.yar
+│   └── apt_apt29.yar
+├── malware/                # マルウェアファミリ別
+│   ├── mal_emotet.yar
+│   └── mal_qakbot.yar
+├── crime/                  # コモディティ・クライムウェア
+├── exploit/                # エクスプロイト・PoC
+├── tools/                  # 攻撃者ツール・LOLBins
+├── generic/                # ジェネリック検出（パッカー・難読化等）
+└── _test/                  # テスト用（本番除外）
+```
+
+- 1ファイルに複数ルールを格納してよい（ファミリ単位でまとめる）
+- インポートは各ファイル冒頭で必要なモジュールのみ宣言
+
+## 3. ルール命名規約
+
+`<Category>_<Family>_<Type>_<Date>_<Seq>` 形式：
+
+```
+APT_Lazarus_Loader_Aug26_1
+MAL_Emotet_Stage2_Sep26_3
+EXP_CVE_2024_38812_VMware_1
+GEN_UPX_Packer_2
+TOOL_Mimikatz_Aug26_1
+```
+
+- `<Category>`: `APT` / `MAL` / `EXP` / `GEN` / `TOOL` / `SUSP`（疑わしい）
+- `<Family>`: マルウェアファミリ名・グループ名・ツール名
+- `<Type>`: `Loader` / `Stage1` / `Stage2` / `Dropper` / `Backdoor` / `Stealer` / `RAT` 等
+- `<Date>`: `MmmYY` 形式（例: `Aug26`）、初回作成月
+- `<Seq>`: 同条件で複数ある場合の連番（1から）
+
+テストルールは `_TEST_` プレフィックスを付与し、本番デプロイから除外。
+
+## 4. meta セクション必須項目
+
+```yara
+rule APT_Lazarus_Loader_Aug26_1 {
+    meta:
+        author       = "JP-Analyst"
+        date         = "2026-08-15"
+        modified     = "2026-08-20"
+        description  = "Lazarus グループの第一段ローダー検出（XYZ キャンペーン）"
+        reference    = "<internal note id or public URL>"
+        internal_id  = "case-2026-08-a"
+        score        = 75
+        tlp          = "amber"
+        tags         = "apt, lazarus, loader, windows"
+        mitre_attack = "T1055.002"
+    strings:
+        // ...
+    condition:
+        // ...
+}
+```
+
+**必須**: `author`, `date`, `description`, `score`
+**強く推奨**: `reference`, `internal_id`（内部識別子のみ）, `tlp` (white/green/amber/red)
+**任意**: `modified`, `tags`, `mitre_attack` (例: `T1055.012`)
+
+### ハッシュの取扱い（重要）
+
+**実検体のハッシュ（MD5/SHA-1/SHA-256）は `meta` セクションに原則として書かない**。理由:
+
+- git remote / GitHub UI / CI ログに永続し、後から削除不可能（`05-git-conventions.mdc` §2.1 連動）
+- 解析者提供テキストに含まれる IoC として AI が誤って解決・接続を試みるリスク（`08-ai-opsec.mdc` 連動）
+- 配布された YARA ルール経由で IoC が想定外に拡散する可能性（`Custom-ReportWriterJP` 報告書の「ハッシュ原則非掲載」と整合）
+
+代わりに **内部識別子（`case-YYYY-MM-<letter>`, `sample-NNN`）** を `internal_id` に書く。
+ハッシュをどうしても載せる必要がある場合（社内 hunting ルールで sample 突合が必要等）は、配布範囲を `tlp = "red"` 相当として厳密管理。
+
+### `hash` モジュール使用との区別
+
+`condition:` 内で `hash.sha256(0, filesize) == "..."` のようにハッシュを使うことは **検出条件として有効**。ただし、固定ハッシュ完全一致は YARA の強みを活かさないため、原則として `pe.imphash()` や部分マッチを優先する。
+
+## 5. condition 構築原則
+
+**cheap check を先頭に配置**。評価が安価な条件から書き、重い文字列マッチを後ろに：
+
+```yara
+condition:
+    // 1. ファイルタイプ・サイズ（最安価）
+    uint16(0) == 0x5A4D and
+    filesize < 5MB and
+    filesize > 10KB and
+    // 2. PE モジュール属性（中コスト）
+    pe.number_of_sections < 8 and
+    pe.imphash() == "abc123..." and
+    // 3. 文字列マッチ（高コスト、最後）
+    3 of ($s*) and
+    any of ($code*)
+```
+
+**避けるべきパターン**:
+- `all of them` を全文走査で使う（パフォーマンス劣化）
+- `filesize` 上限を書かない（巨大ファイルで重い処理が走る）
+- マジックバイトチェックなしで PE モジュール使用（PE 以外で評価エラー）
+
+**使うべき関数**:
+- `uint16(0)`, `uint32(0)` でマジックバイト確認
+- `math.entropy(0, filesize)` でパッカー検出（>7.0 で高エントロピー）
+- `pe.imphash()` でファミリ識別
+- `hash.sha256(0, filesize)` で完全一致
+- `for any of ($s*) : ( @ < 0x1000 )` で先頭部分マッチ
+
+## 6. strings 記法
+
+```yara
+strings:
+    // ASCII + UCS2 (Wide) を意識
+    $s1 = "C:\\ProgramData\\Microsoft\\" ascii wide
+    $s2 = "cmd.exe /c " ascii wide nocase
+    // バイトパターン（オペコード）
+    $code1 = { 48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 20 }
+    // 正規表現は最小限
+    $re1 = /https?:\/\/[a-z0-9]{8,16}\.tk\// nocase
+    // 除外用（FP 抑制）
+    $fp1 = "Microsoft Corporation. All rights reserved."
+    $fp2 = "Open Source Initiative"
+```
+
+**命名規則**:
+- `$s*`: 一般文字列（string）
+- `$code*` / `$op*`: バイトパターン・オペコード
+- `$re*`: 正規表現
+- `$fp*`: False Positive 除外用
+- `$x*`: 排他的識別子（ファミリ確定の決め手）
+
+**修飾子原則**:
+- Windows 系文字列は **`ascii wide` 統一**（UTF-16 LE 想定）
+- 大文字小文字を区別しない場合 `nocase`
+- バイナリ部分マッチは `{ XX YY ?? ZZ }` 形式（ワイルドカード `??` 活用）
+- 正規表現は最後の手段（評価コスト高）
+
+## 7. FP 抑制パターン
+
+```yara
+condition:
+    // 検出条件
+    3 of ($s*) and
+    // FP 除外
+    not any of ($fp*) and
+    // メタデータ除外
+    not pe.signatures[0].subject contains "Microsoft Corporation"
+```
+
+**よくある FP 源**:
+- マイクロソフト署名済みバイナリ
+- 著名 OSS（OpenSSL、zlib、curl）の埋め込み文字列
+- 著名 SDK（.NET ランタイム、Qt、Electron）の標準文字列
+- PE パッカー自体の正規利用（UPX 圧縮されたゲーム・ユーティリティ）
+
+→ 検出文字列が一般的すぎる場合は **複数文字列の同時マッチ** + **`pe.imphash()`** 等で具体化
+
+## 8. テストルール分離
+
+```yara
+rule _TEST_Eicar_Detection {
+    meta:
+        author      = "JP-Analyst"
+        description = "EICAR テスト検体検出（本番除外）"
+        score       = 0
+    strings:
+        $eicar = "X5O!P%@AP[4\\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*"
+    condition:
+        $eicar
+}
+```
+
+- `_TEST_` プレフィックスで本番ロードから除外（`yara` コマンドの `-w` や検索条件で除外）
+- テスト用検体は EICAR または `pefile` で生成した合成 PE のみ（90番 §5 準拠）
+- 本番ルールのリグレッションテスト用に `_test/` ディレクトリで管理
+
+## 9. テスト・検証コマンド
+
+```bash
+# 単一ファイル検査（ストリング表示）
+yara -s rule.yar sample.bin
+
+# ディレクトリ再帰検査
+yara -r -s rule.yar samples/
+
+# 警告も含めて表示（FP 検出・パフォーマンス警告）
+yara -w rule.yar samples/
+
+# パフォーマンス計測
+yara --print-stats rule.yar samples/
+
+# モジュールデータダンプ（デバッグ）
+yara -D pe rule.yar sample.exe
+```
+
+**リグレッションテスト**:
+- 良性サンプル（Windows システムファイル・著名 OSS バイナリ）で FP がないか確認
+- 既知の検体で TP が出るか確認
+- ルール変更後は必ず両方のセットで再テスト
+
+## 10. 連携想定
+
+- **VirusTotal Retrohunt**: ルールは VT のサイズ制限（1 ルールファイル 1 MB）に準拠、commercial モジュール（`vt`）は VT エンタープライズ契約時のみ使用
+- **MISP**: YARA ルールはイベント添付として配布、TLP 必須
+- **Sigma → YARA**: Sigma ルールから直接 YARA 変換は限定的（Sigma はログ向け、YARA はファイル向け）
+- **THOR / LOKI**: Florian Roth ツールでの利用想定、`score` 必須
+- **Elastic / Sigma**: Elastic は内部で YARA を `yara` プロセッサとして実行、`score` ベースの優先度付け
+
+ルール配布時は ライセンスを明記（マスターは 90番 §5 に従い、社内向けは TLP:AMBER、公開向けは TLP:WHITE で要約版を作成）。

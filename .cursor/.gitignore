@@ -1,0 +1,23 @@
+# Cursor が自動生成する一時ファイル
+.cache/
+.tmp/
+.history/
+
+# OS / エディタ
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
+
+# 個人作業用 (push したくないメモ・実験ファイル等)
+private/
+local/
+*.local.*
+
+# シークレット類 (将来 mcp.json 等に書く可能性に備えた予防的除外)
+*.secret
+*.token
+.env
+.env.*
+!.env.example

@@ -1,0 +1,274 @@
+---
+description: 汎用 Python ツール制作のプロジェクト骨格規約。pyproject.toml (PEP 621) / uv / src layout / ruff / mypy / エントリポイント設計。20-python-malware-analysis と棲み分け。
+globs: ["**/pyproject.toml", "**/uv.lock", "**/src/**/*.py"]
+alwaysApply: false
+---
+
+# Python ツール骨格規約
+
+汎用ツール（解析支援・データ移行・Docker 運用等）の Python プロジェクト骨格に関する規約。`20-python-malware-analysis.mdc` の解析特化ルールと役割分担する。
+
+## 関連ルール
+- `01-project-context.mdc`: 一般規約継承
+- `02-coding-style.mdc`: コーディング規約継承
+- `10-tool-design.mdc`: CLI 設計
+- `12-error-logging.mdc`: ロギング
+- `20-python-malware-analysis.mdc`: 解析特化（ファイルパスが解析配下なら 20 優先）
+- `52-ci-cd.mdc`: CI/CD（GitHub Actions による uv 環境再現）
+- `90-security-ethics.mdc`: 倫理規約（最優先）
+
+## 20-python-malware-analysis との棲み分け
+
+| 状況 | 適用ルール |
+|---|---|
+| 解析対象ディレクトリ配下（`samples/`, `analysis/`, `output/` 等）の `.py` | **20 優先** |
+| 汎用ツールリポジトリ（`src/<package>/` 配下、`cli/` 配下、`tools/` 配下） | **11 優先** |
+| 両方該当する場合 | ファイルパスが解析作業中の一時スクリプトなら 20、再利用予定のツールなら 11 |
+
+判断に迷ったら、**「このコードは再利用予定か」「次回も同じ手順で動かすか」** で決める。Yes なら 11、No なら 20。
+
+---
+
+## 1. プロジェクト管理ツール
+
+| 用途 | 採用 | 理由 |
+|---|---|---|
+| パッケージ管理 | **uv** | Rust 製で爆速、ロックファイル組み込み、pip 互換、現代化 |
+| ロックファイル | **uv.lock** | コミット必須（再現性）|
+| ビルド | **uv build** | wheel + sdist 生成 |
+| Python バージョン管理 | **uv python** | `.python-version` ファイル管理 |
+| 非採用 | poetry | 依存解決は強いが速度と JSON ロックが弱い、エコシステム移行中 |
+| 非採用 | pdm | 高機能だがコミュニティが uv に流れた |
+| 非採用 | pip + venv（手動） | ロックファイル別管理が必要、CI 設定複雑化 |
+
+---
+
+## 2. プロジェクト構成（src layout 必須）
+
+```
+my-tool/
+├── pyproject.toml          # PEP 621
+├── uv.lock                 # コミット必須
+├── .python-version         # Python バージョン pin
+├── README.md
+├── CHANGELOG.md
+├── .gitignore
+├── src/
+│   └── my_tool/
+│       ├── __init__.py     # __version__ のみ
+│       ├── __main__.py     # python -m my_tool 対応
+│       ├── cli.py          # click エントリポイント
+│       ├── core.py         # ビジネスロジック
+│       └── ...
+├── tests/                  # 必要時のみ（02-coding-style 参照）
+│   └── test_core.py
+└── docs/
+    └── README.md           # docs 詳細
+```
+
+**flat layout 禁止**: トップ直下に `my_tool/` を置くと、テスト時に `pip install -e .` が省略でき間違って ローカル import される事故が起きる。`src/` 配下に置けば必ずインストール経由になる。
+
+---
+
+## 3. Python バージョン
+
+- **最小**: 3.11（PEP 657 詳細エラー位置、`tomllib` 標準、`Self` 型）
+- **推奨**: 3.12（match 文成熟、ExceptionGroup、f-string 改善）
+- 3.13 は採用任意（typing 改善・GIL なし experimental）
+
+`.python-version`:
+```
+3.12
+```
+
+`pyproject.toml`:
+```toml
+[project]
+requires-python = ">=3.11"
+```
+
+3.10 以前のサポートは原則しない。マスター環境（Windows + Cursor）で 3.12 が標準。
+
+---
+
+## 4. pyproject.toml テンプレート
+
+```toml
+[project]
+name = "my-tool"
+version = "0.1.0"
+description = "汎用ツールの概要"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "masterneo", email = "masterneo@example.com" }]
+dependencies = [
+    "click>=8.1.0",
+    "rich>=13.7.0",
+    "pydantic>=2.5.0",
+    "pydantic-settings>=2.1.0",
+]
+
+[project.optional-dependencies]
+# 一般的な追加（必要に応じて）
+
+[dependency-groups]
+dev = [
+    "ruff>=0.4.0",
+    "mypy>=1.10.0",
+    "pytest>=8.0.0",       # テスト書く時のみ
+]
+
+[project.scripts]
+my-tool = "my_tool.cli:cli"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/my_tool"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RET", "PTH", "C4"]
+ignore = ["E501"]  # line-length は formatter に任せる
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+show_error_codes = true
+```
+
+---
+
+## 5. リンタ・フォーマッタ
+
+| 用途 | 採用 | 設定 |
+|---|---|---|
+| リンタ | **ruff** | `pyproject.toml [tool.ruff.lint]` で集中管理 |
+| フォーマッタ | **ruff format** | black 互換、設定不要、速度極速 |
+| 型チェッカ | **mypy strict** | `--strict` で本気モード、`Any` 撤廃 |
+| 非採用 | black | ruff format に統合済み |
+| 非採用 | flake8 / isort / pylint | ruff が全部代替 |
+| 非採用 | pyright | mypy と二者択一、Cursor 統合は両方使えるが mypy で十分 |
+
+CI / pre-commit:
+```bash
+uv run ruff check .
+uv run ruff format --check .
+uv run mypy src/
+```
+
+---
+
+## 6. 依存管理
+
+### 6.1 グループ分け
+- メイン依存: `[project.dependencies]`（本番で必要）
+- 開発依存: `[dependency-groups.dev]`（テスト・リンタ・mypy）
+- オプション依存: `[project.optional-dependencies.<feature>]`（特定機能用、`pip install my-tool[feature]` で追加）
+
+### 6.2 バージョン指定
+- メジャー固定: `click>=8.1.0,<9.0.0`（API 安定）
+- 開発依存: `>=` のみ、CI 通る限り最新
+
+### 6.3 ロックファイル運用
+- `uv.lock` は **コミット必須**（再現性）
+- CI: `uv sync --frozen`（lockfile から外れたら失敗）
+- 開発: `uv sync` または `uv add <pkg>`（lockfile 自動更新）
+
+---
+
+## 7. エントリポイント
+
+### 7.1 `[project.scripts]` で CLI 登録
+```toml
+[project.scripts]
+my-tool = "my_tool.cli:cli"
+```
+インストール後に `my-tool` コマンドが PATH に通る。
+
+### 7.2 `__main__.py` で `python -m` 対応
+```python
+# src/my_tool/__main__.py
+from .cli import cli
+
+if __name__ == "__main__":
+    cli()
+```
+`python -m my_tool` でも実行可能。スクリプト未インストールでもデバッグできる。
+
+### 7.3 `__init__.py` には `__version__` のみ
+```python
+# src/my_tool/__init__.py
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("my-tool")
+except PackageNotFoundError:
+    __version__ = "0.0.0+local"
+```
+
+ロジックを `__init__.py` に書かない（import 副作用を避ける）。
+
+---
+
+## 8. 配布形態
+
+### 8.1 社内ツール（配布不要）
+- `uv pip install -e .` でローカル開発
+- 配布は git clone + `uv sync`
+
+### 8.2 配布する場合
+- `uv build` で `dist/<name>-<ver>.tar.gz` と `dist/<name>-<ver>-py3-none-any.whl` 生成
+- PyPI 公開不要なら `pipx install <wheel-path>` で各端末に配布
+- PyPI 公開なら `uv publish`（要 token 設定）
+
+---
+
+## 9. pre-commit hooks（推奨）
+
+開発時の lint / format / type check を commit 前に自動実行:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        args: [--strict]
+        additional_dependencies: []  # 必要な型 stub をここに追加
+```
+
+セットアップ:
+```powershell
+uv add --dev pre-commit
+uv run pre-commit install
+```
+
+`rev:` のバージョンは **作成時に確認** した最終確認日をコメントで記録。古いまま放置せず、`uv run pre-commit autoupdate` で定期更新。
+
+## 10. アンチパターン
+
+- ❌ `pip install` 直接（uv 経由でないと lockfile 整合性が崩れる）
+- ❌ `setup.py` / `setup.cfg` 残置（PEP 621 で `pyproject.toml` に統一）
+- ❌ flat layout（`src/` 必須）
+- ❌ `requirements.txt` 単独運用（lockfile に統一、`uv export` で生成可）
+- ❌ `__init__.py` にロジック実装（import 副作用）
+- ❌ `*` import（`from foo import *` 禁止、ruff F403 で検出）

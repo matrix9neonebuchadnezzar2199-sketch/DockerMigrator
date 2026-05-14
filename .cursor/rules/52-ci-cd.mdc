@@ -1,0 +1,299 @@
+---
+description: GitHub Actions による CI/CD 規約。Python ツール用の最小ワークフロー（ruff + mypy + pytest）、トリガ、依存キャッシュ、matrix 戦略、release ワークフロー、secrets 管理。`11-python-tooling` の uv 環境を前提。
+alwaysApply: false
+globs: ["**/.github/workflows/*.yml", "**/.github/workflows/*.yaml", "**/.github/actions/**"]
+---
+
+# CI/CD 規約
+
+GitHub Actions を前提とした CI / CD ワークフロー規約。`11-python-tooling.mdc` の uv ベース環境を CI 上で再現する。
+
+## 関連ルール
+- `11-python-tooling.mdc`: uv / pyproject 設定
+- `06-testing.mdc`: pytest 設定
+- `18-config-secrets.mdc`: secrets 管理
+- `19-docs-readme.mdc §3`: CHANGELOG（リリース時）
+- `51-code-review.mdc`: PR レビューと CI 結果連動
+
+---
+
+## 1. ファイル配置
+
+```
+.github/
+├── workflows/
+│   ├── ci.yml              # PR / push 時の lint + test
+│   ├── release.yml         # tag push 時の build + publish
+│   └── nightly.yml         # 定期実行（オプション）
+├── actions/
+│   └── setup-uv-env/       # 共通 setup の composite action（任意）
+├── PULL_REQUEST_TEMPLATE.md
+├── ISSUE_TEMPLATE/
+└── dependabot.yml          # 依存自動更新
+```
+
+---
+
+## 2. 最小 ci.yml テンプレ（Python ツール用）
+
+```yaml
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# 同一 PR の複数 push は最新だけ走らせる（CI 課金節約）
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-type:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Sync deps (frozen)
+        run: uv sync --frozen --all-extras
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+      - name: Mypy
+        run: uv run mypy src/
+
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+      - name: Pin Python ${{ matrix.python }}
+        run: uv python install ${{ matrix.python }}
+      - name: Sync deps
+        run: uv sync --frozen --all-extras
+      - name: Pytest
+        run: uv run pytest --cov=src --cov-branch --cov-report=xml
+      - name: Upload coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+```
+
+### 2.1 設計判断の根拠
+
+- **`uv sync --frozen`**: ロックファイル整合性チェック。`11-python-tooling §6.3` 連動
+- **`concurrency: cancel-in-progress: true`**: PR で連続 push しても最新だけ走る
+- **`fail-fast: false`**: matrix の 1 セルが落ちても他を継続実行（OS 別の失敗を全部見たい）
+- **`enable-cache: true`**: uv のグローバルキャッシュを GitHub Actions cache に保存
+- **lint-type を test と分離**: lint は速く失敗させる、test は環境別に並列
+
+---
+
+## 3. Matrix 戦略
+
+### 3.1 OS
+- **必須**: `ubuntu-latest`（CI 主環境）
+- **推奨**: `windows-latest`（マスターは Windows 環境、本番動作確認）
+- **任意**: `macos-latest`（macOS 利用者向けライブラリの場合のみ）
+
+OS 別 matrix を増やすと CI 時間 × 課金が増える。**ツールの想定実行 OS のみ** に絞る。
+
+### 3.2 Python バージョン
+- **必須**: 最小サポート版（`requires-python = ">=3.11"` なら `3.11`）と推奨版（`3.12`）
+- **任意**: 次期版（`3.13`）— 早期警告として、`continue-on-error: true` で追加してもよい
+
+### 3.3 削減オプション
+重い test matrix は **`include` / `exclude` で絞る**:
+
+```yaml
+strategy:
+  matrix:
+    os: [ubuntu-latest, windows-latest]
+    python: ["3.11", "3.12"]
+    exclude:
+      - os: windows-latest
+        python: "3.11"  # Linux で最小版テスト済み、Windows は最新のみ
+```
+
+---
+
+## 4. release.yml（tag push 時）
+
+```yaml
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write       # release 作成
+  id-token: write       # PyPI Trusted Publishing
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync --frozen
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi    # GitHub Environment で承認制にする
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          body_path: CHANGELOG.md  # 該当バージョン部分を抽出するなら別ステップで sed
+```
+
+### 4.1 PyPI Trusted Publishing
+- **API トークンを secret に置かない**（漏洩リスク）
+- PyPI 側で OIDC 連携を設定し、`id-token: write` permission のみで publish
+- 詳細: https://docs.pypi.org/trusted-publishers/
+
+### 4.2 Environment による承認制
+`environment: pypi` を設定し、GitHub Settings で「Required reviewers」を 1 名以上指定。tag push しても自動 publish せず、明示承認後に publish 実行。
+
+---
+
+## 5. Secrets 管理
+
+### 5.1 GitHub Secrets vs Variables
+| 種類 | 用途 | 例 |
+|---|---|---|
+| Secrets | 漏洩したら被害が出る値 | API token、署名鍵、DB パスワード |
+| Variables | 漏洩しても被害が小さい値 | リポジトリ名、デプロイ環境名 |
+
+### 5.2 Repository / Environment / Organization
+- **Organization secrets**: 複数 repo で共有（CodeCov token 等）
+- **Environment secrets**: deploy 環境別に分離（staging / production）
+- **Repository secrets**: 単一 repo 内のみ
+
+PyPI publish は **Environment secrets + 承認制** が望ましい（§4.2）。
+
+### 5.3 secret を log に出さない
+GitHub Actions は `${{ secrets.* }}` を log で自動マスクするが、**派生値はマスクされない**:
+
+```yaml
+# Bad: secret から派生した値が log に出る可能性
+- run: echo "Token starts with ${{ secrets.MY_TOKEN }}::4"
+
+# Good: secret は環境変数経由、log に出さない
+- run: ./deploy.sh
+  env:
+    MY_TOKEN: ${{ secrets.MY_TOKEN }}
+```
+
+`18-config-secrets.mdc` の「ログマスキング」と整合。
+
+---
+
+## 6. dependabot.yml（依存自動更新）
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "pip"          # uv も pip 互換 ecosystem として扱われる
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    groups:
+      python-dev:
+        dependency-type: "development"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+```
+
+**Python 依存**: dev 依存はグループ化して PR 数を削減。production 依存は個別 PR（影響を吟味）。
+
+**GitHub Actions 依存**: action のバージョン pin（`@v4` ではなく `@<sha>` 推奨、ただし dependabot が自動更新する）。
+
+---
+
+## 7. CI 失敗時のフロー
+
+1. **Cursor Agent / `ci-investigator` subagent で根本原因を調べる**（`50-cursor-modes §5`）
+2. 失敗の種類で対応分岐:
+
+| 失敗種別 | 対応 |
+|---|---|
+| lint / format | ローカルで `uv run ruff check --fix && uv run ruff format` |
+| 型 | mypy エラー読んで型注釈修正 |
+| test | regression test 失敗なら本体修正、flaky test なら原因究明（`sleep` 排除等、`06-testing §アンチパターン`） |
+| OS 別失敗 | path / 改行 / エンコーディング差分（`17-cross-platform.mdc`） |
+| 依存解決 | `uv lock` で lockfile 再生成、`uv sync --frozen` で確認 |
+
+3. **修正コミット** → CI 再実行 → 緑になったら merge
+
+---
+
+## 8. パフォーマンス指針
+
+| 指標 | 目標 | 改善策 |
+|---|---|---|
+| lint-type ジョブ | < 60 秒 | uv キャッシュ有効化、`--no-progress` |
+| test ジョブ（1 セル） | < 5 分 | pytest-xdist で並列化、heavy fixture をモジュールスコープ化 |
+| 全 matrix 完走 | < 10 分 | matrix を絞る（§3.3） |
+| キャッシュヒット率 | > 80% | `cache-dependency-glob: uv.lock` 固定 |
+
+10 分超え常態化は CI のメンテ赤信号。matrix 絞り込み or test 分割を検討。
+
+---
+
+## 9. アンチパターン
+
+- ❌ `pip install -r requirements.txt`（`uv` 経由でないと lockfile 整合性が崩れる）
+- ❌ secrets を `echo` / `print` する debug ステップ（log に痕跡が残る）
+- ❌ matrix の `fail-fast: true`（OS 別失敗の全体像が見えない）
+- ❌ `concurrency` 未設定（PR で連続 push の度に CI 課金）
+- ❌ release ワークフローの自動 publish（tag push の事故で誤公開、Environment 承認制で守る）
+- ❌ action の `@main` 参照（任意のタイミングで挙動変化、必ず tag / sha pin）
+- ❌ CI で `pytest` を `--cov` なしで実行（カバレッジ可視化機会を失う）
+- ❌ Codecov / SonarCloud にブロッカ判定を委譲（true source は repo 内設定）

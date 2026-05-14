@@ -1,0 +1,233 @@
+---
+description: 汎用 Python ツール制作の CLI 設計規約。click 採用・サブコマンド設計・標準グローバルフラグ・終了コード・TTY 検出・バージョン表示。汎用ツール（解析支援・データ移行・Docker 操作等）開発時に参照。
+globs: ["**/cli/**/*.py", "**/cli.py", "**/__main__.py", "**/tools/**/*.py"]
+alwaysApply: false
+---
+
+# CLI 設計規約
+
+汎用ツール（マルウェア解析支援ツール・Docker 運用ツール・データ移行ツール等）の CLI 設計に関する規約。`20-python-malware-analysis.mdc` の解析特化ルールと棲み分け、汎用エンジニアリング層をカバーする。
+
+## 関連ルール
+- `01-project-context.mdc`: 一般規約継承
+- `02-coding-style.mdc`: コーディング規約継承
+- `11-python-tooling.mdc`: Python プロジェクト骨格（uv / pyproject）
+- `12-error-logging.mdc`: 終了コードとエラー処理の連携
+- `13-cli-ux.mdc`: rich を使った UX 実装
+- `20-python-malware-analysis.mdc`: 解析特化（ファイルパスが解析配下なら 20 優先）
+- `90-security-ethics.mdc`: 倫理規約（最優先）
+
+---
+
+## 1. 採用ライブラリ
+
+| 用途 | 採用 | 理由 |
+|---|---|---|
+| CLI フレームワーク | **click** | 装飾子ベース・成熟・依存軽い・サブコマンドが書きやすい |
+| 非採用 | typer | 内部は click。型ヒント駆動は便利だが追加抽象層になり click 直接の方が学習コスト低 |
+| 非採用 | argparse | サブコマンド・コンテキスト共有・エコシステムが弱い |
+| 非採用 | fire | 自動推論は便利だが、明示性に欠ける |
+
+**例外**: 単発の解析 one-liner や対象が `20-python-malware-analysis` 配下のスクリプトは argparse / 直接 sys.argv でも可。
+
+---
+
+## 2. サブコマンド設計
+
+### 2.1 単機能ツールでも `<tool> <subcommand>` を推奨
+
+将来拡張を見越し、最初から サブコマンド形式 にする:
+
+```python
+import click
+
+@click.group()
+@click.version_option()
+def cli():
+    """ツール全体の概要。"""
+
+@cli.command()
+@click.argument("source")
+def export(source: str) -> None:
+    """エクスポート処理。"""
+    ...
+
+@cli.command()
+@click.argument("target")
+def import_(target: str) -> None:
+    """インポート処理（予約語回避のため関数名は import_）。"""
+    ...
+```
+
+### 2.2 サブコマンドが 1 つしかない場合の例外
+- 真に単機能で永続的に拡張予定なし → トップレベル `@click.command()` でよい
+- ただし、フラグやオプションが 3 個以上ある場合は予防的にグループ化を検討
+
+### 2.3 ネスト
+2 階層まで。3 階層以上は別ツール分離を検討。
+
+```
+docker-migrate export volume <vol-name>
+docker-migrate export image <image>
+docker-migrate import volume <archive>
+```
+
+---
+
+## 3. グローバルフラグ規約（標準）
+
+すべてのツールで以下のフラグを実装する。click では `@click.group()` レベルで定義し、サブコマンドから `click.get_current_context().obj` 経由で参照:
+
+| フラグ | 短縮形 | 型 | 用途 |
+|---|---|---|---|
+| `--dry-run` | — | flag | 副作用なしで実行内容を表示 |
+| `--yes` | `-y` | flag | 確認プロンプトを全て skip |
+| `--verbose` | `-v` | count | `-v` `-vv` `-vvv` で詳細度（INFO/DEBUG/TRACE） |
+| `--quiet` | `-q` | flag | WARNING 以上のみ表示 |
+| `--no-color` | — | flag | カラー出力無効化（CI / リダイレクト時） |
+| `--config` | `-c` | path | 設定ファイル明示指定（`18-config-secrets.mdc` 参照）|
+| `--log-file` | — | path | ログをファイルにも出力 |
+| `--version` | — | flag | バージョン表示して終了 |
+| `--help` | `-h` | flag | ヘルプ表示（click 標準）|
+
+実装例:
+```python
+@click.group()
+@click.option("--dry-run", is_flag=True, help="副作用なしで実行内容を表示")
+@click.option("-y", "--yes", is_flag=True, help="確認プロンプトを skip")
+@click.option("-v", "--verbose", count=True, help="詳細度（-v / -vv / -vvv）")
+@click.option("-q", "--quiet", is_flag=True, help="WARNING 以上のみ表示")
+@click.option("--no-color", is_flag=True, help="カラー出力無効化")
+@click.option("-c", "--config", type=click.Path(exists=True, path_type=Path), help="設定ファイル指定")
+@click.option("--log-file", type=click.Path(path_type=Path), help="ログ出力ファイル")
+@click.version_option()
+@click.pass_context
+def cli(ctx: click.Context, dry_run: bool, yes: bool, verbose: int, quiet: bool, no_color: bool, config: Path | None, log_file: Path | None) -> None:
+    """ツール全体の概要。"""
+    ctx.ensure_object(dict)
+    ctx.obj.update(locals())
+```
+
+---
+
+## 4. 終了コード規約
+
+POSIX 準拠。`os._exit` ではなく `sys.exit` または `click.exceptions.Exit`:
+
+| code | 意味 | 用途 |
+|---|---|---|
+| 0 | 成功 | 正常終了 |
+| 1 | 一般的失敗 | 想定内の失敗（処理失敗、検証失敗等）|
+| 2 | 引数誤り | click 標準（usage error）|
+| 64 | EX_USAGE | コマンドの使い方の誤り（より詳細）|
+| 65 | EX_DATAERR | 入力データ形式誤り |
+| 66 | EX_NOINPUT | 入力ファイル不在・読めない |
+| 69 | EX_UNAVAILABLE | 外部サービス不在（Docker daemon 等）|
+| 70 | EX_SOFTWARE | 内部ソフトウェアエラー（バグ）|
+| 73 | EX_CANTCREAT | 出力ファイル作成失敗 |
+| 74 | EX_IOERR | I/O エラー |
+| 77 | EX_NOPERM | 権限不足 |
+| 78 | EX_CONFIG | 設定エラー |
+| 130 | SIGINT | Ctrl+C（128 + 2）|
+
+`sysexits.h` 系（64-78）は Python 標準には無いので定数定義する:
+```python
+class ExitCode:
+    SUCCESS = 0
+    GENERAL_FAILURE = 1
+    USAGE = 64
+    DATAERR = 65
+    NOINPUT = 66
+    UNAVAILABLE = 69
+    SOFTWARE = 70
+    CANTCREAT = 73
+    IOERR = 74
+    NOPERM = 77
+    CONFIG = 78
+    SIGINT = 130
+```
+
+---
+
+## 5. ヘルプ整形
+
+### 5.1 docstring から自動生成
+click は関数の docstring を help に使う。**1 行目を summary、本文を詳細** にする:
+
+```python
+@cli.command()
+@click.argument("source")
+def export(source: str) -> None:
+    """Docker volume をアーカイブにエクスポートする。
+
+    SOURCE には volume 名を指定する。出力は `<source>.tar.gz` 形式。
+    --output で出力先を指定可能。
+    """
+```
+
+### 5.2 使用例セクション必須
+help の末尾に Examples セクションを `epilog` で追加:
+
+```python
+@cli.command(epilog="""
+\b
+Examples:
+  docker-migrate export volume mydata
+  docker-migrate export volume mydata --output ./backup/
+  docker-migrate export volume mydata --dry-run
+""")
+```
+
+`\b` は click が前後の wrap を無効化するマーカー。
+
+---
+
+## 6. TTY 検出
+
+リダイレクトやパイプ時には自動で挙動を変える:
+
+```python
+import sys
+
+def is_tty() -> bool:
+    """stdout が TTY かを判定。リダイレクト時は False。"""
+    return sys.stdout.isatty()
+```
+
+挙動分岐:
+- TTY: 色つき出力、進捗バー、確認プロンプト有効
+- 非 TTY: 色なし、進捗バー無し、`--yes` 必須化
+
+`rich.console.Console(force_terminal=None)` で自動判定可。詳細は `13-cli-ux.mdc`。
+
+---
+
+## 7. バージョン表示
+
+`importlib.metadata` で `pyproject.toml` の version を取得:
+
+```python
+from importlib.metadata import version, PackageNotFoundError
+
+try:
+    __version__ = version("docker-migrate")
+except PackageNotFoundError:
+    __version__ = "0.0.0+local"  # 開発時 fallback
+```
+
+`click.version_option()` で `--version` を自動付与:
+```python
+@click.group()
+@click.version_option(__version__, prog_name="docker-migrate")
+def cli(): ...
+```
+
+---
+
+## 8. アンチパターン
+
+- ❌ `print()` で出力（logging or rich.console.Console を使う）
+- ❌ `sys.exit("文字列")` のみ（必ず exit code も指定 or 例外送出経由）
+- ❌ ハードコードされたパス（`Path.cwd()` / `Path.home()` / 環境変数経由）
+- ❌ `os.system` / `subprocess.run(shell=True)`（`shell=False` 必須、`17-cross-platform.mdc` 参照）
+- ❌ destructive 操作で `--yes` なし即時実行（`click.confirm` を必須化）

@@ -1,0 +1,203 @@
+---
+description: Python テスト規約。pytest 専用、tests/ 配下、型注釈付き、coverage 85%+、parametrize 推奨、新機能は test 必須・bugfix は regression test 必須。
+globs: ["tests/**", "**/test_*.py", "**/conftest.py"]
+alwaysApply: false
+---
+
+# Python テスト規約
+
+ライブラリ・再利用モジュール開発時のテスト規約（解析用 one-liner や単発スクリプトはスコープ外）。
+
+## 関連ルール
+- `02-coding-style.mdc`: コーディング規約・型ヒント
+- `11-python-tooling.mdc`: pytest / coverage 設定
+- `04-diary-workflow.mdc`: テスト追加時の日記記録
+
+## フレームワーク
+
+### pytest 専用
+- **`unittest` は新規採用しない**（既存コードの修正時のみ許容）
+- 採用可能プラグイン:
+  - `pytest-cov`（カバレッジ）
+  - `pytest-asyncio`（async コード）
+  - `pytest-mock`（mock）
+  - `hypothesis`（プロパティテスト）
+  - `pytest-xdist`（並列実行、必要時のみ）
+
+非採用:
+- `nose` / `nose2`（メンテ停止）
+- `unittest.mock` 単独（`pytest-mock` の `mocker` fixture で十分）
+
+## ディレクトリ構成
+
+```
+project/
+├── src/
+│   └── mypkg/
+│       ├── __init__.py
+│       └── core.py
+└── tests/
+    ├── __init__.py
+    ├── conftest.py             # ルート共通 fixture
+    ├── test_core.py            # src/mypkg/core.py に対応
+    └── integration/
+        ├── conftest.py
+        └── test_e2e.py
+```
+
+- すべて `tests/` 配下、`src/` のパッケージツリーをミラー
+- ファイル名: `test_<module>.py`
+- 関数名: `test_<behavior>()`
+- 共有 fixture: ルート `conftest.py`、scope 別なら近接 `conftest.py`
+
+## スタイル
+
+### 型注釈必須
+テストコードも `mypy --strict` 適用。
+
+```python
+import pytest
+from mypkg.core import parse_pe, PEFormatError
+from pathlib import Path
+
+def test_parse_pe_valid(valid_pe_path: Path) -> None:
+    """正常な PE ファイルが parse できる。"""
+    result = parse_pe(valid_pe_path)
+    assert result.machine == 0x8664
+    assert result.section_count > 0
+
+def test_parse_pe_missing(tmp_path: Path) -> None:
+    """ファイル不在時に FileNotFoundError。"""
+    with pytest.raises(FileNotFoundError):
+        parse_pe(tmp_path / "nonexistent.exe")
+```
+
+### 1 テスト 1 トピック
+複数の assert で関連 property を確認するのは OK だが、**異なる挙動は別テスト**:
+
+```python
+# Bad: 2 つの挙動を 1 テストで
+def test_parse():
+    assert parse("1") == 1
+    with pytest.raises(ValueError):
+        parse("invalid")
+
+# Good
+def test_parse_valid():
+    assert parse("1") == 1
+
+def test_parse_invalid_raises():
+    with pytest.raises(ValueError):
+        parse("invalid")
+```
+
+### parametrize で variant 表現
+
+```python
+@pytest.mark.parametrize("input_str,expected", [
+    ("1", 1),
+    ("42", 42),
+    ("0", 0),
+    ("-1", -1),
+])
+def test_parse_int(input_str: str, expected: int) -> None:
+    assert parse_int(input_str) == expected
+
+@pytest.mark.parametrize("invalid", ["", "abc", "1.5", None])
+def test_parse_int_invalid(invalid: object) -> None:
+    with pytest.raises(ValueError):
+        parse_int(invalid)
+```
+
+### 自前 fake > mock
+自分が所有するコードは **fake で置換**、外部依存だけ mock:
+
+```python
+# Good: 自前 protocol を fake で実装
+class FakeStorage:
+    def __init__(self) -> None:
+        self.saved: dict[str, bytes] = {}
+    def save(self, key: str, data: bytes) -> None:
+        self.saved[key] = data
+
+def test_processor():
+    storage = FakeStorage()
+    processor = Processor(storage)
+    processor.run("input")
+    assert "result" in storage.saved
+```
+
+`unittest.mock.patch` で自分のクラスを mock すると refactor で壊れる。
+
+### hypothesis（プロパティテスト）
+
+```python
+from hypothesis import given, strategies as st
+
+@given(st.integers(min_value=0, max_value=1000000))
+def test_roundtrip(n: int) -> None:
+    """str → int → str で同一に戻る。"""
+    s = encode(n)
+    assert decode(s) == n
+```
+
+ランダム seed よりも宣言的 strategy が望ましい。
+
+## カバレッジ
+
+### 目標
+- `src/` に対して **>= 85%** ラインカバレッジ
+- branch coverage 有効化
+
+### pyproject.toml
+```toml
+[tool.pytest.ini_options]
+addopts = "-q --cov=src --cov-branch --cov-report=term-missing"
+testpaths = ["tests"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
+```
+
+### PR ポリシー
+- **新機能**: 該当機能のテストを必ず含む
+- **バグ修正**: regression test（バグを再現するテスト）を含む。テスト先に書いて失敗を確認、修正後に通ることを示す
+
+## fixture 命名
+
+fixture は **「何であるか」** を名前で表現する。**「どう作るか」** は実装詳細:
+
+```python
+# Bad: 作り方が名前に出ている
+@pytest.fixture
+def make_tmp_pe_file(tmp_path):
+    ...
+
+# Good: 何が返るか
+@pytest.fixture
+def valid_pe_path(tmp_path: Path) -> Path:
+    """有効な合成 PE ファイルへのパス（pefile 生成）。"""
+    ...
+```
+
+## 解析関連テストの特例
+
+- 検体を直接テストデータに含めない（90-security-ethics §6）
+- EICAR テストファイル or `pefile` で合成 PE を生成する fixture を使う
+- IoC を含むテストデータは defang 表記で記述（`08-ai-opsec.mdc` 参照）
+
+## アンチパターン
+
+- `assert True` だけのテスト（実質テストなし）
+- 巨大 fixture（5 個以上の責務、分割すべき）
+- `setUp` 風の class-based テスト（pytest なら fixture で十分）
+- `sleep()` で非同期待機（`pytest-asyncio` + `await` or hypothesis）
+- 標準出力を assert（capsys fixture を使う）
+- グローバル状態に依存（mark fixture / monkeypatch で隔離）
+- 1000 行を超えるテストファイル（分割）
+- カバレッジ向上のための「動作確認なし」テスト（assert なし or 自明）

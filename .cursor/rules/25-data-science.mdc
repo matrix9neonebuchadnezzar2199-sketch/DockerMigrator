@@ -1,0 +1,216 @@
+---
+description: pandas / numpy / notebook 規約。ML / データ分析一般。再現性 (seed)、pandas idiom、notebook 規律、解析プロジェクト連携。alwaysApply 無効 (必要時のみ発火)。
+globs: ["**/*.ipynb", "**/notebooks/**", "**/analysis/**", "**/*pandas*.py", "**/*numpy*.py"]
+alwaysApply: false
+---
+
+# Data Science Conventions
+
+ML / データ分析 / 統計処理を含むコードに適用。通常のスクリプト・CLI ツール開発には不要。
+
+## 関連ルール
+- `02-coding-style.mdc`: Google docstring + type hint（notebook 内関数にも適用）
+- `06-testing.mdc`: テスト規約（notebook 内ロジックを .py に切り出した後）
+- `08-ai-opsec.mdc`: 解析プロジェクトで IoC を含むデータ扱い
+- `20-python-malware-analysis.mdc`: 解析業務での集計・統計
+
+## 1. ライブラリ選択
+
+| 用途 | 既定 | 補足 |
+|---|---|---|
+| 表形式データ | `pandas` ≥ 2.x | `polars` を使うなら ADR で明示宣言 |
+| 数値配列 | `numpy` | dtype 明示 |
+| 統計 | `scipy.stats` | |
+| 可視化（探索） | `matplotlib` | 最小限の体裁 |
+| 可視化（共有） | `seaborn` | 配色既定 |
+| 可視化（インタラクティブ） | `plotly` | 出力共有時のみ、サイズ大きい |
+| 機械学習（古典） | `scikit-learn` | |
+| 深層学習 | `pytorch` | `tensorflow` は新規採用しない |
+
+## 2. 再現性（seed 固定）
+
+新規 notebook / 実験スクリプトの **冒頭で必ず** seed を固定する:
+
+```python
+import os
+import random
+import numpy as np
+
+SEED = 42
+os.environ["PYTHONHASHSEED"] = str(SEED)
+random.seed(SEED)
+np.random.seed(SEED)
+```
+
+### PyTorch を使う場合
+```python
+import torch
+
+torch.manual_seed(SEED)
+torch.cuda.manual_seed_all(SEED)
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+```
+
+### sklearn を使う場合
+各 estimator の `random_state=SEED` を明示:
+```python
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier(random_state=SEED)
+```
+
+## 3. pandas idiom
+
+### 3.1 禁止
+
+- `df.iterrows()` 禁止（性能・型情報損失）。`apply` か **ベクトル化** か `itertuples()` を使う
+- 連鎖代入禁止（`df[df.x > 0]['y'] = 1`）→ `df.loc[mask, 'y'] = 1`
+- `inplace=True` 使わない（戻り値で受ける、関数型スタイル）
+
+### 3.2 推奨
+
+- 列名は `snake_case`。日本語列名はそのままで OK だが、コードから参照する列は英字
+- 大きい結合は **関係性を表明**: `merge(..., validate="one_to_many")` / `"one_to_one"`
+- DataFrame 操作は **method chaining**:
+
+```python
+result = (
+    df
+    .query("active == True")
+    .assign(rate=lambda d: d["value"] / d["total"])
+    .groupby("category")
+    .agg(mean_rate=("rate", "mean"), n=("rate", "count"))
+    .sort_values("mean_rate", ascending=False)
+)
+```
+
+### 3.3 dtype 明示
+
+```python
+df = pd.read_csv("data.csv", dtype={"id": "int64", "category": "category", "amount": "float32"})
+```
+
+`object` dtype は **基本的に避ける**（メモリ・速度）。文字列なら `string`、カテゴリなら `category`。
+
+## 4. numpy idiom
+
+### 4.1 dtype 明示
+```python
+# Bad: dtype が float64 になる
+arr = np.zeros(1_000_000)
+
+# Good: 適切な精度を選ぶ
+arr = np.zeros(1_000_000, dtype=np.float32)
+indices = np.zeros(1_000_000, dtype=np.int32)
+```
+
+### 4.2 ブロードキャスト次元コメント
+
+```python
+# (B, T, C)
+features = embed(x)
+# (B, T, C) * (1, 1, C) → (B, T, C)
+features = features * scale[None, None, :]
+```
+
+複雑な shape 操作には必ず次元コメント。
+
+### 4.3 ベクトル化優先
+
+```python
+# Bad: Python loop
+result = np.zeros(n)
+for i in range(n):
+    result[i] = data[i] ** 2 + 1
+
+# Good: numpy
+result = data ** 2 + 1
+```
+
+## 5. Notebook 規律
+
+### 5.1 セル数制限
+- 1 notebook あたり **~50 セル まで**
+- それを超える場合は `.py` モジュールに切り出し、notebook は呼び出し側に専念
+
+### 5.2 セル順序の規律
+
+理想構成:
+1. **import セル**（最初）
+2. **定数・設定セル**（SEED, パス, ハイパーパラメータ）
+3. **データ読み込みセル**
+4. **前処理セル**
+5. **分析・モデリングセル**
+6. **可視化セル**
+7. **結果保存セル**
+
+セル間で関数定義を散らさない。関数は import セルの直後 or `.py` ファイル化。
+
+### 5.3 commit 時の clean up
+
+- 出力に巨大な DataFrame を残したまま commit しない
+- `nbstripout` を pre-commit hook で実行推奨
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.6.1
+    hooks:
+      - id: nbstripout
+```
+
+### 5.4 中間結果のキャッシュ
+重い計算結果は **`data/cache/`** に保存:
+
+- 第一選択: **parquet**（`df.to_parquet()`、圧縮・型保持）
+- 第二選択: **npz**（`np.savez_compressed()`、配列専用）
+- **pickle は避ける**（バージョン非互換、untrusted データのリスク、`07-security-coding §3`）
+
+## 6. 解析プロジェクトでの注意
+
+### 6.1 IoC を notebook 出力に残さない
+
+検体メタデータ集計・IoC 統計を notebook で行う場合:
+
+- セルの出力に IoC 生データを残したまま commit しない（`08-ai-opsec` 連動）
+- 集計は **内部識別子**（`sample-001`, `case-2026-05-a`）で行う、実ハッシュは集計後に置換可能な形にする
+
+### 6.2 集計対象の例
+- ファミリ別検体数
+- ATT&CK technique 出現頻度
+- YARA ルール ヒット率
+- capa 機能カバレッジ
+
+これらは IoC 含まないので notebook 出力に残しても OK。
+
+## 7. 型ヒント
+
+notebook 内の関数も Google docstring + type hint を付ける（`02-coding-style.mdc` 準拠）:
+
+```python
+def compute_feature(df: pd.DataFrame, window: int = 30) -> pd.Series:
+    """Rolling window 平均を計算する.
+
+    Args:
+        df: 入力 DataFrame, 'value' 列を含む.
+        window: ウィンドウサイズ（行数）.
+
+    Returns:
+        Rolling 平均の Series, index は df と同じ.
+    """
+    return df["value"].rolling(window=window).mean()
+```
+
+mypy --strict を notebook に適用するのはオプトイン（`nbqa mypy` を使う場合、ADR で記録）。
+
+## 8. アンチパターン
+
+- `df.iterrows()` でループ
+- `inplace=True` 多用
+- `pickle.load` で大規模データセット保存（parquet を使う）
+- notebook で全部完結させて `.py` に切り出さない（50 セル超なら必須）
+- seed 固定なしの実験（再現不能）
+- 巨大 DataFrame 出力を残したまま git commit
+- 連鎖代入による SettingWithCopyWarning 放置
+- `np.zeros(...)` で dtype 省略（float64 で無駄なメモリ消費）

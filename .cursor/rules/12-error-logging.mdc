@@ -1,0 +1,321 @@
+---
+description: 汎用 Python ツール制作のエラー設計とロギング規約。例外階層・ユーザー向けメッセージ・ログレベル戦略・rich.logging 統合・機微情報マスキング・終了処理。
+globs: ["**/cli/**/*.py", "**/cli.py", "**/exceptions.py", "**/logging*.py", "**/__main__.py"]
+alwaysApply: false
+---
+
+# エラー設計・ロギング規約
+
+汎用ツールにおけるエラー設計とロギングのベストプラクティス。`02-coding-style.mdc` のエラーハンドリング規約を補完し、CLI ツール特有の要件をカバー。
+
+## 関連ルール
+- `02-coding-style.mdc`: 一般エラーハンドリング規約
+- `10-tool-design.mdc`: 終了コード規約と連携
+- `13-cli-ux.mdc`: rich でのエラー表示
+- `18-config-secrets.mdc`: シークレットマスキングと連携
+- `90-security-ethics.mdc`: 機微情報の取り扱い（最優先）
+
+---
+
+## 1. 例外階層
+
+ツール固有の例外は **必ず階層化** する。`<Tool>Error` を基底クラスとし、用途別に派生:
+
+```python
+# src/my_tool/exceptions.py
+class MyToolError(Exception):
+    """全例外の基底。catch all で `except MyToolError` できる。"""
+
+class ConfigError(MyToolError):
+    """設定ファイル不正、必須項目不在、型不一致。"""
+
+class DataError(MyToolError):
+    """入力データの形式・内容不正。"""
+
+class NetworkError(MyToolError):
+    """外部 API 通信失敗、タイムアウト、接続拒否。"""
+
+class ExternalCommandError(MyToolError):
+    """subprocess 経由の外部コマンド失敗。`returncode` `stderr` を保持。"""
+    def __init__(self, command: list[str], returncode: int, stderr: str) -> None:
+        self.command = command
+        self.returncode = returncode
+        self.stderr = stderr
+        super().__init__(f"Command failed ({returncode}): {' '.join(command)}")
+
+class ValidationError(MyToolError):
+    """データ整合性検証失敗（14-data-integrity 連携）。"""
+```
+
+**原則**:
+- 標準例外（`ValueError`, `OSError` 等）は **そのまま投げない**。ツール固有例外でラップする
+- catch する側は **広すぎず狭すぎず**: `except MyToolError` が原則、特定処理は `except ConfigError`
+- `except Exception:` は **最上位エントリポイントのみ**（ユーザー向け表示に変換するため）
+
+---
+
+## 2. ユーザー向けメッセージ設計
+
+エラーメッセージは **1 行で「何が」「なぜ」「どうすれば」** を伝える:
+
+```python
+# Bad
+raise ConfigError("Invalid config")
+
+# Good
+raise ConfigError(
+    f"設定ファイル '{config_path}' の 'database.host' が未指定です。"
+    f"--config で別ファイルを指定するか、設定ファイルに 'host = \"localhost\"' を追加してください。"
+)
+```
+
+### 2.1 verbose 時のみフルスタックトレース
+
+通常時:
+```
+Error: 設定ファイル './config.toml' の 'database.host' が未指定です。
+       --config で別ファイルを指定するか、host を追加してください。
+```
+
+`--verbose` 時:
+```
+Error: 設定ファイル './config.toml' の 'database.host' が未指定です。
+Traceback (most recent call last):
+  File "src/my_tool/cli.py", line 42, in cli
+    ...
+```
+
+### 2.2 トップレベル例外ハンドラ実装例
+
+```python
+# src/my_tool/__main__.py
+import sys
+import logging
+from rich.console import Console
+from .cli import cli
+from .exceptions import MyToolError
+
+logger = logging.getLogger(__name__)
+console_err = Console(stderr=True)
+
+def main() -> int:
+    try:
+        cli(standalone_mode=False)
+        return 0
+    except KeyboardInterrupt:
+        console_err.print("[yellow]中断されました[/yellow]")
+        return 130
+    except MyToolError as e:
+        console_err.print(f"[red]Error:[/red] {e}")
+        if logger.isEnabledFor(logging.DEBUG):
+            console_err.print_exception()
+        return determine_exit_code(e)
+    except Exception:
+        console_err.print("[red]想定外のエラーが発生しました（バグ）:[/red]")
+        console_err.print_exception()
+        return 70  # EX_SOFTWARE
+
+if __name__ == "__main__":
+    sys.exit(main())
+```
+
+---
+
+## 3. ログレベル戦略
+
+| level | 用途 | 例 |
+|---|---|---|
+| **DEBUG** | 内部状態・変数値・分岐 | `logger.debug(f"Loaded config: {config}")` |
+| **INFO** | フェーズ進捗（ユーザーが見たい） | `logger.info("Volume exported successfully")` |
+| **WARNING** | 継続可能な異常 | `logger.warning(f"Skipping file with invalid name: {f}")` |
+| **ERROR** | 失敗（処理打ち切り） | `logger.error(f"Failed to connect: {e}")` |
+| **CRITICAL** | 即停止が必要 | `logger.critical("Disk full, aborting")` |
+
+`--verbose` レベル対応:
+- なし: `WARNING` 以上
+- `-v`: `INFO` 以上
+- `-vv`: `DEBUG` 以上
+- `-vvv`: `DEBUG` 以上 + 外部ライブラリの DEBUG（urllib3 等）
+
+`--quiet`: `WARNING` 以上のみ（INFO 抑制）
+
+---
+
+## 4. ロガー設定（rich.logging 統合）
+
+`logging.config.dictConfig` で集中設定。`rich.logging.RichHandler` で美しい表示:
+
+```python
+# src/my_tool/_logging.py
+import logging
+import logging.config
+from pathlib import Path
+from rich.logging import RichHandler
+
+def setup_logging(
+    verbose: int = 0,
+    quiet: bool = False,
+    log_file: Path | None = None,
+    no_color: bool = False,
+) -> None:
+    if quiet:
+        level = logging.WARNING
+    elif verbose == 0:
+        level = logging.WARNING
+    elif verbose == 1:
+        level = logging.INFO
+    elif verbose == 2:
+        level = logging.DEBUG
+    else:
+        level = logging.DEBUG  # -vvv 以上は外部ライブラリも DEBUG
+
+    handlers: dict[str, dict] = {
+        "console": {
+            "class": "rich.logging.RichHandler",
+            "level": level,
+            "rich_tracebacks": True,
+            "tracebacks_show_locals": verbose >= 2,
+            "show_time": True,
+            "show_path": verbose >= 1,
+            "markup": True,
+        },
+    }
+
+    if log_file:
+        handlers["file"] = {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": str(log_file),
+            "maxBytes": 10 * 1024 * 1024,  # 10 MB
+            "backupCount": 5,
+            "encoding": "utf-8",
+            "level": logging.DEBUG,  # ファイルには常に DEBUG 全部
+            "formatter": "detail",
+        }
+
+    config: dict = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "detail": {
+                "format": "%(asctime)s [%(levelname)-8s] %(name)s:%(lineno)d - %(message)s",
+                "datefmt": "%Y-%m-%d %H:%M:%S",
+            },
+        },
+        "handlers": handlers,
+        "root": {
+            "level": "DEBUG" if log_file else level,
+            "handlers": list(handlers.keys()),
+        },
+        "loggers": {
+            "urllib3": {"level": "WARNING" if verbose < 3 else "DEBUG"},
+            "asyncio": {"level": "WARNING"},
+        },
+    }
+    logging.config.dictConfig(config)
+```
+
+**ハンドラ多重登録防止**: `setup_logging` は CLI エントリポイントで **1 回だけ呼ぶ**。サブコマンドから複数回呼ばれると hanlder が重複して同じログが複数出力される。
+
+---
+
+## 5. 出力先
+
+| デフォルト | 用途 |
+|---|---|
+| stderr | ログ全部（progress, info, error）|
+| stdout | ツールの「結果データ」のみ（パイプで他コマンドに渡せる）|
+
+`--log-file <path>` 指定時はファイル併用（RotatingFileHandler、10 MB × 5 世代）。
+
+---
+
+## 6. 構造化ログ（JSON Lines）
+
+`--log-format json` で機械処理用 JSON Lines 出力:
+
+```python
+import json
+import logging
+from datetime import datetime
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        data = {
+            "ts": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
+            "level": record.levelname,
+            "name": record.name,
+            "msg": record.getMessage(),
+        }
+        if record.exc_info:
+            data["exc"] = self.formatException(record.exc_info)
+        return json.dumps(data, ensure_ascii=False)
+```
+
+CI ログ集約や後段分析で有用。デフォルトは人間向け（rich）、フラグで切替。
+
+---
+
+## 7. 機微情報マスキング
+
+パスワード・トークン・接続文字列が **ログ・エラーメッセージ・例外** に出ないようにする:
+
+```python
+import re
+import logging
+
+SECRET_PATTERNS = [
+    re.compile(r"(password\s*[=:]\s*)([^\s,;]+)", re.IGNORECASE),
+    re.compile(r"(token\s*[=:]\s*)([^\s,;]+)", re.IGNORECASE),
+    re.compile(r"(api[_-]?key\s*[=:]\s*)([^\s,;]+)", re.IGNORECASE),
+    re.compile(r"(://[^:]+:)([^@]+)(@)", re.IGNORECASE),  # URL の password 部
+]
+
+class SecretMaskingFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        for pat in SECRET_PATTERNS:
+            msg = pat.sub(r"\1***\3" if pat.groups == 3 else r"\1***", msg)
+        record.msg = msg
+        record.args = ()
+        return True
+```
+
+すべての handler に attach する。`18-config-secrets.mdc` のシークレット管理規約と連携。
+
+---
+
+## 8. エラー時の終了処理（cleanup）
+
+部分書き込みやリソースリークを避ける:
+
+```python
+def export_volume(volume: str, output: Path, dry_run: bool) -> None:
+    tmp_file = output.with_suffix(".tar.gz.tmp")
+    lock_file = output.with_suffix(".lock")
+    
+    try:
+        lock_file.touch(exist_ok=False)  # ロック取得
+        # ... エクスポート処理 ...
+        # ... write to tmp_file ...
+        tmp_file.replace(output)  # atomic rename
+    except Exception:
+        # 部分書き込みクリーンアップ
+        tmp_file.unlink(missing_ok=True)
+        raise
+    finally:
+        # ロック解放（成功・失敗問わず）
+        lock_file.unlink(missing_ok=True)
+```
+
+`try / finally` で **必ず実行** する後処理を担保する。詳細は `15-idempotency-rollback.mdc` 参照。
+
+---
+
+## 9. アンチパターン
+
+- ❌ `print(f"Error: {e}")`（logger を使う、出力先制御不能）
+- ❌ `except:` 引数なし（全部捕捉、`KeyboardInterrupt` まで吸う）
+- ❌ `except Exception: pass`（例外握り潰し、`02-coding-style` で禁止）
+- ❌ ログに secret を直接出力（マスキングフィルタを通す）
+- ❌ `logger.info` を `print` の代替として使う（結果データは stdout、ログは logger）
+- ❌ Exception を文字列連結（`raise ValueError("foo" + str(e))` → `raise MyError("foo") from e`）

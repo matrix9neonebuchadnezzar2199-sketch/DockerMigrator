@@ -1,0 +1,3 @@
+# プロジェクト固有 skill 配置用フォルダ
+# グローバル skills は ~/.cursor/skills/ にあり、本フォルダはプロジェクト固有 skill のみ管理する
+# 例: F:\Cursor 環境特有の triage 手順、社内ツールの呼び出し手順 等

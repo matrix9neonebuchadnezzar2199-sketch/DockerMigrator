@@ -1,0 +1,325 @@
+---
+description: 汎用 Python ツールのクロスプラットフォーム対応規約。pathlib 必須、改行コード、エンコーディング統一、subprocess 規約、Windows / Linux / macOS の差分対応。
+globs: ["**/*.py", "**/Dockerfile", "**/*.sh", "**/*.ps1"]
+alwaysApply: false
+---
+
+# クロスプラットフォーム規約
+
+マスター環境は Windows + PowerShell が主だが、ツール配布先・Docker 内・CI（Linux）で動かす可能性を常に考慮。OS 差分に起因するバグを設計時に排除する。
+
+## 関連ルール
+- `11-python-tooling.mdc`: Python プロジェクト骨格
+- `12-error-logging.mdc`: エラー処理（OS 別エラー）
+- `14-data-integrity.mdc`: ファイル書き込み（atomic rename の OS 差）
+- `16-docker-ops.mdc`: Docker での Windows / Linux 差
+
+---
+
+## 1. pathlib 必須
+
+`os.path.*` は **原則禁止**、`pathlib.Path` を使う:
+
+```python
+# Bad
+import os
+path = os.path.join(base, "subdir", "file.txt")
+
+# Good
+from pathlib import Path
+path = Path(base) / "subdir" / "file.txt"
+```
+
+### 1.1 パス操作の代表的 API
+
+| 操作 | os.path | pathlib |
+|---|---|---|
+| 結合 | `os.path.join(a, b)` | `Path(a) / b` |
+| 親 | `os.path.dirname(p)` | `p.parent` |
+| ベース名 | `os.path.basename(p)` | `p.name` |
+| 拡張子 | `os.path.splitext(p)[1]` | `p.suffix` |
+| 絶対パス | `os.path.abspath(p)` | `p.resolve()` |
+| 存在確認 | `os.path.exists(p)` | `p.exists()` |
+| ホーム | `os.path.expanduser("~")` | `Path.home()` |
+| カレント | `os.getcwd()` | `Path.cwd()` |
+| 列挙 | `os.listdir(d)` | `d.iterdir()` |
+| glob | `glob.glob("*.py")` | `Path.cwd().glob("*.py")` |
+
+### 1.2 文字列が必要な場合
+外部ライブラリ（古い API）に渡す時のみ `str(path)` で変換:
+```python
+subprocess.run(["docker", "save", str(image_path)])
+```
+
+---
+
+## 2. 改行コード
+
+### 2.1 テキストファイル I/O
+```python
+# 読み込み: newline="" で改行変換を抑制（universal newline モード）
+with open(path, encoding="utf-8", newline="") as f:
+    content = f.read()
+
+# 書き込み: newline="" で OS デフォルト変換を無効化、明示的に LF を書く
+with open(path, "w", encoding="utf-8", newline="") as f:
+    f.write("line1\nline2\n")  # 確実に LF で書かれる
+```
+
+### 2.2 Git の autocrlf 起因の混在
+- Windows で `git config core.autocrlf true` だと、リポジトリは LF だが checkout 後は CRLF
+- 読み取り側で `newline=""` を使えば吸収できる
+- 書き込み側で OS のデフォルトに任せたい場合は `newline=None`（デフォルト）
+
+### 2.3 推奨設定
+- リポジトリには `.gitattributes` で `* text eol=lf` 明示
+- Python コード内では `newline=""` 明示
+
+---
+
+## 3. エンコーディング
+
+### 3.1 全 I/O で `encoding="utf-8"` 明示
+```python
+# Bad: OS のデフォルト（Windows: cp932 / Linux: utf-8）に依存
+with open(path) as f:
+    content = f.read()
+
+# Good
+with open(path, encoding="utf-8") as f:
+    content = f.read()
+```
+
+**Python 3.10+ では `PYTHONUTF8=1` で UTF-8 mode を有効化できる**が、コード側で明示する方が安全。
+
+### 3.2 UTF-8 BOM の扱い
+- 読み取り時: `encoding="utf-8-sig"` で BOM があれば除去、なくても動く
+- 書き込み時: `encoding="utf-8"`（BOM なし、これがデファクト）
+
+```python
+# 不明な UTF-8 ファイルを読む
+content = path.read_text(encoding="utf-8-sig")
+
+# UTF-8 BOM なしで書く
+path.write_text(content, encoding="utf-8", newline="")
+```
+
+### 3.3 標準入出力のエンコーディング
+```python
+import sys
+
+# Windows の cmd.exe は cp932、PowerShell も同様
+# UTF-8 で表示するには
+sys.stdout.reconfigure(encoding="utf-8")
+sys.stderr.reconfigure(encoding="utf-8")
+```
+
+または環境変数 `PYTHONIOENCODING=utf-8`。
+
+---
+
+## 4. Windows vs Linux 差分
+
+### 4.1 主要差分表
+
+| 項目 | Windows | Linux / macOS |
+|---|---|---|
+| パス区切り | `\` + `/` 両対応 | `/` のみ |
+| 改行 | CRLF | LF |
+| 大文字小文字 | **区別なし**（`Foo.txt` と `FOO.TXT` 同じファイル）| 区別あり |
+| シンボリックリンク | 管理者権限必要 / junction 代替 | 一般ユーザーで作成可 |
+| 実行属性 | 拡張子で判定（`.exe`, `.bat`, `.ps1`）| chmod +x |
+| 予約ファイル名 | `CON`, `PRN`, `AUX`, `NUL`, `COM1-9`, `LPT1-9` | なし |
+| パス長制限 | デフォルト 260 文字（`\\?\` で延長可）| 4096 |
+| ユーザーディレクトリ | `C:\Users\<name>` | `/home/<name>` |
+| 一時ディレクトリ | `%TEMP%`（通常 `C:\Users\<name>\AppData\Local\Temp`）| `/tmp` |
+| Null device | `nul` | `/dev/null` |
+| 環境変数 | 大文字小文字区別なし | 区別あり |
+| PATH 区切り | `;` | `:` |
+
+### 4.2 予約ファイル名チェック
+```python
+WINDOWS_RESERVED = {
+    "CON", "PRN", "AUX", "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
+
+def is_safe_filename(name: str) -> bool:
+    base = Path(name).stem.upper()
+    return base not in WINDOWS_RESERVED
+```
+
+ユーザー入力からファイル名を作る場合は **必ず**チェック。
+
+### 4.3 大文字小文字事故防止
+Linux で `Config.toml` と `config.toml` は別ファイル。Windows で開発して Linux にデプロイすると import error が起きやすい。**ファイル名は全部小文字 + アンダースコア** を推奨。
+
+---
+
+## 5. subprocess 規約
+
+### 5.1 `shell=False` 必須
+
+```python
+# Bad: shell injection リスク
+subprocess.run(f"docker save {image}", shell=True)
+
+# Good
+subprocess.run(["docker", "save", image], shell=False)
+```
+
+### 5.2 引数はリストで渡す
+```python
+# Bad
+subprocess.run("docker save myimage > out.tar")
+
+# Good
+with open("out.tar", "wb") as f:
+    subprocess.run(["docker", "save", "myimage"], stdout=f, check=True)
+```
+
+### 5.3 シェル機能が必要な場合
+パイプ・リダイレクト・ワイルドカードが必要なら、Python 側で処理する:
+
+```python
+# Bad
+subprocess.run("docker images | grep myimage | awk '{print $3}'", shell=True)
+
+# Good
+result = subprocess.run(["docker", "images", "--format", "{{.Repository}}:{{.Tag}} {{.ID}}"],
+                       capture_output=True, text=True, check=True)
+ids = [line.split()[1] for line in result.stdout.splitlines() if "myimage" in line]
+```
+
+### 5.4 Python 自身を呼ぶ
+```python
+import sys
+subprocess.run([sys.executable, "-m", "my_tool", "subcommand"], check=True)
+```
+
+`python` ハードコードは禁止（venv 内なのか、Windows なのかで挙動が違う）。
+
+### 5.5 文字列パスの shell 化補助
+```python
+import shlex
+cmd = shlex.split('docker run --name "my container" alpine')  # ["docker", "run", "--name", "my container", "alpine"]
+```
+
+ユーザー入力を含む場合は `shlex.quote` でエスケープ。
+
+### 5.6 タイムアウト必須
+```python
+try:
+    subprocess.run(cmd, timeout=60, check=True)
+except subprocess.TimeoutExpired:
+    raise ExternalCommandError(cmd, -1, "Timeout after 60s")
+```
+
+外部コマンドに `timeout` を付けない設計は禁止。
+
+---
+
+## 6. OS 検出
+
+### 6.1 `sys.platform` を第一選択
+
+```python
+import sys
+
+if sys.platform == "win32":
+    ...
+elif sys.platform == "linux":
+    ...
+elif sys.platform == "darwin":
+    ...
+```
+
+| `sys.platform` 値 | OS |
+|---|---|
+| `win32` | Windows（32/64 bit 問わず）|
+| `linux` | Linux 全般 |
+| `darwin` | macOS |
+| `cygwin` | Cygwin |
+| `freebsd*` | FreeBSD |
+
+### 6.2 `platform.system()` は表示用
+
+```python
+import platform
+platform.system()  # "Windows" / "Linux" / "Darwin"
+platform.release()  # "10" / "5.15.0-86-generic" / "23.1.0"
+```
+
+ログ表示やバージョン情報には使うが、分岐には `sys.platform` を使う。
+
+### 6.3 アーキテクチャ判定
+```python
+import platform
+platform.machine()  # "AMD64" / "x86_64" / "arm64"
+```
+
+---
+
+## 7. 一時ディレクトリ
+
+```python
+import tempfile
+from pathlib import Path
+
+# 一時ディレクトリ自動削除
+with tempfile.TemporaryDirectory() as tmpdir:
+    tmp = Path(tmpdir)
+    # ... use tmp ...
+# ここで自動削除
+
+# 個別ファイル
+with tempfile.NamedTemporaryFile(suffix=".tar", delete=False) as f:
+    tmp_path = Path(f.name)
+    f.write(data)
+# delete=False は手動削除必要
+```
+
+### 7.1 Windows での注意
+- `%TEMP%` の容量制限（通常 OS の C: ドライブ）
+- 大容量データは `--temp-dir` オプションで別ドライブ指定可にする
+- アンチウイルスが TEMP フォルダを scan して遅くなる場合あり
+
+---
+
+## 8. PowerShell vs bash
+
+### 8.1 マスター環境は PowerShell
+- ドキュメント・README には PowerShell コマンド例
+- Linux ユーザー向けにも bash 例を併記すると親切
+
+### 8.2 ツール内で別シェル呼び出しは原則禁止
+シェルスクリプトに依存しない設計:
+```python
+# Bad: bash.sh を呼ぶ
+subprocess.run(["bash", "./scripts/setup.sh"])
+
+# Good: Python で処理
+def setup() -> None:
+    # ... Python で同等処理 ...
+```
+
+shell スクリプトに依存すると、Windows でツールを使えなくなる。
+
+### 8.3 例外: Docker 経由
+Docker コンテナ内では Linux + bash 前提なので、Dockerfile / docker compose 内では bash 使用 OK:
+```dockerfile
+RUN bash -c "set -euo pipefail && ..."
+```
+
+---
+
+## 9. アンチパターン
+
+- ❌ `os.path.join` を使う（pathlib に統一）
+- ❌ `open(path)` でエンコーディング省略（必ず `encoding="utf-8"`）
+- ❌ パス区切り文字 `\\` / `/` をハードコード（pathlib に任せる）
+- ❌ `subprocess.run(cmd, shell=True)`（shell injection、`17-cross-platform` で禁止）
+- ❌ `platform.system() == "Windows"` で分岐（`sys.platform == "win32"` を使う）
+- ❌ 環境変数 `$HOME` / `%USERPROFILE%` を直接参照（`Path.home()` で統一）
+- ❌ shell スクリプト（bash / PowerShell）を Python から呼ぶ（Python で処理）

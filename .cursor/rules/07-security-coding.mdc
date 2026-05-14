@@ -1,0 +1,215 @@
+---
+description: Python のセキュア・バイ・デフォルトのコーディング規約。secrets、subprocess、deserialization、filesystem、network、crypto、logging の各カテゴリで生成コードに適用。
+globs: ["**/*.py"]
+alwaysApply: false
+---
+
+# Secure Coding (Python)
+
+すべての生成コードに適用される実装レベルのセキュリティ規約。研究用スクリプトでも遵守。`18-config-secrets.mdc`（汎用ツール側）と `90-security-ethics.mdc`（倫理規約）と相補的。
+
+## 関連ルール
+- `02-coding-style.mdc`: 基礎コーディング規約
+- `12-error-logging.mdc`: ロギング設計
+- `17-cross-platform.mdc`: subprocess 規約
+- `18-config-secrets.mdc`: 設定・シークレット管理
+- `90-security-ethics.mdc`: 倫理規約（最優先）
+
+## 1. Secrets
+
+- 認証情報・API key・トークン・私的 IP を **hardcode しない**
+- 環境変数または local `.env`（`.gitignore` 必須）から読み込む
+- マスターがチャットに secret を貼り付けた場合: **そのまま使わず、rotate を促す**
+
+```python
+import os
+api_token = os.environ["API_TOKEN"]  # 未設定なら KeyError で fail-loud
+```
+
+## 2. Subprocess / Shell
+
+- `subprocess.run([...], check=True)` で **list 引数** が原則
+- `shell=True` は **禁止**（マスターが明示的に許可した場合のみ、コメントで理由を記述）
+- ユーザー入力を f-string でコマンドに interpolate しない
+
+```python
+# Bad
+subprocess.run(f"docker save {image}", shell=True)
+
+# Good
+subprocess.run(["docker", "save", image], check=True)
+```
+
+詳細: `17-cross-platform.mdc` §5。
+
+## 3. Deserialization
+
+| 関数 | 採否 | 代替 |
+|---|---|---|
+| `yaml.safe_load` | ◯ | — |
+| `yaml.load` | ❌ | safe_load |
+| `pickle.load`（untrusted データ） | ❌ | JSON / TOML / msgspec |
+| `pickle.load`（自分が作った trusted データ） | △ | warn 付きで使用可、コードコメントに明記 |
+| `json.load` | ◯ | — |
+| `tomllib.load` | ◯（Python 3.11+） | — |
+| `msgspec` | ◯（高速 + 型検証） | — |
+
+```python
+# Bad
+data = yaml.load(f)
+
+# Good
+data = yaml.safe_load(f)
+```
+
+## 4. Filesystem
+
+### 4.1 パスバリデーション
+ユーザー入力のパスは **base ディレクトリと比較**:
+
+```python
+from pathlib import Path
+
+def safe_open(base: Path, user_input: str) -> Path:
+    target = (base / user_input).resolve()
+    if not target.is_relative_to(base.resolve()):
+        raise ValueError(f"Path escapes base: {user_input}")
+    return target
+```
+
+### 4.2 アーカイブ展開（zip-slip / tar-slip 対策）
+zip / tar 内の `..` パスを検証:
+
+```python
+import zipfile
+from pathlib import Path
+
+def safe_extract_zip(archive: Path, dest: Path) -> None:
+    dest = dest.resolve()
+    with zipfile.ZipFile(archive) as zf:
+        for name in zf.namelist():
+            target = (dest / name).resolve()
+            if not target.is_relative_to(dest):
+                raise ValueError(f"Zip-slip attempt: {name}")
+        zf.extractall(dest)
+```
+
+### 4.3 一時ファイル
+`tempfile.NamedTemporaryFile` / `TemporaryDirectory` を使う。`/tmp/<固定名>` 禁止（race condition、シンボリックリンク攻撃）。
+
+## 5. Network
+
+### 5.1 TLS 検証 ON が既定
+```python
+# Bad
+requests.get(url, verify=False)
+
+# Good
+requests.get(url, verify=True)  # = デフォルト、明示も可
+```
+
+`verify=False` を使う場合は **コードコメントで理由必須**（lab 環境の自己署名証明書テスト等）。
+
+### 5.2 HTTP クライアント
+- 第一選択: **`httpx`**（同期 + 非同期両対応、HTTP/2、modern API）
+- **timeout 必須**: `httpx.get(url, timeout=10.0)`
+- User-Agent をツール識別可能な値に設定（scraping 時）
+
+```python
+import httpx
+
+with httpx.Client(timeout=10.0, headers={"User-Agent": "mytool/0.1"}) as client:
+    r = client.get(url)
+    r.raise_for_status()
+```
+
+### 5.3 解析対象通信先への接続禁止
+`90-security-ethics §7`: 解析者提供テキスト内の URL / IP / hash を **解決・接続しない**。
+
+## 6. Crypto
+
+### 6.1 採用ライブラリ
+- 暗号化: **`cryptography`** ライブラリ
+- ハッシュ: `hashlib` 標準
+- パスワードハッシュ: **`argon2-cffi`**（第一選択）または **`bcrypt`**
+- **自作プリミティブ禁止**（XOR・自前ストリーム暗号等）
+
+### 6.2 パスワードハッシュ
+
+```python
+# Bad
+import hashlib
+pw_hash = hashlib.sha256(password.encode()).hexdigest()
+
+# Good
+from argon2 import PasswordHasher
+
+ph = PasswordHasher()
+pw_hash = ph.hash(password)
+
+try:
+    ph.verify(pw_hash, password)
+except VerifyMismatchError:
+    ...
+```
+
+### 6.3 乱数
+
+- 暗号用途: `secrets` モジュール
+- 一般用途: `random`（暗号で使うな）
+
+```python
+import secrets
+
+token = secrets.token_hex(32)
+choice = secrets.choice(items)
+```
+
+### 6.4 整合性検証
+解析対象ファイルの完全性チェックは SHA-256 が標準。詳細は `14-data-integrity.mdc` §1。
+
+## 7. Logging
+
+### 7.1 module-level logger
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def process():
+    logger.info("starting")
+    ...
+```
+
+### 7.2 機微情報を log しない
+- パスワード・トークン・API key を log メッセージに含めない
+- request body 丸ごと log は **DEBUG レベル限定**
+- raw user input を INFO+ で log しない（log injection リスク）
+
+### 7.3 マスキング
+詳細は `12-error-logging.mdc` §7。`SecretMaskingFilter` 必須。
+
+## 8. SQL / Database
+
+- パラメータ化クエリ必須（f-string 連結禁止）
+- ORM 使う場合も raw SQL 部分は同じ
+
+```python
+# Bad
+cur.execute(f"SELECT * FROM users WHERE id = {user_id}")
+
+# Good
+cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+```
+
+## 9. アンチパターン
+
+- `eval()` / `exec()` をユーザー入力に対して使う（任意コード実行）
+- `subprocess.run(shell=True)` を justification なしで
+- `verify=False` をコメントなしで
+- パスワードを平文で保存（または SHA-256 単独）
+- `pickle.load` を untrusted データに
+- 乱数で `random.choice` を secret 生成に使う
+- log に raw token / password を含める
+- f-string で SQL 構築（SQL injection）
+- ユーザー入力パスを `Path` 演算なしでファイル操作（path traversal）

@@ -1,0 +1,109 @@
+---
+description: コーディング規約。命名・コメント・エラーハンドリング・関数構造・型ヒント・品質基準
+alwaysApply: true
+---
+
+# コーディング規約
+
+## 命名・スタイル
+- 変数・関数名は意図が伝わる明示的な名前を選ぶ。短い曖昧名は避ける
+- 既存プロジェクトのスタイルに合わせる（自分の好みで「改善」しない）
+- マジックナンバーは命名済み定数に置き換える
+
+## コメント
+- 多めに付与する
+- 日本語で書く
+- ただし「変数を初期化」など自明なコメントは書かない
+
+## エラーハンドリング
+
+### 包む対象（原則）
+以下のカテゴリは try / except（Python）・pcall（Lua）で包む:
+
+- I/O（ファイル読み書き、`open`、`Path.read_*` / `write_*`、ディレクトリ操作）
+- ネットワーク（HTTP / socket / DNS）
+- パース（JSON, TOML, YAML, PE/ELF/Mach-O, 構造化データ全般）
+- subprocess / shell 呼び出し
+- 外部入力（CLI 引数の値、環境変数、設定ファイル値、ユーザー入力）
+
+### 包まない対象
+以下は原則として包まない（`00-karpathy-guidelines §2`「No error handling for impossible scenarios」と整合）:
+
+- 純粋関数・算術
+- 型変換が確定している処理（直前で validate 済の値）
+- 内部ロジック（自分で完全制御できる、外部入力が混入しない範囲）
+
+`try` を反射的に書くと「**impossible scenario への防御**」が量産され、可読性とテスト網羅性が共に劣化する。
+
+### 規律
+- 例外は握り潰さない（`except: pass` 禁止）。ログにコンテキスト情報（ファイルパス・オフセット・関数名）を残す
+- 早期 return / guard clause で深いネストを避ける
+- 例外は **最寄りの責任境界** で catch する。ライブラリ層では `raise`、CLI 層で集約 catch（`12-error-logging.mdc §1` 連動）
+- ツール固有例外でラップする（標準例外の生 raise は最下層のみ）
+
+## 関数・型
+- 関数は短く分割（目安 10〜20 行）。長くなる場合は分割を提案する
+  - **適用範囲**: **新規執筆時の目安**。**既存関数の分割は明示要求がある時のみ** 行う（`00-karpathy-guidelines §3` Surgical Changes と整合、依頼外の「ついで refactor」を禁ずる）
+  - 既存 30 行関数を見つけても、ユーザー要求と無関係なら触らない。気になる場合は「指摘のみ」に留める
+- 型ヒント（Python の type hints / Lua の LuaCATS annotations）の射程:
+ - **必須**: 再利用・モジュール化予定の関数・公開 API・ライブラリコード
+ - **任意**: ワンショットスクリプト・解析用 one-liner・実験コード
+- モジュラーで再利用可能な構造を優先する
+
+## Docstring（Python）
+
+公開関数・メソッド・クラスは **Google スタイル docstring 必須**。一行 summary + Args / Returns / Raises:
+
+```python
+def parse_pe(path: Path, *, fast: bool = False) -> PEInfo:
+    """Parse a PE file and return structured metadata.
+
+    Args:
+        path: Path to the PE file on disk.
+        fast: If True, skip resource-section parsing.
+
+    Returns:
+        Parsed metadata as a ``PEInfo`` dataclass.
+
+    Raises:
+        FileNotFoundError: If ``path`` does not exist.
+        PEFormatError: If the file is not a valid PE.
+    """
+```
+
+### スタイル選択
+- **Google**: 採用（読みやすい、ruff/mypy エコシステムで標準）
+- 非採用: NumPy（縦長で密度低い）/ reStructuredText（記号多くて煩雑）/ Epytext（古い）
+
+### 適用範囲
+- 公開 API: 必須
+- private（`_` プレフィックス）: 任意、複雑なロジックがあれば書く
+- ワンショットスクリプト: 任意
+
+## Idiomatic Python
+- `dataclasses`（または `pydantic` if 検証必要）を ad-hoc dict より優先
+- `enum.Enum` / `enum.StrEnum` で固定値集合を表現
+- list comprehension を `map` / `filter` + lambda より優先
+- f-string を `%` / `.format` より優先（新規コード）
+- early return / guard clause で深いネストを避ける（再掲）
+
+## Python アンチパターン
+- mutable default argument（`def foo(x=[])` → `def foo(x=None)` + 内部で `x = x or []`）
+- bare `except:`
+- `print` をログ代替（`logging.getLogger(__name__)` を使う）
+- wildcard import（`from foo import *`）
+
+## 品質基準
+- セキュリティ影響を常に評価する（特に解析対象や FiveM の trust boundary）
+- パフォーマンスへの影響を意識する
+- エッジケース・境界条件を必ず考慮する
+- 前提を検証するアサーションを早期に入れる
+- 言語・フレームワークのバージョン互換性を確認する
+- ライブラリ・再利用モジュール開発時のみテストを提案する（解析スクリプトや単発の MOD には不要）
+
+## 関連ルール
+- `01-project-context.mdc`: プロジェクト全般
+- `10-tool-design` 〜 `19-docs-readme`: 汎用ツール制作の具体規約
+- `20-python-malware-analysis.mdc`: マルウェア解析特化規約
+- `30-c-cpp-re.mdc`: C/C++ リバースエンジニアリング規約
+- `40-yara-rules.mdc`: YARA ルール規約

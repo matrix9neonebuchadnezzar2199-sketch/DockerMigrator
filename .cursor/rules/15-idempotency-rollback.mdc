@@ -1,0 +1,411 @@
+---
+description: 汎用 Python ツール制作の冪等性・ロールバック・resume 機構の規約。state file、checkpoint、lock file、dry-run、入力ハッシュチェック。
+globs: ["**/migrate*.py", "**/state*.py", "**/resume*.py", "**/lock*.py"]
+alwaysApply: false
+---
+
+# 冪等性・ロールバック規約
+
+中断・再実行・並列実行に対する堅牢性。データ移行・長時間処理ツール必須の規約。`14-data-integrity.mdc` と連携。
+
+## 関連ルール
+- `14-data-integrity.mdc`: ファイル書き込みの atomic 性
+- `12-error-logging.mdc`: エラー時の cleanup
+- `13-cli-ux.mdc`: resume サブコマンド
+- `17-cross-platform.mdc`: lock の OS 差
+
+---
+
+## 1. 冪等性（idempotency）設計原則
+
+### 1.1 定義
+**同じ入力で何度実行しても、同じ結果に収束する** 性質。
+
+```python
+# 冪等: 何度実行しても結果同じ
+def create_directory(path: Path) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+
+# 非冪等: 2 回目以降エラー
+def create_directory_bad(path: Path) -> None:
+    path.mkdir()
+```
+
+### 1.2 副作用は明示
+```python
+# Bad: 副作用が見えにくい
+def process(data):
+    save(data)  # 副作用
+    return transform(data)
+
+# Good: 副作用関数を分離
+def process(data):
+    return transform(data)  # 純粋関数
+
+def process_and_save(data):
+    result = process(data)
+    save(result)  # 副作用は専用関数
+    return result
+```
+
+### 1.3 冪等性チェック表
+
+| 操作 | 冪等 | 非冪等 | 補足 |
+|---|---|---|---|
+| ファイル作成 | `mkdir(exist_ok=True)` | `mkdir()` | |
+| ファイル書き込み | atomic write + hash 確認 | append | append は冪等にならない |
+| DB INSERT | `INSERT ... ON CONFLICT DO NOTHING` | `INSERT` のみ | UPSERT パターン |
+| HTTP POST | Idempotency-Key 付与 | なし | 重複実行で複数作成 |
+| Docker import | image ID で skip | tag のみで判定 | 同 image を別 tag で重複 |
+
+---
+
+## 2. state file
+
+長時間処理の進捗を **永続化** し、resume を可能にする:
+
+### 2.1 state file 構造
+
+```python
+# src/my_tool/state.py
+from __future__ import annotations
+import json
+import hashlib
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+from pydantic import BaseModel
+
+class State(BaseModel):
+    """state file のスキーマ。"""
+    tool_name: str
+    tool_version: str
+    started_at: str  # ISO 8601 UTC
+    updated_at: str
+    input_hash: str  # 入力データの hash
+    phase: str       # "init" | "phase1" | "phase2" | "completed" | "failed"
+    completed_items: list[str]
+    failed_items: list[str]
+    metadata: dict[str, Any] = {}
+
+class StateFile:
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.state = self._load_or_create()
+
+    def _load_or_create(self) -> State:
+        if self.path.exists():
+            return State.model_validate_json(self.path.read_text(encoding="utf-8"))
+        return State(
+            tool_name="my-tool",
+            tool_version="0.1.0",
+            started_at=datetime.now(timezone.utc).isoformat(),
+            updated_at=datetime.now(timezone.utc).isoformat(),
+            input_hash="",
+            phase="init",
+            completed_items=[],
+            failed_items=[],
+        )
+
+    def save(self) -> None:
+        """atomic に state を書き込む。"""
+        self.state.updated_at = datetime.now(timezone.utc).isoformat()
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(self.state.model_dump_json(indent=2), encoding="utf-8")
+        tmp.replace(self.path)
+
+    def mark_completed(self, item: str) -> None:
+        if item not in self.state.completed_items:
+            self.state.completed_items.append(item)
+        self.save()
+
+    def mark_failed(self, item: str) -> None:
+        if item not in self.state.failed_items:
+            self.state.failed_items.append(item)
+        self.save()
+
+    def update_phase(self, phase: str) -> None:
+        self.state.phase = phase
+        self.save()
+```
+
+### 2.2 配置場所
+- 出力先と **同じディレクトリ** に配置（同一 FS で atomic）
+- 命名: `<tool>.state.json` または `<output>.state.json`
+
+---
+
+## 3. checkpoint / resume
+
+### 3.1 フェーズ単位の checkpoint
+
+```python
+def migrate(state: StateFile, items: list[Item]) -> None:
+    if state.state.phase == "init":
+        state.update_phase("phase1_prepare")
+        prepare()
+        state.update_phase("phase2_export")
+    
+    if state.state.phase in ("phase2_export", "init"):
+        for item in items:
+            if item.id in state.state.completed_items:
+                logger.debug(f"Skipping already completed: {item.id}")
+                continue
+            try:
+                export(item)
+                state.mark_completed(item.id)
+            except Exception as e:
+                state.mark_failed(item.id)
+                raise
+        state.update_phase("phase3_verify")
+    
+    if state.state.phase == "phase3_verify":
+        verify_all()
+        state.update_phase("completed")
+```
+
+### 3.2 resume サブコマンド
+
+```python
+@cli.command()
+@click.argument("state_file", type=click.Path(exists=True, path_type=Path))
+def resume(state_file: Path) -> None:
+    """state ファイルから処理を再開する。"""
+    state = StateFile(state_file)
+    
+    if state.state.phase == "completed":
+        click.echo("Already completed.")
+        return
+    
+    # 入力ハッシュチェック（後述）
+    current_hash = calculate_input_hash(...)
+    if state.state.input_hash != current_hash:
+        raise ValidationError(
+            f"Input changed since last run. "
+            f"Expected hash {state.state.input_hash}, got {current_hash}. "
+            f"Use --force to override."
+        )
+    
+    # フェーズから再開
+    items = load_items(...)
+    migrate(state, items)
+```
+
+---
+
+## 4. 中断時の挙動
+
+### 4.1 atomic phase
+各フェーズは **atomic** に完了する：途中まで進んだら state file に反映、未完なら state は前のフェーズのまま:
+
+```python
+def do_phase(state: StateFile) -> None:
+    # この処理が完全に成功するか、完全に失敗するか
+    try:
+        process()
+        state.update_phase("phase_complete")  # 成功時のみ更新
+    except Exception:
+        # state は前のフェーズのまま、resume で再実行
+        raise
+```
+
+### 4.2 cleanup hook
+
+```python
+import atexit
+import signal
+
+class Cleanup:
+    def __init__(self) -> None:
+        self.tasks: list[Callable[[], None]] = []
+        atexit.register(self.run)
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+
+    def add(self, task: Callable[[], None]) -> None:
+        self.tasks.append(task)
+
+    def run(self) -> None:
+        for task in reversed(self.tasks):
+            try:
+                task()
+            except Exception as e:
+                logger.warning(f"Cleanup failed: {e}")
+
+    def _signal_handler(self, signum: int, frame: Any) -> None:
+        self.run()
+        sys.exit(130 if signum == signal.SIGINT else 143)
+```
+
+使用例:
+```python
+cleanup = Cleanup()
+tmp_dir = Path(tempfile.mkdtemp())
+cleanup.add(lambda: shutil.rmtree(tmp_dir, ignore_errors=True))
+```
+
+---
+
+## 5. ロールバック戦略
+
+### 5.1 compensating action パターン
+
+各 write 操作に **undo 操作** を対応させる:
+
+```python
+class MigrationStep:
+    def __init__(self, name: str, do: Callable, undo: Callable) -> None:
+        self.name = name
+        self.do = do
+        self.undo = undo
+
+steps = [
+    MigrationStep("create_dst_volume",
+                  do=lambda: docker.volume.create("dst"),
+                  undo=lambda: docker.volume.remove("dst")),
+    MigrationStep("copy_data",
+                  do=lambda: copy(src, dst),
+                  undo=lambda: dst.unlink()),
+]
+
+executed: list[MigrationStep] = []
+try:
+    for step in steps:
+        step.do()
+        executed.append(step)
+except Exception:
+    # 逆順で undo
+    for step in reversed(executed):
+        try:
+            step.undo()
+        except Exception as e:
+            logger.error(f"Rollback failed at {step.name}: {e}")
+    raise
+```
+
+### 5.2 ロールバック不能な操作の扱い
+- 不可逆操作（DELETE, DROP）は **最後に実行**
+- 不可逆操作前に **必ず確認プロンプト** + バックアップ確認
+
+---
+
+## 6. 重複実行防止（lock file）
+
+### 6.1 ロックファイル方式
+
+```python
+import os
+import sys
+from pathlib import Path
+from contextlib import contextmanager
+
+@contextmanager
+def file_lock(lock_path: Path):
+    """ファイルロック。同時実行を防止する。"""
+    try:
+        # exclusive create
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, str(os.getpid()).encode())
+        os.close(fd)
+    except FileExistsError:
+        # 既存ロックの PID をチェック
+        try:
+            pid = int(lock_path.read_text(encoding="utf-8"))
+            if is_process_alive(pid):
+                raise RuntimeError(f"Already running (pid={pid})")
+            # stale lock（プロセス死亡）→ 強制削除
+            lock_path.unlink()
+            return file_lock(lock_path).__enter__()
+        except (ValueError, FileNotFoundError):
+            lock_path.unlink(missing_ok=True)
+            return file_lock(lock_path).__enter__()
+    
+    try:
+        yield
+    finally:
+        lock_path.unlink(missing_ok=True)
+
+def is_process_alive(pid: int) -> bool:
+    if sys.platform == "win32":
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        PROCESS_QUERY_INFORMATION = 0x0400
+        handle = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, False, pid)
+        if handle:
+            kernel32.CloseHandle(handle)
+            return True
+        return False
+    else:
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True  # プロセスは存在するが権限不足
+```
+
+### 6.2 ロックファイル配置
+- state file と同じディレクトリ
+- 命名: `<tool>.lock` または `<output>.lock`
+
+### 6.3 stale lock（古いロック）処理
+PID 記録 + プロセス生存確認で、停止済みプロセスのロックは自動解除。
+
+---
+
+## 7. 入力ハッシュチェック
+
+resume 時に入力が変わっていないか確認:
+
+```python
+def calculate_input_hash(files: list[Path]) -> str:
+    """入力ファイル群の集約 hash を計算。"""
+    h = hashlib.sha256()
+    for path in sorted(files):  # ソートで順序非依存
+        h.update(path.name.encode())
+        h.update(sha256_file(path).encode())
+    return h.hexdigest()
+
+# resume 時の検証
+if state.state.input_hash and state.state.input_hash != calculate_input_hash(files):
+    raise ValidationError(
+        "Input has changed since previous run. "
+        "Re-run from scratch or use --force-resume."
+    )
+```
+
+`--force-resume` フラグで bypass 可。ただし silent data loss リスク。
+
+---
+
+## 8. dry-run
+
+### 8.1 dry-run の責務
+- **副作用なし**: ファイル書き込み・DB 変更・外部 API 呼び出し禁止
+- **可視化**: 「何をするか」を表示
+- state file は **書き換えない**
+
+```python
+def export_volume(name: str, output: Path, *, dry_run: bool) -> None:
+    if dry_run:
+        click.echo(f"[DRY-RUN] Would export volume '{name}' to {output}")
+        click.echo(f"[DRY-RUN] Expected size: {estimate_size(name)} bytes")
+        return
+    # ... 実際の処理 ...
+```
+
+### 8.2 dry-run のテスト
+ツール作成時、まず `--dry-run` で動作確認、その後本番実行する習慣。
+
+---
+
+## 9. アンチパターン
+
+- ❌ state file なしで長時間処理（中断したら最初から）
+- ❌ ロックなしの並列実行（race condition）
+- ❌ 非冪等な操作を冪等と仮定（重複実行で副作用増殖）
+- ❌ rollback の途中失敗を無視（部分的に rollback → 不整合）
+- ❌ dry-run で実際に変更を加える（バグ）
+- ❌ state file を append-only ログに（容量肥大、resume 不能）
+- ❌ lock file を unlink で確実に消そうとして失敗を無視（実行中の他プロセス kill リスク）

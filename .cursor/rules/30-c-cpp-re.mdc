@@ -1,0 +1,397 @@
+---
+description: C/C++リバースエンジニアリング規約。IDA Pro (Hex-Rays) 主、Ghidra補助。MSVC/GCC/Clang/MinGW/Borland対応。デコンパイル整形と解析ツール実装の両方を網羅。
+globs: ["**/*.c", "**/*.cpp", "**/*.cc", "**/*.cxx", "**/*.h", "**/*.hpp"]
+alwaysApply: false
+---
+
+# C/C++ リバースエンジニアリング規約
+
+`01-project-context.mdc` の一般規約と `90-security-ethics.mdc` の倫理規約を継承。本ファイルは C/C++ によるリバースエンジニアリング作業（Hex-Rays デコンパイル結果整形・解析ツール実装・IDA SDK プラグイン）特有の規約を記述する。実マルウェア検体・C2 情報の取扱いは 90番 §5 を参照。
+
+## 1. 最優先警告
+
+- **解析環境前提**: 生成する C/C++ コードは隔離環境（FLARE-VM / REMnux / Docker / エアギャップ VM）での解析作業用。ホスト OS でのコンパイル・実行を前提としたコードは生成しない
+- **検体実行コード禁止**: シェルコード実行・DLL インジェクション・プロセスハロウィング等の動的実行コードは作成しない（90番 §3 準拠）。**復元・解析・整形のみ**
+- **配布禁止対象**: パッカー・クリプター・ローダー本体（90番 §2 準拠）
+- **コメント言語**: 日本語コメント基本、技術用語・API 名は英語のまま
+
+## 2. ファイル種別の使い分け
+
+| 拡張子 | 用途 | 命名 |
+|---|---|---|
+| `.c` / `.cpp` | Hex-Rays/Ghidra 整形成果物・解析ツール実装 | `<検体ハッシュ前12桁>_decompiled.c` / `<ツール名>.cpp` |
+| `.h` / `.hpp` | 復元した構造体宣言・関数プロトタイプ | `<検体ハッシュ前12桁>_types.h` / `<ツール名>.h` |
+| `.cc` / `.cxx` | GCC/Clang 系の解析ツール実装 | プロジェクト慣例に従う |
+
+**ファイル先頭ヘッダ**（成果物の場合）:
+
+```c
+/*
+ * 検体: <sha256前12桁>_<元ファイル名>
+ * 解析日: YYYY-MM-DD
+ * 解析者: <ハンドル>
+ * デコンパイラ: IDA Pro Hex-Rays 9.0 / Ghidra 11.x
+ * コンパイラ推定: MSVC 19.x x64 / GCC 11.x / MinGW 10.x / Borland C++ 5.5
+ * 説明: <ファミリ名・段階・機能概要>
+ * 注意: 隔離環境専用。ホスト実行禁止。
+ */
+```
+
+## 3. Hex-Rays デコンパイル整形規約
+
+### 変数命名復元
+
+Hex-Rays の自動命名（`v1`, `a1`, `lpMem` 等）を意味のある名前へ書き換える：
+
+| Hex-Rays 自動 | 復元後（例） | 理由 |
+|---|---|---|
+| `v1`, `v2`, ... | `pProcessName`, `dwImageSize`, `hKernel32` | 用途を反映 |
+| `a1`, `a2`, ... | `pSelf`, `pConfig`, `pBuffer` | 引数を意味で命名 |
+| `Block`, `lpMem` | `pAllocatedShellcode`, `pConfigBlock` | 用途を反映 |
+| `result` | `bSuccess`, `hProcess`, `dwBytesWritten` | 戻り値の意味 |
+
+**命名規約**:
+- Hungarian 記法を Win32 系では推奨（`dw`, `lp`, `h`, `p`, `b`, `cb`, `cch`）
+- C++ クラスのメンバは `m_`、static は `s_`、グローバルは `g_`
+- 解析中の暫定名は `TODO_*` プレフィックス（後で再リネーム）
+
+### 型復元
+
+```c
+// 修正前（Hex-Rays 自動）
+int __fastcall sub_401000(int a1, int a2)
+{
+    int v3;
+    v3 = *(_DWORD *)(a1 + 0x10);
+    return v3 + a2;
+}
+
+// 修正後（型復元・命名整理）
+DWORD __fastcall GetConfigOffsetByIndex(CONFIG_BLOCK *pConfig, DWORD dwIndex)
+{
+    DWORD dwBaseOffset;
+    dwBaseOffset = pConfig->dwBaseAddress;
+    return dwBaseOffset + dwIndex;
+}
+```
+
+### コメント方針
+
+- **WHY を書く、WHAT は書かない**（コードを見れば分かることは書かない）
+- 解析根拠を残す: `// imphash=abc123 で kernel32!VirtualAlloc と特定`
+- 不明箇所は `// TODO: 用途不明、要動的解析` で明示
+- バグ・脆弱性発見時は `// VULN: 〜` プレフィックス（後で grep 可能）
+
+## 4. 構造体復元・型情報
+
+### Windows 内部構造体の慣例名
+
+復元時は WinDbg / ReactOS / 公開ドキュメントの命名に合わせる：
+
+```c
+typedef struct _PEB {
+    BYTE                          InheritedAddressSpace;
+    BYTE                          ReadImageFileExecOptions;
+    BYTE                          BeingDebugged;          // +0x002
+    BYTE                          BitField;
+    PVOID                         Mutant;
+    PVOID                         ImageBaseAddress;       // +0x010 (x86) / +0x010 (x64)
+    PPEB_LDR_DATA                 Ldr;                    // +0x00C / +0x018
+    // ...
+} PEB, *PPEB;
+
+typedef struct _PEB_LDR_DATA {
+    ULONG      Length;
+    BOOLEAN    Initialized;
+    PVOID      SsHandle;
+    LIST_ENTRY InLoadOrderModuleList;
+    LIST_ENTRY InMemoryOrderModuleList;
+    LIST_ENTRY InInitializationOrderModuleList;
+} PEB_LDR_DATA, *PPEB_LDR_DATA;
+```
+
+### COM インターフェース命名
+
+```c
+typedef struct IShellLinkAVtbl {
+    HRESULT (STDMETHODCALLTYPE *QueryInterface)(IShellLinkA*, REFIID, void**);
+    ULONG   (STDMETHODCALLTYPE *AddRef)(IShellLinkA*);
+    ULONG   (STDMETHODCALLTYPE *Release)(IShellLinkA*);
+    // 残りは MSDN/IDL 順に並べる
+} IShellLinkAVtbl;
+```
+
+- IID/CLSID コメントは `// IID_IShellLinkA = {000214EE-0000-0000-C000-000000000046}` 形式
+- vtable 順は SDK ヘッダ順を厳守（順序を間違えると関数特定が崩れる）
+
+## 5. C++ vtable・RTTI・名前マングリング
+
+**4方言の併記**: マスターの解析対象は MSVC / GCC・Clang (Itanium) / MinGW (Itanium) / Borland に分かれるため、デマングル時はコンパイラを先に特定する。
+
+### 各コンパイラのマングリング例
+
+```
+// シンボル: int CFoo::Bar(int) const
+
+MSVC:           ?Bar@CFoo@@QEBAHH@Z
+                  → IDA / undname.exe で復元
+
+Itanium (GCC):  _ZNK4CFoo3BarEi
+                  → c++filt で復元
+
+Itanium (Clang): _ZNK4CFoo3BarEi
+                  → GCC と同一（Itanium ABI 共通）
+
+MinGW:          _ZNK4CFoo3BarEi
+                  → Windows 上だが Itanium ABI を採用
+
+Borland:        @CFoo@Bar$qqrxi
+                  → tdump.exe / 専用デマングラ
+```
+
+### vtable 解析
+
+```c
+// MSVC x64 vtable レイアウト例
+typedef struct _CFoo_vtable {
+    void (__thiscall *DoSomething)(struct _CFoo *this, int arg);
+    int  (__thiscall *GetValue)(struct _CFoo *this);
+    void (__thiscall *destructor)(struct _CFoo *this, int bDelete);
+} CFoo_vtable;
+
+typedef struct _CFoo {
+    CFoo_vtable *vtbl;      // +0x00
+    int          m_value;   // +0x08
+} CFoo;
+```
+
+**vtable 復元手順**:
+1. RTTI 情報（MSVC: `.?AV<ClassName>@@`、Itanium: `typeinfo for <ClassName>`）からクラス名を特定
+2. vtable 配列の各関数ポインタをデコンパイル
+3. `__thiscall` の暗黙 `this` 引数を明示
+4. 仮想デストラクタ（MSVC は `bDelete` フラグ付き）を識別
+
+### RTTI 識別子
+
+- MSVC: `??_R0?AV<Class>@@`（type descriptor）、`??_7<Class>@@6B@`（vftable）
+- Itanium: `_ZTV<MangledName>`（vtable）、`_ZTI<MangledName>`（typeinfo）
+- Borland: 独自テーブル、`@<Class>@@<index>` 形式
+
+### Borland 特有事項
+
+- `__fastcall` の引数渡しが MSVC と異なる（EAX, EDX, ECX の3レジスタ）
+- VCL コンポーネント（`TForm`, `TButton` 等）は専用デマングラが必要
+- Delphi/C++ Builder 由来の検体は `package` セクションが手掛かり
+
+## 6. SEH / EH unwind 表記
+
+### MSVC SEH
+
+```c
+// 元のアセンブリ: __try / __except 構造
+__try {
+    pData = VirtualAlloc(NULL, dwSize, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+    // 例外発生可能性のあるコード
+} __except (EXCEPTION_EXECUTE_HANDLER) {
+    // ハンドラ
+    return FALSE;
+}
+```
+
+- `__try` / `__except` / `__finally` は MSVC 専用、コメントで `// SEH frame` と明示
+- `_EXCEPTION_REGISTRATION_RECORD` 構造体は FS:[0] (x86) / GS:[0] (x64) から辿る
+- C++ 例外: `__CxxFrameHandler3` がハンドラとして登場、Hex-Rays は自動展開する
+
+### GCC / Clang EH
+
+- パーソナリティ関数: `__gxx_personality_v0` (C++) / `__gcc_personality_v0` (C)
+- `.eh_frame` / `.eh_frame_hdr` セクションに unwind 情報
+- DWARF CFI ベース、IDA は自動でデコード
+
+### コメント例
+
+```c
+// SEH: kernel32!UnhandledExceptionFilter にフックして検出回避を試みている
+SetUnhandledExceptionFilter(MyExceptionFilter);
+
+// C++ EH: __CxxFrameHandler3 経由、Hex-Rays が展開
+try {
+    pObj->DoWork();
+} catch (CException &e) {
+    // ...
+}
+```
+
+## 7. Compiler Intrinsics
+
+### x86/x64 頻出 intrinsics
+
+```c
+// PEB アクセス
+PVOID pPeb_x86 = (PVOID)__readfsdword(0x30);   // x86: FS:[0x30]
+PVOID pPeb_x64 = (PVOID)__readgsqword(0x60);   // x64: GS:[0x60]
+
+// TEB アクセス
+PVOID pTeb_x86 = (PVOID)__readfsdword(0x18);   // x86: FS:[0x18]
+PVOID pTeb_x64 = (PVOID)__readgsqword(0x30);   // x64: GS:[0x30]
+
+// タイミング・アンチデバッグ
+unsigned __int64 t1 = __rdtsc();
+_mm_lfence();
+unsigned __int64 t2 = __rdtsc();
+
+// メモリバリア
+_ReadWriteBarrier();
+MemoryBarrier();
+
+// CPU 機能検出
+int cpuInfo[4];
+__cpuid(cpuInfo, 1);
+```
+
+### コンパイラ別差異
+
+| Intrinsic | MSVC | GCC/Clang |
+|---|---|---|
+| TSC 読み取り | `__rdtsc()` | `__builtin_ia32_rdtsc()` |
+| バイトスワップ | `_byteswap_ulong()` | `__builtin_bswap32()` |
+| ビットスキャン | `_BitScanForward()` | `__builtin_ctz()` |
+| アトミック | `_InterlockedExchange()` | `__atomic_exchange_n()` |
+
+→ 解析整形時は **元コンパイラに合わせた intrinsic で復元**する（混在は避ける）
+
+## 8. Win32 API 注釈
+
+### アノテーション方針
+
+```c
+// 注釈なし版（NG: 何の API か追跡しづらい）
+hModule = LoadLibraryA(szName);
+pFunc = GetProcAddress(hModule, "VirtualAlloc");
+
+// 注釈あり版（推奨）
+// LoadLibraryA: kernel32.dll、szName = "kernel32.dll"
+HMODULE hKernel32 = LoadLibraryA(szName);
+// GetProcAddress: kernel32!VirtualAlloc を動的解決（IAT 隠蔽手口）
+LPVOID (WINAPI *pVirtualAlloc)(LPVOID, SIZE_T, DWORD, DWORD) =
+    (LPVOID (WINAPI *)(LPVOID, SIZE_T, DWORD, DWORD))GetProcAddress(hKernel32, "VirtualAlloc");
+```
+
+- API 名の前に `kernel32!` `ntdll!` 等のモジュール接頭辞を付ける
+- 動的解決の場合は **解決元の API（GetProcAddress / GetModuleHandle）も明示**
+- 引数の意味を MSDN ベースでコメント
+
+### MSDN 参照ルール
+
+- 不明な API は MSDN を参照し、関数プロトタイプを `.h` に書き写す
+- 引数のフラグ（`PAGE_EXECUTE_READWRITE = 0x40` 等）は数値ではなく **シンボル名** を使う
+- 廃止 API（`SHGetFolderPath` 等）も MSDN の Deprecated 記載を引用してコメント
+- ハッシュ済み API 名（API hashing）は復元したハッシュ計算ロジックと一緒にコメント
+
+## 9. IDA SDK / IDAPython プラグイン実装
+
+C++ で書く IDA プラグイン側の規約（Python 側は `20-python-malware-analysis.mdc` §5 参照）：
+
+### プロジェクト構造
+
+```
+ida_plugin/
+├── plugin.cpp           # PLUGIN_ENTRY 実装
+├── analysis.cpp         # 解析ロジック
+├── analysis.h
+├── ui.cpp               # UI ヘルパ
+└── CMakeLists.txt       # IDA SDK パス指定
+```
+
+### プラグインエントリ
+
+```cpp
+#include <ida.hpp>
+#include <idp.hpp>
+#include <loader.hpp>
+#include <kernwin.hpp>
+
+static plugmod_t *idaapi init(void) {
+    if (inf_get_filetype() != f_PE) {
+        return PLUGIN_SKIP;  // PE 以外は読み込まない
+    }
+    return PLUGIN_OK;
+}
+
+static bool idaapi run(size_t arg) {
+    // メイン処理
+    return true;
+}
+
+plugin_t PLUGIN = {
+    IDP_INTERFACE_VERSION,
+    PLUGIN_UNL,             // unload after run
+    init,
+    nullptr,                // term
+    run,
+    "Sample Plugin",
+    "Sample Plugin による解析支援",
+    "Sample Plugin",
+    "Ctrl-Shift-S"
+};
+```
+
+### IDA SDK バージョン対応
+
+- IDA 7.x / 8.x / 9.x で API が変わる（`get_func` → `get_func` 維持、`ea_t` 型は共通だが一部 64bit 化）
+- `IDA_SDK_VERSION` マクロでバージョン分岐
+- `#if IDA_SDK_VERSION >= 900` 等の条件コンパイル
+
+### 注意事項
+
+- IDA SDK ヘッダは MSVC / GCC で C++ 標準を揃える（`/std:c++17` 推奨）
+- `qstring`, `qvector` 等の IDA 専用コンテナを使う（STL との混在は最小限）
+- マルチスレッド処理は `execute_sync()` で UI スレッドに戻す
+
+## 10. コメント・命名規則
+
+### 解析メモの書き方
+
+```c
+// =============================================================
+// 関数: CryptDecryptConfig
+// 推定機能: AES-256-CBC で暗号化された設定ブロックを復号
+// 復号鍵: ハードコード `4A 8F 2B ...` (offset +0x4280)
+// IV:    Mutex 名 SHA-256 の上位 16 バイト
+// 参照: https://example.com/family-XYZ-report
+// 解析: 2026-08-15 by JP-Analyst
+// =============================================================
+BOOL CryptDecryptConfig(PVOID pEncrypted, DWORD dwSize, PVOID pOut)
+{
+    // ...
+}
+```
+
+### IoC・C2 情報のマスキング
+
+90番 §5 に従い、配布対象によって書き分け：
+
+```c
+// 社内向け（TLP:AMBER）: フル情報
+#define C2_HOST "evil.example.com"
+#define C2_PORT 4433
+
+// 公開向け（TLP:WHITE）: マスキング
+#define C2_HOST "evil.example[.]com"   // defang 表記
+#define C2_PORT 4433
+```
+
+- ドメインは `evil.example[.]com` の defang 表記
+- IP は `192[.]168[.]1[.]1` の defang
+- 検体ハッシュは公開可（VT 等で既知のもの）
+- ハードコードされた認証情報は公開時に `<REDACTED>` 化
+
+### 命名規則まとめ
+
+- 関数: `PascalCase`（Windows API 慣例に合わせる）
+- ローカル変数: `camelCase` + Hungarian（`dwSize`, `hModule`）
+- グローバル/static: `g_` / `s_` プレフィックス
+- マクロ: `UPPER_SNAKE_CASE`
+- 型: `_PascalCase` (構造体) / `PascalCase` (typedef)、ポインタ別名は `P` プレフィックス
+- 解析中の暫定名: `TODO_*` / `MAYBE_*` プレフィックス
+- 復元できない関数: `unknown_<addr>` または `sub_<addr>` を残す（IDA 名そのまま）
