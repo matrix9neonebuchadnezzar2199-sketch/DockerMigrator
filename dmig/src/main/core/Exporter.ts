@@ -25,7 +25,7 @@ import type {
 } from '@shared/types.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 
-const DMIG_VERSION = '1.0.0';
+const DMIG_VERSION = '0.2.0-poc';
 const APP_VERSION = '0.1.0-poc';
 
 function isAbortLike(e: unknown, signal?: AbortSignal): boolean {

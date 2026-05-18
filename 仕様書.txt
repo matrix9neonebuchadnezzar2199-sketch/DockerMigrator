@@ -601,9 +601,10 @@ dmig/
 
 ---
 
-## 11. dmig manifest 1.1 / 中断・再開（Phase 6 第3回ドラフト v0.1 → **v0.2**）
+## 11. dmig manifest 1.1 / 中断・再開（Phase 6 第3回完了 — 正本 v1.0）
 
-**正本**: `DockerMigrator/docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md`（v0.2: `ChunkRef.contentKind` 追加・`contents` オブジェクト構造の明文化）
+**正本**: `DockerMigrator/docs/dmig-manifest-1.1.md`（v1.0、2026-05-18 昇格）
+**履歴ドラフト**: `DockerMigrator/docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md`
 
 ### 11.1 記録の要約（検証・エラー）
 

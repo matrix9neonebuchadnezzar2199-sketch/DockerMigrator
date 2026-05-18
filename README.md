@@ -30,7 +30,7 @@
 
 本リポジトリの本体アプリは **`dmig/`** 以下の **Electron + React + TypeScript** アプリケーションです。Docker Engine API（[dockerode](https://github.com/apocas/dockerode)）を用いてローカルの Docker Desktop と通信し、USB 等への退避や別マシンへの持ち込みを想定したワークフローを提供します。
 
-現行バージョン（`dmig/package.json` の `version`）: **`0.1.0-poc`**（概念実証。本番運用前提の保証はありません）。
+現行バージョン（`dmig/package.json` の `version`）: **`0.2.0-poc`**（概念実証。本番運用前提の保証はありません）。
 
 Git リモートには **`v0.1.0-poc`** の [annotated tag](https://github.com/matrix9neonebuchadnezzar2199-sketch/DockerMigrator/releases/tag/v0.1.0-poc) を付与済みです（GitHub の「Releases」に説明文やバイナリを載せるのは任意です。タグだけでも `git checkout` や比較の基点になります）。
 
@@ -45,7 +45,7 @@ Git リモートには **`v0.1.0-poc`** の [annotated tag](https://github.com/m
 | **差分・スナップショット** | 基底スナップショットに対する差分エクスポート（フル／デルタ）やプレビュー用の計算 |
 | **事前検証** | 出力先パス、空き容量、サイズ推定（圧縮目安）などの preflight |
 | **運用ショートカット** | Compose 向け `stop` / `pull`、dangling イメージの `prune`（確認ダイアログ付き）など（ホストの `docker` CLI 経由） |
-| **中断・再開 (manifest 1.1)** | `partialState` / `ChunkRef`（**`contentKind` + `contentId`**）とエラー **E2070–E2075** を `dmig` に追加済み。Importer 入口分離・Exporter 原子書き込み・UI は [正本ドラフト v0.2](./docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md) に沿って順次実装中。 |
+| **中断・再開 (manifest 1.1)** | `partialState` / `ChunkRef`（**`contentKind` + `contentId`**）、エラー **E2070–E2075**、Importer 入口分離、Exporter 原子書き込み、Import 再開 UI まで Phase 6 第3回で実装完了。詳細は [正本 v1.0](./docs/dmig-manifest-1.1.md) を参照。 |
 
 詳細な設計思想やデータ種別の整理はリポジトリ直下の **[仕様書.txt](./仕様書.txt)** を参照してください。
 
@@ -95,7 +95,7 @@ npm run build:linux  # Linux 向けパッケージ
 |------|------------|------|
 | **通常リリース** | `v0.2.0` | [Semantic Versioning 2.0.0](https://semver.org/lang/ja/) に沿った安定版 |
 | **プレリリース** | `v0.2.0-beta.1` | テスト配布・フィードバック用 |
-| **PoC / 実験** | `v0.1.0-poc` | 現行のように `package.json` と揃えたマーカー付きタグも可 |
+| **PoC / 実験** | `v0.2.0-poc` | 現行のように `package.json` と揃えたマーカー付きタグも可 |
 
 **付け方（annotated 推奨）**
 
@@ -128,6 +128,7 @@ git push origin v0.2.0
 
 | ドキュメント | 内容 |
 |--------------|------|
+| [CHANGELOG.md](./CHANGELOG.md) | リリース単位の変更履歴 |
 | [仕様書.txt](./仕様書.txt) | 設計提案・データ種別・アーキテクチャ |
 | [docs/](./docs/) | 開発日記、manifest ドラフトなど |
 | [AGENTS.md](./AGENTS.md) | エージェント向け運用（リモート URL、push、README 同期） |

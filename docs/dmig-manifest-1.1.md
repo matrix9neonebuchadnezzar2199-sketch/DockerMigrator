@@ -1,17 +1,9 @@
-# dmig manifest schemaVersion 1.1 / 中断・再開機能
+# dmig manifest schemaVersion 1.1 / 中断・再開機能（v1.0）
 
-> **Note**: 本書は **v1.0** (`docs/dmig-manifest-1.1.md`) として昇格済み。本ファイルは v0.1 → v0.2.2 までのドラフト履歴を残す目的で保持している。最新仕様の参照は正本 v1.0 を見ること。
-
-**Draft v0.2.2**（Phase 6 第3回 step 4 — Exporter 側 partialState 段階 A）  
-**文書日付**: 2026-05-17（初版）、**v0.2 改訂**: 2026-05-18、**v0.2.2 改訂**: 2026-05-14  
-**記録日**: 2026-05-18（マスター承認・設計メモ取り込み済み）
-
-## v0.1 → v0.2（改訂サマリ）
-
-- **`ChunkRef`** に **`contentKind`**（`'image' | 'volume' | 'composeProject'`）を追加。`contentId` は当該系統内のエントリ **`name`** のみを指す（現行 `DmigManifest.contents` が `{ images, volumes?, composeProjects? }` のオブジェクト構造であることの反映）。
-- v0.1 の「`contentId` だけで `contents` 全体を一意に指す」前提を撤回。**`(contentKind, contentId, chunkIndex)`** で衝突を排除する。
-- **§3.5**・用語「content / entry」を現行実装に合わせて修正。
-- **§10** 型定義サンプルを同期。**実装メモ**の「`name` + 種別プレフィックス」の単一文字列案は破棄し、構造化フィールドに統一。
+**Version**: v1.0（Phase 6 第3回完了時点の確定版）
+**文書日付**: 2026-05-18
+**根拠コミット**: `47f40c1`（型）、`b991483`（Importer/probe）、`c3c80b2`（Exporter 段階 A / resumeExport）、`c3af0bd`（Import UI / 再開ダイアログ / 案内帯）
+**履歴ドラフト**: `docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md`
 
 ---
 
@@ -49,7 +41,7 @@
 
 本書は dmig の manifest 仕様 1.1 系および中断・再開機能の設計仕様である。`schemaVersion` 1.0 の仕様（既存）からの差分を中心に記述し、1.0 と互換を保ちながら 1.1 を追加導入することを目的とする。
 
-本書は Phase 6 第3回の着手段階のドラフトであり、実装過程で不整合が見つかれば随時改訂する。改訂は版番号（v0.1, v0.2, …）で管理する。
+**本書は Phase 6 第3回完了時点の確定仕様 (v1.0) である**。以降の改修は別ドラフトを起こし v1.1 等で昇格する。
 
 ---
 
@@ -330,7 +322,7 @@ export interface PartialState {
 
 ---
 
-## 12. 未確定事項（v0.3 以降）
+## 12. 未確定事項（v1.1 以降への持ち越し）
 
 - chunk サイズの推奨値とポリシー（可変か固定か）。
 - `resumeToken` を解釈できないバージョン差のときの挙動。
@@ -343,7 +335,7 @@ export interface PartialState {
 ## 実装メモ（ドラフト → コード化時）
 
 - 現行 `ManifestImageEntry` 等に独立 `id` が無い場合でも、**`contentKind` + `contentId`（= 当該系統の `name`）** で Exporter/Importer を一貫させる。単一文字列へのエンコードは行わない。
-- 本ファイルは `仕様書.txt` の §11 から参照される正本のドラフトとする。
+- 本書は `仕様書.txt` の §11 から参照される manifest 1.1 の正本である。
 
 ---
 
@@ -352,3 +344,4 @@ export interface PartialState {
 - **v0.1** (2026-05-17): 初版。
 - **v0.2** (2026-05-18): `contents` が配列ではなくオブジェクト（`images` / `volumes` / `composeProjects`）であることが判明したため、`ChunkRef` に `contentKind` を追加して系統識別を可能にした。これに伴い §3.3 と §10 を改訂。`partialState` 本体の構造は変更なし。
 - **v0.2.2** (2026-05-14): Exporter 側 `partialState` 書き込みを段階 A（1 entry = 1 chunk）で実装することを明文化。§5.1 に `ManifestWriter` / `write-file-atomic` を追記し §5.1.1 を新設。§3.3 に全ゼロハッシュのプレースホルダ規約を注記。段階 B（byte 単位 chunk 分割）は別フェーズに切り出し。
+- **v1.0** (2026-05-18): Phase 6 第3回完了に伴い v0.2.2 を確定版として昇格。仕様変更なし、見出し・参照のみ調整。

@@ -423,6 +423,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1427">詳細</a></td>
       </tr>
+      <tr>
+        <td>14:50</td>
+        <td>Phase 6 第3回 step 6: CHANGELOG 新設・正本 v1.0 昇格・仕様書 §11 / README 参照更新・version 0.2.0-poc</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1450">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -677,6 +683,41 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code> / <code>npm run build</code>（<code>dmig</code>）</li>
     <li>Commit: <code>c3af0bd</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1450">
+  <h2>Phase 6 第3回 step 6: CHANGELOG 新設・正本 v1.0 昇格</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 14:50</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>Phase 6 第3回（manifest 1.1 / 中断・再開）の実装完了に伴い、ドキュメント側を確定版に昇格した。<code>CHANGELOG.md</code> を Keep a Changelog 形式で新設し <code>0.2.0-poc</code> 節に第3回の Added / Changed をまとめた。<code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code> を <code>docs/dmig-manifest-1.1.md</code> に v1.0 として昇格し、ドラフト側は履歴として残し冒頭で正本を参照させた。<code>仕様書.txt</code> §11 と <code>README.md</code> の中断・再開行も正本 v1.0 を指すよう更新。<code>dmig/package.json</code> および <code>DMIG_VERSION</code> / <code>composeExportManifestSession</code> の <code>dmigVersion</code> を <code>0.2.0-poc</code> に同期。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>CHANGELOG.md</code></li>
+    <li><span class="op op-add">+</span> <code>docs/dmig-manifest-1.1.md</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code>（冒頭 Note のみ）</li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code>（§11 ヘッダ・参照行のみ）</li>
+    <li><span class="op op-mod">~</span> <code>README.md</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/package.json</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/Exporter.ts</code> / <code>dmig/src/main/core/manifest/composeExportManifestSession.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>ドラフト v0.2.2 を v1.0 として昇格する際、本文・表・JSON 例・型サンプルは一切変更しない方針を採った。仕様の意味論変更は別ドラフトに起こす運用とし、本 step 6 は「参照経路の確定」と「変更履歴の単一窓口化（CHANGELOG）」にスコープを絞った。version は SemVer のマイナー上げに相当する追加（中断・再開機能の導入）として <code>0.2.0-poc</code> を採用。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code> / <code>npm run build</code>（<code>dmig</code>）</li>
+    <li>Commit: pending</li>
   </ul>
 </section>
 </main>

@@ -143,7 +143,7 @@ export class ComposeExportManifestSession {
 
     const ping = await docker.ping().catch(() => ({ version: 'unknown' }));
     const manifest: DmigManifest = {
-      dmigVersion: '1.0.0',
+      dmigVersion: '0.2.0-poc',
       schemaVersion: '1.1',
       createdAt: new Date().toISOString(),
       source: {
