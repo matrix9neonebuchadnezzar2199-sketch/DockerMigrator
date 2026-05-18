@@ -5,7 +5,11 @@
 
 ## [Unreleased]
 
-（次のリリースに向けた未公開変更をここに積む）
+### Changed
+
+- `DockerAdapter` がコンストラクタで `process.env.DOCKER_HOST` を尊重するようになった。設定されている場合は `new Docker()` を引数なしで呼び、`docker-modem` の `defaultOpts()` に解釈を委ねる（`unix://` / `npipe://` / `tcp://` / `ssh://` と `DOCKER_TLS_VERIFY` / `DOCKER_CERT_PATH` / `SSH_AUTH_SOCK` の自動展開を含む）。未設定なら従来どおり OS 別の `socketPath` を明示渡しして振る舞いを完全保持。これにより `execFile('docker', ...)` で起動する子プロセスと `dockerode` 経由の daemon 接続先が常に一致する。
+- (internal) `dmig/src/main/ipc.ts` を責務別モジュール `ipc/system` / `ipc/exportImages` / `ipc/importImages` / `ipc/compose` / `ipc/preflight` / `ipc/snapshot` / `ipc/shared` に分割。`registerIpcHandlers` は `DockerAdapter` を 1 回だけ生成して `HandlerDeps` として各モジュールに渡すオーケストレータに薄くした。IPC チャンネル名・引数型・戻り値型・進捗イベント・preload・Renderer は不変。
+- (internal) `Importer.importImages` のシグネチャを `(opened: OpenedPackageBase, selectedImages: string[], signal?)` に変更。内部の `readManifest` 呼び出しを削除し、`dmig:import` ハンドラ側で `openAsBase(req.packageDir)` を呼んで `OpenedPackageBase` を組み立てる。Main 側で「1 IPC 呼び出し = 1 回 `manifest.json` 読み」を保証。`ComposeImporter` は既に保持している `dmigManifest` から `OpenedPackageBase` をインライン生成して渡す。`ImportRequest` 型・IPC チャンネル名・preload・Renderer は不変。
 
 ## [0.2.0-poc] - 2026-05-18
 

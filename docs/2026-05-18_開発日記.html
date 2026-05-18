@@ -447,6 +447,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1535">詳細</a></td>
       </tr>
+      <tr>
+        <td>15:46</td>
+        <td>クリーンアップ: 指示書 3 件を git 管理化（R-1/R-2/R-3）、<code>CHANGELOG</code> [Unreleased] 追記、Phase 7 テスト厚め化の計画書を新設</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1546">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -826,6 +832,39 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code>（19 tests / 緑）/ <code>npm run build</code>（<code>dmig</code>）</li>
     <li>Commit: <code>6013eba</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1546">
+  <h2>R-1/R-2/R-3 完了後のクリーンアップと Phase 7 計画</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 15:46</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>コードレビュー指摘 R-1 / R-2 / R-3 の三件がすべて消化されたタイミングで以下を実施した。<strong>(1) 指示書 3 件の git 管理化</strong>: <code>docs/instructions/code-review-r{1,2,3}-*.md</code> を完了済タスクの spec / ADR として残し、後日の参照経路を確保（先行コミット <code>665f3e6</code> として push 済み）。<strong>(2) CHANGELOG 更新</strong>: <code>[Unreleased]</code> セクションに R-2 を Changed（<code>DOCKER_HOST</code> 尊重はユーザー可視）、R-1 / R-3 を Changed (internal) として 3 行追記。バージョンは bump せず <code>Unreleased</code> 積みに留めた。<strong>(3) Phase 7 計画書</strong>: <code>docs/instructions/phase7-test-coverage-plan.md</code> を新設。仕様書 §9 の Phase 7（B: 差分・再開のテスト厚め）に向けて、未カバー領域を 6 つに分類し、Step 1〜5 の分割設計、共通 fixture 設計、スコープ外項目、リスクと対策、出口条件を確定。テスト数 19 → 44 以上を目標とした。実装着手は次セッション以降、各 Step は別指示書を起こしてマスター承認後に着手する運用とした。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>docs/instructions/code-review-r1-importer-onepass-instructions.md</code>（<code>665f3e6</code> で先行追加）</li>
+    <li><span class="op op-add">+</span> <code>docs/instructions/code-review-r2-dockerhost-instructions.md</code>（同上）</li>
+    <li><span class="op op-add">+</span> <code>docs/instructions/code-review-r3-ipc-split-instructions.md</code>（同上）</li>
+    <li><span class="op op-add">+</span> <code>docs/instructions/phase7-test-coverage-plan.md</code></li>
+    <li><span class="op op-mod">~</span> <code>CHANGELOG.md</code>（<code>[Unreleased]</code> Changed 追記）</li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>Phase 7 を 1 セッションで全量実装する案は破棄し、計画書のみ作成する形に切り替えた。理由は、合成 manifest / 合成 tar.zst / sha256 計算 / Docker mock の整備、および ipcMain integration のハーネス設計が <strong>テスト本数の少なさに比して fixture 設計コストが重い</strong>ため。Step 1（<code>importImages</code> 単体）から段階的に積むことで、Step 2〜4 で fixture が再利用でき、最終的に Step 5（周辺カバレッジ）まで一筆書きにできる。<code>v0.2.1-poc</code> / <code>v0.3.0-poc</code> のタグ判断は Phase 7 完了時に行う。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li>ドキュメントのみの変更。コード変更なし、テスト・ビルド再実行は不要。</li>
+    <li>Commit: <code>665f3e6</code>（指示書 3 件）/ <code>pending</code>（本エントリ + CHANGELOG + Phase 7 計画書）</li>
   </ul>
 </section>
 </main>
