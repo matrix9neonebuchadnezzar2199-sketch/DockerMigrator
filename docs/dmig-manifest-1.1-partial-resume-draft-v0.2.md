@@ -116,6 +116,21 @@
 
 ### 3.3 ChunkRef
 
+| フィールド | 型 | 必須 | 説明 |
+|-----------|----|-----|------|
+| `contentKind` | ContentKind | 必須 | 系統識別子（`'image'` / `'volume'` / `'composeProject'`） |
+| `contentId` | string | 必須 | 当該系統内の `name` を流用 |
+| `chunkIndex` | number | 必須 | 0 始まり |
+| `byteOffset` | number | 必須 | content 内のバイトオフセット |
+| `byteLength` | number | 必須 | 本 chunk のバイト長 |
+| `expectedSha256` | string | 必須 | 本 chunk の期待 SHA-256（hex 小文字） |
+
+- `byteOffset` + `byteLength` は content の総バイト長を超えてはならない。
+- 同一 (`contentKind`, `contentId`, `chunkIndex`) は `pendingChunks` 内に高々 1 個。
+- `contentId` は当該系統（`contentKind`）内での一意性のみ保証される。系統をまたぐと衝突しうるため、識別には常に `contentKind` とセットで扱う。
+
+JSON 例:
+
 ```json
 {
   "contentKind": "image",
@@ -126,11 +141,6 @@
   "expectedSha256": ""
 }
 ```
-
-- `contentKind`: `'image' | 'volume' | 'composeProject'`。`manifest.contents` のどの配列を参照するか。
-- `contentId`: **当該 `contentKind` 配列内**のエントリの `name` と一致させる（現行 `ManifestImageEntry` / `ManifestVolumeEntry` / `ManifestComposeEntry` に独立 `id` が無い前提）。将来 `id` を追加した場合も、ここは系統内の安定キーを指す文字列とする。
-- `byteOffset` + `byteLength` は当該 content の総バイト長を超えないこと。
-- 同一 **`(contentKind, contentId, chunkIndex)`** は `pendingChunks` 内に高々 1 個。
 
 ### 3.4 ChecksumPolicy
 
@@ -313,3 +323,10 @@ export interface PartialState {
 
 - 現行 `ManifestImageEntry` 等に独立 `id` が無い場合でも、**`contentKind` + `contentId`（= 当該系統の `name`）** で Exporter/Importer を一貫させる。単一文字列へのエンコードは行わない。
 - 本ファイルは `仕様書.txt` の §11 から参照される正本のドラフトとする。
+
+---
+
+## 変更履歴
+
+- **v0.1** (2026-05-17): 初版。
+- **v0.2** (2026-05-18): `contents` が配列ではなくオブジェクト（`images` / `volumes` / `composeProjects`）であることが判明したため、`ChunkRef` に `contentKind` を追加して系統識別を可能にした。これに伴い §3.3 と §10 を改訂。`partialState` 本体の構造は変更なし。

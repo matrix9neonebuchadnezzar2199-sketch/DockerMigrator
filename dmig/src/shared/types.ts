@@ -54,17 +54,31 @@ export type ChecksumPolicy = 'verify-all' | 'verify-resumed' | 'trust-completed'
 export type InterruptionReason = 'user-cancel' | 'error' | 'crash';
 
 /**
- * manifest `contents` 内のどの配列に属するか。`ChunkRef` が `contentId`（当該系統内の `name`）だけでは
- * 系統間で衝突し得るため、系統を明示する。
+ * manifest `contents` の系統を識別する。
+ * 異なる系統間で `name` が衝突した場合に、chunk が指す対象を一意に特定するため
+ * `ChunkRef` とセットで使う。
+ *
+ * 系統が追加された場合は本型に追加し、Importer 側の `chunkRef` 解決などの
+ * 網羅 `switch` がコンパイルエラーで検知できる形を維持する。
  */
 export type ContentKind = 'image' | 'volume' | 'composeProject';
 
 /**
- * 未完了チャンクへの参照。
+ * 未完了 chunk への参照。
  *
- * - `contentKind`: `contents.images` / `contents.volumes` / `contents.composeProjects` のいずれか。
- * - `contentId`: 当該配列内エントリの **`name` と同一**（現行 `Manifest*Entry` に独立 `id` が無い前提）。
- *   将来 `id` を追加した場合も、`contentId` はその系統内の安定キーを指す文字列として解釈する。
+ * `contentKind` + `contentId` の複合キーで `manifest.contents` 内のエントリを
+ * 一意に指す。`contentId` は当該系統内の `name`（現行 `ManifestImageEntry.name` 等）
+ * を流用する。
+ *
+ * 将来 `contents` エントリに独立した `id` を追加した場合は、本コメントと
+ * Importer 側の解決ロジックを更新して `id` 参照に統一する。
+ *
+ * 不変条件:
+ *   - `byteOffset` >= 0
+ *   - `byteLength` > 0
+ *   - `byteOffset` + `byteLength` <= 該当 content の総バイト長
+ *   - 同一 (`contentKind`, `contentId`, `chunkIndex`) は `pendingChunks` 内に高々 1 個
+ *   - `expectedSha256` は hex 小文字 64 文字想定
  */
 export interface ChunkRef {
   contentKind: ContentKind;
