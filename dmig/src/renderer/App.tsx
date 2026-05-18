@@ -4,8 +4,9 @@ import { Sidebar } from './components/Sidebar.js';
 import { ExportPage } from './pages/ExportPage.js';
 import { ImportPage } from './pages/ImportPage.js';
 import { ComposePage } from './pages/ComposePage.js';
+import { ResumePage } from './pages/ResumePage.js';
 
-export type PageKey = 'export' | 'import' | 'compose';
+export type PageKey = 'export' | 'import' | 'compose' | 'resume';
 
 export const App: React.FC = () => {
   const [page, setPage] = useState<PageKey>('compose');
@@ -25,6 +26,7 @@ export const App: React.FC = () => {
         {page === 'export' && <ExportPage />}
         {page === 'import' && <ImportPage />}
         {page === 'compose' && <ComposePage />}
+        {page === 'resume' && <ResumePage />}
       </div>
     </ErrorBoundary>
   );
