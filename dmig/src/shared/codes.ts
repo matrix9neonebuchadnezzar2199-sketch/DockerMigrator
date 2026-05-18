@@ -1,7 +1,7 @@
 /**
  * dmig エラーコード定義（Main / Renderer 共通）
  * E1xxx: Docker接続/操作
- * E2xxx: エクスポート処理（E205x: スナップショット / Phase 6、E206x: 差分計算 / Phase 6）
+ * E2xxx: エクスポート処理（E205x: スナップショット / Phase 6、E206x: 差分計算 / Phase 6、E207x: manifest 1.1 中断・再開 / Phase 6）
  * E3xxx: 圧縮処理
  * E4xxx: I/O・USB
  * E5xxx: インポート処理（E504x: 差分基底 / Phase 6）
@@ -40,6 +40,19 @@ export const ErrorCodes = {
   DIFF_COMPUTATION_FAILED: 'E2060',
   SNAPSHOT_INCOMPATIBLE: 'E2061',
   NO_BASE_SNAPSHOT: 'E2062',
+
+  /** manifest 1.1: 中断パッケージを差分の基底として開こうとした */
+  INVALID_BASE_PACKAGE: 'E2070',
+  /** manifest 1.1: 完了パッケージを再開対象として開こうとした */
+  NOT_A_PARTIAL_PACKAGE: 'E2071',
+  /** manifest 1.1: chunk の SHA-256 が期待値と一致しない */
+  CHUNK_CHECKSUM_MISMATCH: 'E2072',
+  /** manifest 1.1: エクスポート時の previousPackage が中断状態 */
+  EXPORT_PREVIOUS_IS_PARTIAL: 'E2073',
+  /** manifest 1.1: previousPackage チェインに中断ノードが含まれる */
+  CHAIN_CONTAINS_PARTIAL: 'E2074',
+  /** manifest 1.1: partialState の構造が不正 */
+  MANIFEST_PARTIAL_INVALID: 'E2075',
 
   COMPRESS_FAILED: 'E3001',
   CHECKSUM_FAILED: 'E3002',
@@ -116,6 +129,13 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   E2060: '差分の計算に失敗しました。スナップショットまたは Docker の状態を確認してください。',
   E2061: '基底スナップショットの端末識別子が現在の端末と一致しません。同じ端末で作成されたスナップショットを使用してください。',
   E2062: '差分モードが指定されましたが、基底となるスナップショットが存在しません。先にフルエクスポートを実行してください。',
+
+  E2070: '中断されたパッケージを差分の基底として開くことはできません。',
+  E2071: '完了済みパッケージを再開対象として開くことはできません。',
+  E2072: 'チャンクの SHA-256 検証に失敗しました。',
+  E2073: 'エクスポートの基底パッケージが中断状態です。完了パッケージを基底にしてください。',
+  E2074: '基底パッケージのチェインに中断ノードが含まれています。',
+  E2075: 'manifest の partialState が不正です。',
 
   E3001: 'zstd 圧縮処理に失敗しました。',
   E3002: 'SHA-256 ハッシュの計算に失敗しました。',

@@ -45,6 +45,7 @@ Git リモートには **`v0.1.0-poc`** の [annotated tag](https://github.com/m
 | **差分・スナップショット** | 基底スナップショットに対する差分エクスポート（フル／デルタ）やプレビュー用の計算 |
 | **事前検証** | 出力先パス、空き容量、サイズ推定（圧縮目安）などの preflight |
 | **運用ショートカット** | Compose 向け `stop` / `pull`、dangling イメージの `prune`（確認ダイアログ付き）など（ホストの `docker` CLI 経由） |
+| **中断・再開 (manifest 1.1)** | `partialState` / `ChunkRef` 等の型とエラー **E2070–E2075** を `dmig` に追加済み。Importer 入口分離・Exporter 原子書き込み・UI は [正本ドラフト](./docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md) に沿って順次実装中。 |
 
 詳細な設計思想やデータ種別の整理はリポジトリ直下の **[仕様書.txt](./仕様書.txt)** を参照してください。
 

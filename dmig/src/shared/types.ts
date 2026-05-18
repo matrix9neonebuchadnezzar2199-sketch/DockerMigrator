@@ -31,6 +31,64 @@ export interface ProgressEvent {
   etaSeconds?: number;
 }
 
+// =============================================================================
+// manifest 1.1: 中断・再開 (partialState)
+// 正本: docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md
+// =============================================================================
+
+/**
+ * manifest.json のスキーマ世代。
+ * 省略時は Importer 等で 1.0 相当として扱う。
+ */
+export type SchemaVersion = '1.0' | '1.1';
+
+/**
+ * 再開時のチャンク検証方針（パッケージ単位で表明する意図）。
+ * 1.0 manifest やフィールド欠落時は Importer 側で安全側（verify-all 相当）に寄せる想定。
+ */
+export type ChecksumPolicy = 'verify-all' | 'verify-resumed' | 'trust-completed';
+
+/**
+ * 中断理由（診断用・任意）。再開可否の判定には使わない（pendingChunks の有無で決める）。
+ */
+export type InterruptionReason = 'user-cancel' | 'error' | 'crash';
+
+/**
+ * 未完了チャンクへの参照。
+ *
+ * `contentId` は manifest `contents` 内の論理エントリを指す。
+ * 現行スキーマでは `contents` が配列ではなく `{ images, volumes?, composeProjects? }` 構造であり、
+ * 各配列要素の **`name` を contentId として流用**する（将来 `id` を別途追加しても、
+ * Importer で正規化すれば ChunkRef 側の string 型は維持できる）。
+ *
+ * 同一パッケージ内でイメージ名とボリューム名が衝突する可能性は低いが、
+ * 将来 `image:...` / `volume:...` 形式へプレフィックス化する余地を残す。
+ */
+export interface ChunkRef {
+  contentId: string;
+  chunkIndex: number;
+  byteOffset: number;
+  byteLength: number;
+  /** SHA-256  hex 小文字 64 文字想定 */
+  expectedSha256: string;
+}
+
+/**
+ * 中断パッケージのメタ情報。完了パッケージにはキーごと存在させない。
+ * `pendingChunks` は 1 件以上（空配列の partialState は不正）。
+ */
+export interface PartialState {
+  pendingChunks: ChunkRef[];
+  /** ISO8601 */
+  lastUpdatedAt: string;
+  checksumPolicy: ChecksumPolicy;
+  /**
+   * Exporter 内部用の不透明トークン（ファイルオフセット等）。Importer は解釈しない。
+   */
+  resumeToken?: string;
+  interruptionReason?: InterruptionReason;
+}
+
 export interface DmigManifest {
   dmigVersion: string;
   createdAt: string;
@@ -49,7 +107,7 @@ export interface DmigManifest {
   };
   totalSize: number;
   /** Phase 6: マニフェストスキーマ。無い場合は v1.0 として扱う。 */
-  schemaVersion?: '1.0' | '1.1';
+  schemaVersion?: SchemaVersion;
   /** Phase 6: 差分パッケージの基底となる前回パッケージ。フルエクスポート時は省略。 */
   previousPackage?: {
     id: string;
@@ -57,6 +115,11 @@ export interface DmigManifest {
   };
   /** Phase 6: パッケージ全体の基底参照（差分チェーン用、任意）。 */
   baseRef?: string;
+  /**
+   * 1.1 のみ・中断パッケージのみ。完了パッケージでは省略する。
+   * 存在する場合 `pendingChunks.length >= 1`。
+   */
+  partialState?: PartialState;
 }
 
 export interface ManifestImageEntry {

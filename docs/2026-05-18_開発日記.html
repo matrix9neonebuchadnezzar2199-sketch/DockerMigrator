@@ -393,6 +393,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1052">詳細</a></td>
       </tr>
+      <tr>
+        <td>10:57</td>
+        <td>Phase 6 第3回 step 1: manifest 1.1 <code>partialState</code> 型（<code>SchemaVersion</code> 等）と <code>E2070–E2075</code>、調査メモ反映</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1057">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -500,6 +506,34 @@ body.diary > footer {
   <ul>
     <li><code>git push origin main</code>、annotated タグ <code>v0.1.0-poc</code> を <code>origin</code> に push</li>
     <li>Commit: <code>01f0b88</code>（README コミット）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1057">
+  <h2>Phase 6 第3回: manifest 1.1 型と E207x</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 10:57</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>types.ts</code> に <code>SchemaVersion</code>、<code>ChecksumPolicy</code>、<code>InterruptionReason</code>、<code>ChunkRef</code>、<code>PartialState</code> を追加し、<code>DmigManifest</code> に <code>partialState?</code> と <code>schemaVersion</code> を <code>SchemaVersion</code> ユニオンで統一。<code>contents</code> が配列でない現行形をコメントで明示し、<code>ChunkRef.contentId</code> は各エントリの <code>name</code> 流用方針を記載。<code>codes.ts</code> に <strong>E2070–E2075</strong>（衝突なし、E2062 の直後・E3001 の前）を追加。</p>
+
+  <h3>設計判断</h3>
+  <p><code>Importer.open</code> は存在せず <code>readManifest</code> / <code>importImages</code> のみ。step 3 の入口分離は新メソッド追加＋ IPC の段階的移行が妥当。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/codes.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>README.md</code> / <code>dmig/.cursorrules</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> 成功</li>
   </ul>
 </section>
 </main>
