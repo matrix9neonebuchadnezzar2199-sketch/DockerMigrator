@@ -435,6 +435,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1652">詳細</a></td>
       </tr>
+      <tr>
+        <td>17:15</td>
+        <td>Phase 6 第2回後半 (#8b): IPC / Preload / Compose UI 差分プレビュー・<code>exportCompose</code> 差分・lint 修正</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1715">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -711,6 +717,40 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（main 26 modules）</li>
   </ul>
+</section>
+
+<section class="entry" id="entry-1715">
+  <h2>Phase 6 第2回後半 — 差分エンジン（IPC / Preload / UI）</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 17:15</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>dmig:listSnapshots</code> / <code>deleteSnapshot</code> / <code>computeDiff</code> を <code>ipc.ts</code> に追加。<code>export</code> / <code>exportCompose</code> の <code>diffMode === 'delta'</code> でスナップショット差分に基づき対象を絞り込み、成功後 <code>applyDeltaManifestInPlace</code> とスナップショット自動保存。Preload の <code>DmigAPI</code> 拡張。<code>useDiffPreview</code>・<code>DiffPreviewDialog</code>・<code>ComposePage</code> の差分 UI。<code>styles.css</code> に Catppuccin 系の Phase 6 スタイル末尾追記。<code>ipc.ts</code> の未使用型 import 削除と不要 <code>eslint-disable</code> 除去で lint クリーン。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/ipc.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/preload/index.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/pages/ComposePage.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/styles.css</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/hooks/useDiffPreview.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/DiffPreviewDialog.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code>（差分フィールド・<code>ComposeExportRequest</code> 等、会話前半からの継続）</li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/Exporter.ts</code>（戻り値に <code>packDir</code> 等）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（main 26 modules、renderer 42 modules）</li>
+    <li>Commit: <code>062c20a</code>（作業ツリーに未コミット差分があれば追記要更新）</li>
+  </ul>
+
+  <h3>原案からの差分</h3>
+  <p>プロンプトは <code>dmig:export</code> の <code>imageRefs</code> 中心だが、本ツールは Compose 経路が主のため <code>exportCompose</code> でも同様の差分フローと <code>projectNames</code> の絞り込みを実装。<code>DiffPreviewDialog</code> はオープン時に除外セットとタブをリセット。<code>ComposeExportRequest</code> を明示 import。</p>
 </section>
 </main>
 

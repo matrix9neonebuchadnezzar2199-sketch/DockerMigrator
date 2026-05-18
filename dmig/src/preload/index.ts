@@ -17,6 +17,10 @@ import type {
   PreflightResult,
   ErrorReportRequest,
   ErrorReportResult,
+  DiffPreviewRequest,
+  DiffPreviewResult,
+  SnapshotSummary,
+  ComposeLifecycleRequest,
 } from '../shared/types.js';
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: DmigErrorPayload };
@@ -57,6 +61,18 @@ export interface DmigAPI {
   preflight(req: PreflightRequest): Promise<Result<PreflightResult>>;
   /** エラーレポート ZIP を生成して保存 */
   saveErrorReport(req: ErrorReportRequest): Promise<Result<ErrorReportResult>>;
+
+  /** Phase 6: スナップショット一覧 */
+  listSnapshots(): Promise<Result<SnapshotSummary[]>>;
+  /** Phase 6: スナップショット削除 */
+  deleteSnapshot(id: string): Promise<Result<void>>;
+  /** Phase 6: 差分プレビュー */
+  computeDiff(req: DiffPreviewRequest): Promise<Result<DiffPreviewResult>>;
+
+  /** 単一 Compose プロジェクトに対し docker compose stop / pull を実行 */
+  composeLifecycle(req: ComposeLifecycleRequest): Promise<Result<void>>;
+  /** dangling イメージの prune（確認ダイアログあり） */
+  pruneDanglingImages(): Promise<Result<{ skipped: true } | { skipped: false; stdout: string }>>;
 }
 
 const api: DmigAPI = {
@@ -86,6 +102,13 @@ const api: DmigAPI = {
 
   preflight: (req) => ipcRenderer.invoke('dmig:preflight', req),
   saveErrorReport: (req) => ipcRenderer.invoke('dmig:saveErrorReport', req),
+
+  listSnapshots: () => ipcRenderer.invoke('dmig:listSnapshots'),
+  deleteSnapshot: (id) => ipcRenderer.invoke('dmig:deleteSnapshot', id),
+  computeDiff: (req) => ipcRenderer.invoke('dmig:computeDiff', req),
+
+  composeLifecycle: (req) => ipcRenderer.invoke('dmig:composeLifecycle', req),
+  pruneDanglingImages: () => ipcRenderer.invoke('dmig:pruneDanglingImages'),
 };
 
 contextBridge.exposeInMainWorld('dmig', api);

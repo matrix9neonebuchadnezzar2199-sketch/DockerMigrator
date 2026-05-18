@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Sidebar } from './components/Sidebar.js';
 import { ExportPage } from './pages/ExportPage.js';
 import { ImportPage } from './pages/ImportPage.js';
@@ -18,13 +19,13 @@ export const App: React.FC = () => {
   }, []);
 
   return (
-    <>
+    <ErrorBoundary>
       <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
       <div className="main">
         {page === 'export' && <ExportPage />}
         {page === 'import' && <ImportPage />}
         {page === 'compose' && <ComposePage />}
       </div>
-    </>
+    </ErrorBoundary>
   );
 };

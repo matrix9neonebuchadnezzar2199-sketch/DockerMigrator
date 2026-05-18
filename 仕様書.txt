@@ -600,3 +600,30 @@ dmig/
 | USBの書込速度ボトルネック | 低 | zstd圧縮レベルを自動調整、進捗に転送速度表示 |
 
 ---
+
+## 11. dmig manifest 1.1 / 中断・再開（Phase 6 第3回ドラフト v0.1）
+
+**正本**: `DockerMigrator/docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md`（2026-05-17 ドラフト本文＋2026-05-18 記録メモ取り込み）
+
+### 11.1 記録の要約（検証・エラー）
+
+- **E2062 (`NO_BASE_SNAPSHOT`)**: 差分モードだが基底スナップショットが無い場合のみ。
+- **E2060 (`DIFF_COMPUTATION_FAILED`)**: 差分計算失敗の汎用。
+- **`excludedProjects` / `excludedImages`**: 現行 `DmigManifest` には未定義。#8b では manifest に無いことを確認し、第3回以降の追加スキーマ候補。
+
+### 11.2 `partialState` の責務（三層分離）
+
+| 層 | フィールド | 役割 |
+|----|------------|------|
+| 系列 | `previousPackage` | 前回パッケージ参照（完了済みのみを鎖に乗せる）。 |
+| エントリ意味 | 各 `kind` / `baseRef` | そのエントリが差分か・何に対する差分か。 |
+| 実行進捗 | `partialState`（新規） | 中断・再開のためのチャンク単位メタ。完了時はキーごと省略。 |
+
+### 11.3 設計の要点（v0.1）
+
+- 未完了のみ **`pendingChunks`** に保持（完了集合は二重管理しない）。空なら **`partialState` 自体を書かない**。
+- **`checksumPolicy`**（package 単位）＋ **`ChunkRef.expectedSha256`** / **`byteLength`**（チャンク単位）。1.0 読み込み時は policy 不在を **`verify-all` 相当**で扱う想定。
+- Importer は **`openAsBase`**（完了のみ）と **`openForResume`**（中断のみ）を分離。中断 package を **`previousPackage` に指定不可**（E2073/E2074）。不正構造は E2075。
+- 追加分のエラーコード一覧・Exporter/Importer 手順・テスト観点は **正本 Markdown** を参照。
+
+---

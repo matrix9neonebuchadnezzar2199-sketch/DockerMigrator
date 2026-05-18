@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>2026-05-18 開発日記 - DockerMigrator</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --heading: #cbd5e1;
+  --accent: #a78bfa;
+  --accent-deep: #7c3aed;
+  --border: #334155;
+  --code-bg: #0b1220;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --err: #f87171;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body.diary {
+  margin: 0;
+  padding: 40px 20px 80px;
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ===== Header ===== */
+body.diary > header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+body.diary > header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  color: var(--accent);
+  font-weight: 600;
+}
+body.diary > header .subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ===== Common ===== */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+}
+strong {
+  color: var(--heading);
+  font-weight: 600;
+}
+em.term {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 500;
+}
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* ===== TOC ===== */
+.diary-toc {
+  margin-bottom: 28px;
+  padding: 16px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.diary-toc h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.diary-toc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.diary-toc th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.diary-toc td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.diary-toc tr:last-child td { border-bottom: none; }
+.diary-toc td:first-child {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.diary-toc a:hover { color: var(--accent); }
+
+/* ===== Entry Card ===== */
+.entry {
+  margin: 22px 0;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.entry h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.entry h2 a.anchor {
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: 8px;
+  border-bottom: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.entry:hover h2 a.anchor { opacity: 1; }
+
+.entry .meta {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.entry .meta .date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.entry h3 {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.entry h3:first-of-type {
+  margin-top: 0;
+}
+
+.entry p {
+  margin: 8px 0;
+}
+.entry ul, .entry ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.entry li {
+  margin: 4px 0;
+}
+
+/* ===== Tags / Pills ===== */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tag-scope {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tag-ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.tag-warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.tag-err {
+  border-color: var(--err);
+  color: var(--err);
+}
+.tag-type {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+/* ===== Code ===== */
+code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  color: var(--heading);
+}
+pre {
+  background: var(--code-bg);
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: inherit;
+}
+
+/* ===== Tables ===== */
+.entry table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.entry th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+.entry td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+.entry tr:last-child td { border-bottom: none; }
+
+/* ===== Inline bar chart (CSS only) ===== */
+.bar-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 60px;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 13px;
+}
+.bar-row .bar-track {
+  height: 8px;
+  background: var(--code-bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-row .bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.bar-row .bar-value {
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Callouts ===== */
+.callout {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: rgba(167, 139, 250, 0.05);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+}
+.callout.warn { border-left-color: var(--warn); background: rgba(251, 191, 36, 0.05); }
+.callout.err { border-left-color: var(--err); background: rgba(248, 113, 113, 0.05); }
+.callout.ok { border-left-color: var(--ok); background: rgba(52, 211, 153, 0.05); }
+.callout .callout-label {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+/* ===== Changes list (file ops) ===== */
+.changes {
+  list-style: none;
+  padding-left: 0;
+  margin: 8px 0;
+}
+.changes li {
+  padding: 3px 0;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+}
+.changes .op {
+  display: inline-block;
+  width: 24px;
+  text-align: center;
+  margin-right: 6px;
+  font-family: system-ui, sans-serif;
+}
+.changes .op-add { color: var(--ok); }
+.changes .op-mod { color: var(--warn); }
+.changes .op-del { color: var(--err); }
+.changes .op-ren { color: var(--accent); }
+
+/* ===== Footer ===== */
+body.diary > footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+</style>
+</head>
+<body class="diary">
+<header>
+  <h1>2026-05-18 開発日記</h1>
+  <p class="subtitle">DockerMigrator — Phase 6 第3回 設計ドラフト記録</p>
+</header>
+
+<section class="diary-toc">
+  <h2>目次</h2>
+  <table>
+    <thead>
+      <tr><th>時刻</th><th>概要</th><th>ステータス</th><th>詳細</th></tr>
+    </thead>
+    <tbody>
+            <tr>
+        <td>08:31</td>
+        <td>manifest 1.1 / 中断・再開ドラフト v0.1 を <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md</code> に保存し、<code>仕様書.txt</code> に §11 参照を追記</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0831">詳細</a></td>
+      </tr>
+      <tr>
+        <td>08:45</td>
+        <td>レンダラー真っ暗（紺のみ）対策: <code>ErrorBoundary</code>、<code>codes.ts</code> を <code>@shared</code> へ移設、<code>bindMounts</code> 防御、BrowserWindow <code>backgroundColor</code></td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0845">詳細</a></td>
+      </tr>
+      <tr>
+        <td>09:15</td>
+        <td>Compose UI: プロジェクト別 GB、フッター合計転送・ETA、熟練者向けワンクリック（stop/pull/prune）と <code>HelpTip</code></td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0915">詳細</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<main>
+  <section class="entry" id="entry-0831">
+  <h2>Phase 6 第3回 設計記録（manifest 1.1 / partialState）</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 08:31</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>マスター指示により、<strong>E2062</strong>（<code>NO_BASE_SNAPSHOT</code>）と <strong>E2060</strong>（<code>DIFF_COMPUTATION_FAILED</code>）の検証切り分け、<code>excludedProjects</code> / <code>excludedImages</code> の現状（#8b では manifest 未定義）、<code>partialState</code> の責務三層（<code>previousPackage</code> / エントリ <code>kind</code>・<code>baseRef</code> / 実行進捗）、および確定ドラフト（<code>pendingChunks</code> 一本化・<code>checksumPolicy</code>・Importer 入口分離・E2070–E2075）を文書化した。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>DockerMigrator/docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md</code></li>
+    <li><span class="op op-mod">~</span> <code>DockerMigrator/仕様書.txt</code>（§11 参照・要約）</li>
+    <li><span class="op op-add">+</span> <code>DockerMigrator/docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>全文ドラフトは <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md</code>。実装時は <code>contents</code> の安定キー（現型は <code>name</code> 等）と <code>contentId</code> の対応を <code>types.ts</code> で確定させること。</p>
+</section>
+
+<section class="entry" id="entry-0845">
+  <h2>レンダラー「紺色のみ」表示の切り分けと対策</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 08:45</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>body</code> 背景 <code>#1e1e2e</code> のみが見える状態は、React が描画前に落ちて <code>#root</code> が空のときに起きやすい。<code>ErrorBoundary</code> で例外とスタックを画面表示、<code>ErrorCodes</code> / <code>ErrorMessages</code> を <code>src/shared/codes.ts</code> に移し <code>ComposePage</code> は <code>@shared/codes.js</code> を参照。<code>bindMounts</code> 未定義時の防御。BrowserWindow に <code>backgroundColor</code> を設定。</p>
+  <p><strong>追記</strong>: リロード直後だけ UI が一瞬見えてから紺になる症状は、開発時 <code>openDevTools()</code> が同一ウィンドウにドックされレンダラー領域の幅が極端に狭くなるケースが疑われるため、<code>openDevTools({ mode: 'detach' })</code> と <code>minWidth</code> / <code>minHeight</code> を追加した。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/shared/codes.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/errors/codes.ts</code>（re-export）</li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/ErrorBoundary.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/App.tsx</code> / <code>ComposePage.tsx</code> / <code>ComposeProjectCard.tsx</code> / <code>styles.css</code> / <code>main/index.ts</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> 成功</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0915">
+  <h2>Compose エクスポート画面の容量表示とワンクリック操作</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 09:15</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>listComposeProjects</code> 応答に <code>SizeEstimator.estimateForCompose([proj])</code> をプロジェクト単位で埋め込み、カードに圧縮目安 GB を表示。エクスポートタブでは出力先・選択が揃ったとき <code>preflight</code> をデバウンスし、フッターに合計移動容量と USB 想定速度（35MB/s）による予想転送時間を表示。<code>docker compose stop|pull</code> と <code>docker image prune -f</code> を IPC 経由で実行する熟練者向けボタン群と <code>HelpTip</code>（📖）を追加。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/ipc.ts</code>（サイズ埋め込み、<code>composeLifecycle</code>、<code>pruneDanglingImages</code>）</li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/preload/index.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code> / <code>codes.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/pages/ComposePage.tsx</code> / <code>ComposeProjectCard.tsx</code> / <code>styles.css</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/HelpTip.tsx</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/utils/formatTransfer.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/SizeEstimator.ts</code>（<code>bindMounts</code> 未定義耐性）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功</li>
+    <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
+</main>
+
+<footer>
+  <p>generated by Cursor / one-file HTML</p>
+</footer>
+</body>
+</html>

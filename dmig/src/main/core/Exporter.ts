@@ -28,7 +28,10 @@ export class Exporter extends EventEmitter {
     super();
   }
 
-  async exportImages(req: ExportRequest, signal?: AbortSignal): Promise<DmigManifest> {
+  async exportImages(
+    req: ExportRequest,
+    signal?: AbortSignal,
+  ): Promise<{ manifest: DmigManifest; packDir: string }> {
     const packName =
       req.packName ?? `dmig-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}`;
     const packDir = join(req.outputDir, `${packName}.dmig`);
@@ -114,7 +117,7 @@ export class Exporter extends EventEmitter {
       message: 'エクスポートが完了しました。',
     });
 
-    return manifest;
+    return { manifest, packDir };
   }
 
   /**

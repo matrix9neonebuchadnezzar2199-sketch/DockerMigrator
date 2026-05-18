@@ -1,5 +1,7 @@
 import React from 'react';
-import type { ComposeProjectInfo } from '../../shared/types.js';
+import type { ComposeLifecycleAction, ComposeProjectInfo } from '../../shared/types.js';
+import { HelpTip } from './HelpTip.js';
+import { formatGbFromBytes } from '../utils/formatTransfer.js';
 
 /**
  * Compose プロジェクト1件のカード表示。
@@ -10,7 +12,22 @@ export const ComposeProjectCard: React.FC<{
   selected: boolean;
   onToggle: () => void;
   disabled?: boolean;
-}> = ({ project, selected, onToggle, disabled }) => {
+  /** ワンクリック用: このプロジェクトに対する compose stop/pull */
+  onComposeLifecycle?: (action: ComposeLifecycleAction) => void;
+  /** このカードの操作が実行中 */
+  composeLifecycleBusy?: boolean;
+  /** 他プロジェクトの操作などで全カードのボタンを止める */
+  composeOpsLocked?: boolean;
+}> = ({
+  project,
+  selected,
+  onToggle,
+  disabled,
+  onComposeLifecycle,
+  composeLifecycleBusy,
+  composeOpsLocked,
+}) => {
+  const bindMounts = project.bindMounts ?? [];
   const runningCount = project.services.filter((s) => s.state === 'running').length;
   const buildContexts = project.services.filter((s) => s.buildContextPath).length;
 
@@ -25,9 +42,36 @@ export const ComposeProjectCard: React.FC<{
             {runningCount > 0 ? ` (${runningCount} 稼働中)` : ''}
             {' · '}
             {project.volumeNames.length} volumes
-            {project.bindMounts.length > 0 ? ` · ${project.bindMounts.length} bind mounts` : ''}
+            {bindMounts.length > 0 ? ` · ${bindMounts.length} bind mounts` : ''}
             {buildContexts > 0 ? ` · ${buildContexts} build` : ''}
           </span>
+          <div className="compose-card-size-row">
+            <span className="compose-card-size-label">
+              推定パックサイズ（圧縮目安）: <strong>{formatGbFromBytes(project.estimatedSize ?? 0)}</strong>
+            </span>
+            <HelpTip explanation="参照イメージ・named volume・build コンテキスト・bind mount ディレクトリを走査し、zstd 想定の圧縮係数で足し合わせた目安です。実際の .dmig サイズは前後します。" />
+          </div>
+          {onComposeLifecycle && (
+            <div className="compose-card-quick-actions">
+              <button
+                type="button"
+                className="btn-compact"
+                disabled={disabled || composeOpsLocked || composeLifecycleBusy}
+                onClick={() => onComposeLifecycle('stop')}
+              >
+                compose stop
+              </button>
+              <button
+                type="button"
+                className="btn-compact"
+                disabled={disabled || composeOpsLocked || composeLifecycleBusy}
+                onClick={() => onComposeLifecycle('pull')}
+              >
+                compose pull
+              </button>
+              <HelpTip explanation="stop: 当該 compose ファイルで定義されたサービスを停止します（コンテナは残ります）。pull: レジストリからイメージを再取得します。ネットワークとディスク容量を消費します。" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -52,10 +96,10 @@ export const ComposeProjectCard: React.FC<{
           </div>
         )}
 
-        {project.bindMounts.length > 0 && (
+        {bindMounts.length > 0 && (
           <div className="compose-card-section">
             <div className="compose-card-section-title">Bind Mounts</div>
-            {project.bindMounts.map((bm, idx) => (
+            {bindMounts.map((bm, idx) => (
               <div key={`${bm.hostPath}-${idx}`} className="compose-card-item">
                 <span className="compose-card-bind">
                   {bm.hostPath} → {bm.containerPath}

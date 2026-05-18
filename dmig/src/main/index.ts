@@ -9,7 +9,8 @@ import './phase-core-entry.js';
 const mainDir = dirname(fileURLToPath(import.meta.url));
 
 function resolvePreload(): string {
-  const candidates = ['index.mjs', 'index.js', 'index.cjs'].map((f) => join(mainDir, '../preload', f));
+  // CJS ビルドは index.js / index.cjs。古い index.mjs が残っていても拾わないよう .js を先にする
+  const candidates = ['index.js', 'index.cjs', 'index.mjs'].map((f) => join(mainDir, '../preload', f));
   const found = candidates.find((p) => existsSync(p));
   if (!found) {
     throw new Error(`preload bundle not found under ${join(mainDir, '../preload')}`);
@@ -21,7 +22,10 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 960,
+    minHeight: 640,
     title: 'dmig - Docker Migration Tool',
+    backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: resolvePreload(),
       contextIsolation: true,
@@ -37,8 +41,9 @@ function createWindow() {
 
   registerIpcHandlers(win);
 
+  // 同ウィンドウにドックすると幅が狭い環境でレンダラーが 0px 付近になり「紺一色」に見えることがあるため detach
   if (!app.isPackaged) {
-    win.webContents.openDevTools();
+    win.webContents.openDevTools({ mode: 'detach' });
   }
 }
 

@@ -17,6 +17,13 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    // サンドボックス上の preload はトップレベル import が使えないため CJS 1 ファイルに束ねる
+    build: {
+      lib: {
+        entry: resolve(root, 'src/preload/index.ts'),
+        formats: ['cjs'],
+      },
+    },
   },
   renderer: {
     plugins: [react()],

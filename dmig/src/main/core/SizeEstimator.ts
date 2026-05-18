@@ -47,7 +47,7 @@ export class SizeEstimator {
         }
       }
       for (const v of proj.volumeNames) volumeSet.add(v);
-      for (const bm of proj.bindMounts) {
+      for (const bm of proj.bindMounts ?? []) {
         bindPaths.push({
           name: `${proj.name}: ${bm.hostPath}`,
           path: bm.hostPath,

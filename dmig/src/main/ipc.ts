@@ -1,6 +1,8 @@
 import { ipcMain, BrowserWindow, dialog } from 'electron';
 import { promises as fsp } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { execFile as execFileCb } from 'node:child_process';
+import { promisify } from 'node:util';
 import { DockerAdapter } from './core/DockerAdapter.js';
 import { Exporter } from './core/Exporter.js';
 import { Importer } from './core/Importer.js';
@@ -9,7 +11,7 @@ import { ComposeImporter } from './core/ComposeImporter.js';
 import { VolumeExporter } from './core/VolumeExporter.js';
 import { SecretScanner } from './core/SecretScanner.js';
 import { jobRegistry } from './core/JobRegistry.js';
-import { DmigError } from './core/errors/DmigError.js';
+import { DmigError, wrapError } from './core/errors/DmigError.js';
 import { ErrorCodes, ErrorMessages } from './core/errors/codes.js';
 import type {
   ExportRequest,
@@ -20,16 +22,25 @@ import type {
   ComposeExportRequest,
   ComposeImportRequest,
   ComposeProjectInfo,
+  ComposeLifecycleRequest,
   SecretScanResult,
   JobToken,
   CancelResult,
   PreflightRequest,
   ErrorReportRequest,
+  DiffPreviewRequest,
 } from '@shared/types.js';
+import type { Snapshot } from '@shared/snapshot-types.js';
+import { SnapshotStore } from './core/snapshot/SnapshotStore.js';
+import { Snapshotter } from './core/snapshot/Snapshotter.js';
+import { DiffEngine } from './core/diff/DiffEngine.js';
+import { DiffPreview } from './core/diff/DiffPreview.js';
 import { SpaceChecker } from './core/SpaceChecker.js';
 import { SizeEstimator } from './core/SizeEstimator.js';
 import { ErrorReporter } from './core/ErrorReporter.js';
 import { ProgressTracker } from './core/ProgressTracker.js';
+
+const execFile = promisify(execFileCb);
 
 /**
  * Renderer ↔ Main の通信定義。
@@ -70,8 +81,80 @@ export function registerIpcHandlers(win: BrowserWindow) {
       win.webContents.send('dmig:progress', tracker.enrich(ev));
     };
     exporter.on('progress', onProg);
+    let exportReq: ExportRequest = req;
+    let baseSnap: Snapshot | null = null;
+    let currentSnap: Snapshot | null = null;
     try {
-      const manifest = await exporter.exportImages(req, controller.signal);
+      if (req.diffMode === 'delta') {
+        const store = SnapshotStore.getInstance();
+        baseSnap = req.baseSnapshotId
+          ? await store.loadById(req.baseSnapshotId)
+          : await store.loadLatest();
+        if (!baseSnap) {
+          return {
+            ok: false as const,
+            error: {
+              code: ErrorCodes.NO_BASE_SNAPSHOT,
+              message: ErrorMessages[ErrorCodes.NO_BASE_SNAPSHOT],
+            },
+          };
+        }
+        const snapshotter = new Snapshotter(docker);
+        snapshotter.on('progress', onProg);
+        try {
+          currentSnap = await snapshotter.capture({
+            volumeStrategy: req.volumeDiffStrategy ?? 'fast',
+            signal: controller.signal,
+            jobToken: req.jobToken,
+          });
+        } finally {
+          snapshotter.off('progress', onProg);
+        }
+        const diff = new DiffEngine().compute(
+          baseSnap,
+          currentSnap,
+          req.volumeDiffStrategy ?? 'fast',
+        );
+        const deltaRefs = new Set(
+          diff.images.filter((e) => e.kind !== 'removed').map((e) => e.repoTags[0] ?? e.imageId),
+        );
+        const filtered = req.imageNames.filter((n) => deltaRefs.has(n));
+        exportReq = {
+          ...req,
+          imageNames: filtered.length > 0 ? filtered : [...deltaRefs],
+        };
+        if (exportReq.imageNames.length === 0) {
+          return {
+            ok: false as const,
+            error: {
+              code: ErrorCodes.DIFF_COMPUTATION_FAILED,
+              message: ErrorMessages[ErrorCodes.DIFF_COMPUTATION_FAILED],
+              detail: '差分に該当するイメージがありません',
+            },
+          };
+        }
+      }
+
+      const { manifest, packDir } = await exporter.exportImages(exportReq, controller.signal);
+
+      if (req.diffMode === 'delta' && baseSnap && currentSnap) {
+        applyDeltaManifestInPlace(manifest, baseSnap);
+        try {
+          await fsp.writeFile(join(packDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
+        } catch (e) {
+          console.warn('[ipc] delta manifest rewrite failed:', e);
+        }
+        if (req.autoSaveSnapshot !== false) {
+          try {
+            const store = SnapshotStore.getInstance();
+            await store.save(currentSnap);
+            await store.pruneOld();
+          } catch (e) {
+            console.warn('[ipc] snapshot auto-save failed:', e);
+          }
+        }
+      }
+
       return { ok: true as const, data: manifest };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
@@ -116,9 +199,94 @@ export function registerIpcHandlers(win: BrowserWindow) {
   ipcMain.handle('dmig:listComposeProjects', async () => {
     try {
       const projects = await docker.listComposeProjects();
-      return { ok: true as const, data: projects };
+      const estimator = new SizeEstimator(docker);
+      const data: ComposeProjectInfo[] = await Promise.all(
+        projects.map(async (proj) => {
+          try {
+            const est = await estimator.estimateForCompose([proj]);
+            return { ...proj, estimatedSize: est.totalEstimated };
+          } catch {
+            return { ...proj, estimatedSize: proj.estimatedSize };
+          }
+        }),
+      );
+      return { ok: true as const, data };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
+    }
+  });
+
+  ipcMain.handle('dmig:composeLifecycle', async (_e, req: ComposeLifecycleRequest) => {
+    try {
+      const all = await docker.listComposeProjects();
+      const proj = all.find((p) => p.name === req.projectName);
+      if (!proj) {
+        return {
+          ok: false as const,
+          error: {
+            code: ErrorCodes.COMPOSE_NOT_FOUND,
+            message: ErrorMessages[ErrorCodes.COMPOSE_NOT_FOUND],
+            detail: req.projectName,
+          },
+        };
+      }
+      if (proj.configFiles.length === 0) {
+        return {
+          ok: false as const,
+          error: {
+            code: ErrorCodes.COMPOSE_CONFIG_READ_FAILED,
+            message: ErrorMessages[ErrorCodes.COMPOSE_CONFIG_READ_FAILED],
+            detail: 'config_files が空です',
+          },
+        };
+      }
+      const args = ['compose'];
+      for (const f of proj.configFiles) {
+        args.push('-f', f);
+      }
+      args.push(req.action === 'stop' ? 'stop' : 'pull');
+      const cwd =
+        proj.workingDir?.trim() ||
+        dirname(proj.configFiles[0]!) ||
+        process.cwd();
+      await execFile('docker', args, {
+        cwd,
+        windowsHide: true,
+        maxBuffer: 32 * 1024 * 1024,
+      });
+      return { ok: true as const, data: undefined };
+    } catch (e) {
+      return {
+        ok: false as const,
+        error: toPayload(wrapError(e, ErrorCodes.COMPOSE_CLI_FAILED, 'composeLifecycle')),
+      };
+    }
+  });
+
+  ipcMain.handle('dmig:pruneDanglingImages', async () => {
+    const answer = await dialog.showMessageBox(win, {
+      type: 'warning',
+      buttons: ['キャンセル', '実行'],
+      defaultId: 0,
+      cancelId: 0,
+      title: '未使用イメージの削除',
+      message:
+        'docker image prune -f を実行します。dangling（タグ無し）イメージのみが削除されます。実行中のコンテナが使っているレイヤは残ります。',
+    });
+    if (answer.response !== 1) {
+      return { ok: true as const, data: { skipped: true as const } };
+    }
+    try {
+      const { stdout } = await execFile('docker', ['image', 'prune', '-f'], {
+        windowsHide: true,
+        maxBuffer: 4 * 1024 * 1024,
+      });
+      return { ok: true as const, data: { skipped: false as const, stdout } };
+    } catch (e) {
+      return {
+        ok: false as const,
+        error: toPayload(wrapError(e, ErrorCodes.IMAGE_PRUNE_FAILED, 'pruneDanglingImages')),
+      };
     }
   });
 
@@ -179,16 +347,67 @@ export function registerIpcHandlers(win: BrowserWindow) {
     exporter.on('progress', progressForwarder);
     volumeExporter.on('progress', progressForwarder);
 
+    let baseSnapshotForDelta: Snapshot | null = null;
+    let currentSnapshotForDelta: Snapshot | null = null;
+
     try {
       const allProjects = await docker.listComposeProjects();
-      const targets = allProjects.filter((p) => req.projectNames.includes(p.name));
+      let effectiveProjectNames = req.projectNames;
+
+      if (req.diffMode === 'delta') {
+        const store = SnapshotStore.getInstance();
+        baseSnapshotForDelta = req.baseSnapshotId
+          ? await store.loadById(req.baseSnapshotId)
+          : await store.loadLatest();
+        if (!baseSnapshotForDelta) {
+          return {
+            ok: false as const,
+            error: {
+              code: ErrorCodes.NO_BASE_SNAPSHOT,
+              message: ErrorMessages[ErrorCodes.NO_BASE_SNAPSHOT],
+            },
+          };
+        }
+        const snapshotter = new Snapshotter(docker);
+        snapshotter.on('progress', progressForwarder);
+        try {
+          currentSnapshotForDelta = await snapshotter.capture({
+            volumeStrategy: req.volumeDiffStrategy ?? 'fast',
+            signal: controller.signal,
+            jobToken: req.jobToken,
+          });
+        } finally {
+          snapshotter.off('progress', progressForwarder);
+        }
+        const diff = new DiffEngine().compute(
+          baseSnapshotForDelta,
+          currentSnapshotForDelta,
+          req.volumeDiffStrategy ?? 'fast',
+        );
+        const allowed = new Set(
+          diff.composeProjects.filter((c) => c.kind !== 'removed').map((c) => c.projectName),
+        );
+        effectiveProjectNames = req.projectNames.filter((n) => allowed.has(n));
+        if (effectiveProjectNames.length === 0) {
+          return {
+            ok: false as const,
+            error: {
+              code: ErrorCodes.DIFF_COMPUTATION_FAILED,
+              message: ErrorMessages[ErrorCodes.DIFF_COMPUTATION_FAILED],
+              detail: '差分に該当する Compose プロジェクトがありません',
+            },
+          };
+        }
+      }
+
+      const targets = allProjects.filter((p) => effectiveProjectNames.includes(p.name));
       if (targets.length === 0) {
         return {
           ok: false as const,
           error: {
             code: ErrorCodes.COMPOSE_NOT_FOUND,
             message: ErrorMessages[ErrorCodes.COMPOSE_NOT_FOUND],
-            detail: `projectNames=${req.projectNames.join(',')}`,
+            detail: `projectNames=${effectiveProjectNames.join(',')}`,
           },
         };
       }
@@ -212,7 +431,17 @@ export function registerIpcHandlers(win: BrowserWindow) {
       const packDir = join(req.outputDir, `${packName}.dmig`);
       await fsp.mkdir(packDir, { recursive: true });
 
-      const result = await composeExporter.exportProjects(req, packDir, targets, controller.signal);
+      const exportReq: ComposeExportRequest = {
+        ...req,
+        projectNames: effectiveProjectNames,
+      };
+
+      const result = await composeExporter.exportProjects(
+        exportReq,
+        packDir,
+        targets,
+        controller.signal,
+      );
 
       const ping = await docker.ping().catch(() => ({ version: 'unknown' }));
       const manifest: DmigManifest = {
@@ -234,6 +463,10 @@ export function registerIpcHandlers(win: BrowserWindow) {
           result.volumeEntries.reduce((s, e) => s + e.compressedSize, 0),
       };
 
+      if (req.diffMode === 'delta' && baseSnapshotForDelta && currentSnapshotForDelta) {
+        applyDeltaManifestInPlace(manifest, baseSnapshotForDelta);
+      }
+
       await fsp.writeFile(join(packDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 
       const checksumLines: string[] = [];
@@ -244,6 +477,18 @@ export function registerIpcHandlers(win: BrowserWindow) {
         checksumLines.push(`${vol.sha256}  ${vol.filename}`);
       }
       await fsp.writeFile(join(packDir, 'checksums.sha256'), `${checksumLines.join('\n')}\n`, 'utf-8');
+
+      if (req.diffMode === 'delta' && baseSnapshotForDelta && currentSnapshotForDelta) {
+        if (req.autoSaveSnapshot !== false) {
+          try {
+            const snapStore = SnapshotStore.getInstance();
+            await snapStore.save(currentSnapshotForDelta);
+            await snapStore.pruneOld();
+          } catch (e) {
+            console.warn('[ipc] snapshot auto-save failed:', e);
+          }
+        }
+      }
 
       return { ok: true as const, data: { manifest, packDir } };
     } catch (e) {
@@ -357,6 +602,76 @@ export function registerIpcHandlers(win: BrowserWindow) {
     }
   });
 
+  ipcMain.handle('dmig:listSnapshots', async () => {
+    try {
+      const store = SnapshotStore.getInstance();
+      const list = await store.list();
+      return { ok: true as const, data: list };
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
+  });
+
+  ipcMain.handle('dmig:deleteSnapshot', async (_evt, id: string) => {
+    try {
+      const store = SnapshotStore.getInstance();
+      await store.delete(id);
+      return { ok: true as const, data: undefined };
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
+  });
+
+  ipcMain.handle(
+    'dmig:computeDiff',
+    async (evt, req: DiffPreviewRequest) => {
+      const senderWin = BrowserWindow.fromWebContents(evt.sender);
+      const controller = jobRegistry.register(req.jobToken);
+      const tracker = new ProgressTracker();
+      const onProgress = (ev: ProgressEvent): void => {
+        senderWin?.webContents.send('dmig:progress', tracker.enrich(ev));
+      };
+
+      try {
+        const store = SnapshotStore.getInstance();
+        const base = req.baseSnapshotId
+          ? await store.loadById(req.baseSnapshotId)
+          : await store.loadLatest();
+
+        if (!base) {
+          return {
+            ok: false as const,
+            error: {
+              code: ErrorCodes.NO_BASE_SNAPSHOT,
+              message: ErrorMessages[ErrorCodes.NO_BASE_SNAPSHOT],
+            },
+          };
+        }
+
+        const snapshotter = new Snapshotter(docker);
+        snapshotter.on('progress', onProgress);
+        let current: Snapshot;
+        try {
+          current = await snapshotter.capture({
+            volumeStrategy: req.volumeStrategy ?? 'fast',
+            signal: controller.signal,
+            jobToken: req.jobToken,
+          });
+        } finally {
+          snapshotter.off('progress', onProgress);
+        }
+
+        const diff = new DiffEngine().compute(base, current, req.volumeStrategy ?? 'fast');
+        const preview = new DiffPreview().build(diff);
+        return { ok: true as const, data: preview };
+      } catch (e) {
+        return { ok: false as const, error: toPayload(e) };
+      } finally {
+        jobRegistry.unregister(req.jobToken);
+      }
+    },
+  );
+
   ipcMain.handle(
     'dmig:selectDirectory',
     async (_e, options: { title?: string; defaultPath?: string }) => {
@@ -375,6 +690,28 @@ export function registerIpcHandlers(win: BrowserWindow) {
       }
     },
   );
+}
+
+function applyDeltaManifestInPlace(manifest: DmigManifest, base: Snapshot): void {
+  manifest.schemaVersion = '1.1';
+  manifest.previousPackage = { id: base.id, createdAt: base.createdAt };
+  manifest.baseRef = base.id;
+  for (const img of manifest.contents.images) {
+    img.kind = 'delta';
+    img.baseRef = base.id;
+  }
+  if (manifest.contents.volumes) {
+    for (const vol of manifest.contents.volumes) {
+      vol.kind = 'delta';
+      vol.baseRef = base.id;
+    }
+  }
+  if (manifest.contents.composeProjects) {
+    for (const cp of manifest.contents.composeProjects) {
+      cp.kind = 'delta';
+      cp.baseRef = base.id;
+    }
+  }
 }
 
 function toPayload(e: unknown): DmigErrorPayload {

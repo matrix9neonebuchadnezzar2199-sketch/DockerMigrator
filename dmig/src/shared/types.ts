@@ -198,6 +198,14 @@ export interface EnvFileInfo {
   exists: boolean;
 }
 
+/** `docker compose` のワンクリック操作（ホスト CLI 経由）。 */
+export type ComposeLifecycleAction = 'stop' | 'pull';
+
+export interface ComposeLifecycleRequest {
+  projectName: string;
+  action: ComposeLifecycleAction;
+}
+
 // ─────────────────────────────────────────────────────────────────
 // シークレット検出（SecretScanner）
 // ─────────────────────────────────────────────────────────────────
@@ -262,6 +270,14 @@ export interface ComposeExportRequest extends Cancellable {
   secretActions: Record<string, SecretAction>;
   /** プロジェクトごとの bind mount 処理選択 */
   bindMountChoices: Record<string, BindMountChoice[]>;
+  /** Phase 6: 差分エクスポート（Compose 差分に該当するプロジェクトのみ同梱） */
+  diffMode?: DiffMode;
+  /** Phase 6: 基底スナップショット ID（省略時は最新） */
+  baseSnapshotId?: string;
+  /** Phase 6: ボリューム厳密ハッシュ */
+  volumeDiffStrategy?: VolumeDiffStrategy;
+  /** Phase 6: 完了後に現在状態をスナップショット保存（既定 true） */
+  autoSaveSnapshot?: boolean;
 }
 
 export interface ComposeImportRequest extends Cancellable {
