@@ -18,7 +18,11 @@ import { ErrorCodes, ErrorMessages } from '@shared/codes.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { ComposeProjectCard } from '../components/ComposeProjectCard.js';
-import { HelpTip } from '../components/HelpTip.js';
+import { PageGuidePanel } from '../components/PageGuidePanel.js';
+import {
+  ComposeExportGuideBody,
+  ComposeImportGuideBody,
+} from '../components/StaticPageGuides.js';
 import { SecretWarningDialog } from '../components/SecretWarningDialog.js';
 import { BindMountDialog } from '../components/BindMountDialog.js';
 import { DiffPreviewDialog } from '../components/DiffPreviewDialog.js';
@@ -559,10 +563,12 @@ export const ComposePage: React.FC = () => {
   };
 
   return (
-    <>
-      <h2>Compose プロジェクトまるごと パック</h2>
+    <div className="page-shell">
+      <div className="page-two-col">
+        <div className="page-primary">
+          <h2>Compose プロジェクトまるごと パック</h2>
 
-      <div className="tab-bar">
+          <div className="tab-bar">
         <button
           type="button"
           className={tab === 'export' ? 'tab active' : 'tab'}
@@ -654,8 +660,7 @@ export const ComposePage: React.FC = () => {
 
             <div className="compose-expert-bar">
               <div className="compose-expert-bar-header">
-                <span className="compose-expert-bar-title">熟練者向けワンクリック</span>
-                <HelpTip explanation="ホストの docker CLI を使い、compose の working_dir と複数 -f を自動付与して実行します。pull はネットワークとディスクを消費します。" />
+                <span className="compose-expert-bar-title">🛠️ 熟練者向けワンクリック</span>
               </div>
               <div className="compose-expert-bar-buttons">
                 <button
@@ -664,9 +669,8 @@ export const ComposePage: React.FC = () => {
                   onClick={selectRunningOnly}
                   disabled={loading || phase === 'running' || composeLifecycleBusy !== null}
                 >
-                  稼働中のみ選択
+                  🎯 稼働中のみ選択
                 </button>
-                <HelpTip explanation="RUNNING のコンテナがあるプロジェクトだけにチェックを付け、それ以外は外します。移行前に止めたい対象を絞るときに使います。" />
                 <button
                   type="button"
                   className="btn-compact"
@@ -675,9 +679,8 @@ export const ComposePage: React.FC = () => {
                     loading || phase === 'running' || selected.size === 0 || composeLifecycleBusy !== null
                   }
                 >
-                  選択をすべて停止
+                  ⏹ 選択をすべて停止
                 </button>
-                <HelpTip explanation="選択した各プロジェクトに対し docker compose stop を順に実行します。コンテナは残り、後から compose up で復帰できます。" />
                 <button
                   type="button"
                   className="btn-compact"
@@ -686,18 +689,16 @@ export const ComposePage: React.FC = () => {
                     loading || phase === 'running' || selected.size === 0 || composeLifecycleBusy !== null
                   }
                 >
-                  選択のイメージ取得
+                  ⬇ 選択のイメージ取得
                 </button>
-                <HelpTip explanation="選択した各プロジェクトに対し docker compose pull を順に実行します。digest 固定でない場合、イメージ更新により挙動が変わることがあります。" />
                 <button
                   type="button"
                   className="btn-compact"
                   onClick={() => void runPruneDangling()}
                   disabled={loading || phase === 'running' || composeLifecycleBusy !== null}
                 >
-                  dangling イメージ整理
+                  🧹 dangling イメージ整理
                 </button>
-                <HelpTip explanation="確認ダイアログの後に docker image prune -f を実行します。タグのない dangling イメージのみが対象で、実行中コンテナのレイヤは残ります。" />
               </div>
             </div>
 
@@ -735,16 +736,14 @@ export const ComposePage: React.FC = () => {
             </div>
             <div className="compose-footer-stats">
               <span>
-                合計移動容量（圧縮目安）: <strong>{formatGbFromBytes(transferBytesDisplay)}</strong>
-                <HelpTip explanation="出力先が有効で事前検証が成功しているときはその合計バイトを優先表示し、未検証時は各カードの推定値の合算です。実パックは前後します。" />
+                📊 合計移動容量（圧縮目安）: <strong>{formatGbFromBytes(transferBytesDisplay)}</strong>
               </span>
               <span className="compose-footer-stat-sep" aria-hidden="true">
                 ·
               </span>
               <span>
-                予想転送時間（USB 想定 {(USB_ASSUMED_BYTES_PER_SEC / (1024 * 1024)).toFixed(0)} MB/s）:{' '}
+                ⏱ 予想転送時間（USB 想定 {(USB_ASSUMED_BYTES_PER_SEC / (1024 * 1024)).toFixed(0)} MB/s）:{' '}
                 <strong>{formatEtaHuman(transferEtaSeconds)}</strong>
-                <HelpTip explanation="USB シーケンシャル書き込みを控えめに見積もった目安です。USB2 や小ファイル多めの bind ではさらに遅く、NVMe 直書きなら大幅に短くなります。" />
               </span>
             </div>
             {preflight && (
@@ -903,6 +902,16 @@ export const ComposePage: React.FC = () => {
         onFallbackToFull={onDiffFallbackToFull}
         onCancel={onDiffCancel}
       />
-    </>
+        </div>
+
+        <aside className="page-guide-rail" aria-label="ページ解説">
+          <PageGuidePanel
+            title={tab === 'export' ? '📋 エクスポート — ページ解説' : '📋 インポート — ページ解説'}
+          >
+            {tab === 'export' ? <ComposeExportGuideBody /> : <ComposeImportGuideBody />}
+          </PageGuidePanel>
+        </aside>
+      </div>
+    </div>
   );
 };

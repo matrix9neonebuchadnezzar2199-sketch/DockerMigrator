@@ -1,6 +1,5 @@
 import React from 'react';
 import type { ComposeLifecycleAction, ComposeProjectInfo } from '../../shared/types.js';
-import { HelpTip } from './HelpTip.js';
 import { formatGbFromBytes } from '../utils/formatTransfer.js';
 
 /**
@@ -47,9 +46,8 @@ export const ComposeProjectCard: React.FC<{
           </span>
           <div className="compose-card-size-row">
             <span className="compose-card-size-label">
-              推定パックサイズ（圧縮目安）: <strong>{formatGbFromBytes(project.estimatedSize ?? 0)}</strong>
+              📦 推定パックサイズ（圧縮目安）: <strong>{formatGbFromBytes(project.estimatedSize ?? 0)}</strong>
             </span>
-            <HelpTip explanation="参照イメージ・named volume・build コンテキスト・bind mount ディレクトリを走査し、zstd 想定の圧縮係数で足し合わせた目安です。実際の .dmig サイズは前後します。" />
           </div>
           {onComposeLifecycle && (
             <div className="compose-card-quick-actions">
@@ -59,7 +57,7 @@ export const ComposeProjectCard: React.FC<{
                 disabled={disabled || composeOpsLocked || composeLifecycleBusy}
                 onClick={() => onComposeLifecycle('stop')}
               >
-                compose stop
+                ⏹ compose stop
               </button>
               <button
                 type="button"
@@ -67,9 +65,8 @@ export const ComposeProjectCard: React.FC<{
                 disabled={disabled || composeOpsLocked || composeLifecycleBusy}
                 onClick={() => onComposeLifecycle('pull')}
               >
-                compose pull
+                ⬇ compose pull
               </button>
-              <HelpTip explanation="stop: 当該 compose ファイルで定義されたサービスを停止します（コンテナは残ります）。pull: レジストリからイメージを再取得します。ネットワークとディスク容量を消費します。" />
             </div>
           )}
         </div>
@@ -78,7 +75,7 @@ export const ComposeProjectCard: React.FC<{
       <div className="compose-card-body">
         {project.services.length > 0 && (
           <div className="compose-card-section">
-            <div className="compose-card-section-title">Services</div>
+            <div className="compose-card-section-title">🧩 Services</div>
             {project.services.map((svc) => (
               <div key={svc.name} className="compose-card-item">
                 <span className="badge">{svc.state}</span>
@@ -91,14 +88,14 @@ export const ComposeProjectCard: React.FC<{
 
         {project.volumeNames.length > 0 && (
           <div className="compose-card-section">
-            <div className="compose-card-section-title">Volumes</div>
+            <div className="compose-card-section-title">💾 Volumes</div>
             <div className="compose-card-volumes">{project.volumeNames.join(', ')}</div>
           </div>
         )}
 
         {bindMounts.length > 0 && (
           <div className="compose-card-section">
-            <div className="compose-card-section-title">Bind Mounts</div>
+            <div className="compose-card-section-title">🔗 Bind Mounts</div>
             {bindMounts.map((bm, idx) => (
               <div key={`${bm.hostPath}-${idx}`} className="compose-card-item">
                 <span className="compose-card-bind">
@@ -112,7 +109,7 @@ export const ComposeProjectCard: React.FC<{
 
         {project.configFiles.length > 0 && (
           <div className="compose-card-section">
-            <div className="compose-card-section-title">Compose File</div>
+            <div className="compose-card-section-title">📄 Compose File</div>
             <div className="compose-card-cfg">{project.configFiles.join(', ')}</div>
           </div>
         )}

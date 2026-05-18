@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { ImageInfo, ProgressEvent, DmigErrorPayload } from '../../shared/types.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ErrorBox } from '../components/ErrorBox.js';
+import { PageGuidePanel } from '../components/PageGuidePanel.js';
+import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
 
 export const ExportPage: React.FC = () => {
   const [images, setImages] = useState<ImageInfo[]>([]);
@@ -50,11 +52,13 @@ export const ExportPage: React.FC = () => {
     .reduce((s, i) => s + i.size, 0);
 
   return (
-    <>
-      <h2>エクスポート対象を選択</h2>
+    <div className="page-shell">
+      <div className="page-two-col">
+        <div className="page-primary">
+          <h2>📤 エクスポート対象を選択</h2>
 
       <div className="card">
-        <label style={{ display: 'block', marginBottom: 8 }}>出力先 (USBパス):</label>
+        <label style={{ display: 'block', marginBottom: 8 }}>💾 出力先 (USBパス):</label>
         <input
           type="text"
           value={outputDir}
@@ -64,7 +68,7 @@ export const ExportPage: React.FC = () => {
       </div>
 
       <div className="card">
-        <strong>イメージ ({images.length}件)</strong>
+        <strong>🏷️ イメージ一覧 ({images.length} 件)</strong>
         <div style={{ marginTop: 12 }}>
           {images.flatMap((img) =>
             img.repoTags.map((tag) => (
@@ -84,8 +88,24 @@ export const ExportPage: React.FC = () => {
       </div>
 
       <div className="card">
+        <table className="guide-table" style={{ marginBottom: 12 }}>
+          <tbody>
+            <tr>
+              <th style={{ width: '40%' }}>📌 選択件数</th>
+              <td>
+                <strong>{selected.size}</strong> 件
+              </td>
+            </tr>
+            <tr>
+              <th>📊 選択の合計サイズ</th>
+              <td>
+                <strong>{(totalSize / 1024 / 1024).toFixed(1)}</strong> MB（ホスト上・圧縮前目安）
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <div>
-          選択中: {selected.size} 件 / 合計サイズ: {(totalSize / 1024 / 1024).toFixed(1)} MB
+          上記をパックに含めて書き出します。実行中は進捗バーが更新されます。
         </div>
         <button onClick={() => void start()} disabled={running || selected.size === 0} style={{ marginTop: 8 }}>
           {running ? '実行中...' : '▶ エクスポート開始'}
@@ -96,9 +116,17 @@ export const ExportPage: React.FC = () => {
       <ErrorBox error={error} />
       {done && (
         <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
-          {done}
+          ✅ {done}
         </div>
       )}
-    </>
+        </div>
+
+        <aside className="page-guide-rail" aria-label="ページ解説">
+          <PageGuidePanel title="📋 このページの解説">
+            <ExportPageGuideBody />
+          </PageGuidePanel>
+        </aside>
+      </div>
+    </div>
   );
 };

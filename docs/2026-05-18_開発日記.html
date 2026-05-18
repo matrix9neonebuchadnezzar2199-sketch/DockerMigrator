@@ -411,6 +411,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1645">詳細</a></td>
       </tr>
+      <tr>
+        <td>13:55</td>
+        <td>Renderer: 項目別 <code>HelpTip</code> 廃止、ページ右上 <code>PageGuidePanel</code> に解説集約（表・アイコン）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1355">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -604,6 +610,36 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> / <code>npm test</code></li>
     <li>Commit: <code>b991483</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1355">
+  <h2>Renderer: ページ単位解説パネル（HelpTip 廃止）</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 13:55</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>全項目の <code>HelpTip</code> を廃止し、<code>PageGuidePanel</code>（折りたたみ）と <code>StaticPageGuides.tsx</code> に操作手順・熟練者向けバー・容量/ETA・Compose インポートの説明を表形式で集約。<code>ExportPage</code> / <code>ImportPage</code> / <code>ComposePage</code> を <code>page-shell</code> + <code>page-two-col</code>（左 <code>page-primary</code> / 右 <code>page-guide-rail</code>）とし、解説をメイン右の専用列に配置（開閉で左カラムの縦位置がずれない）。狭い画面ではレールを上に回すメディアクエリあり。Import の manifest 概要を表に変更。スタイルに <code>.page-guide</code> / <code>.guide-table</code> 等を追加。<code>HelpTip.tsx</code> 削除。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/PageGuidePanel.tsx</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/StaticPageGuides.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/pages/ComposePage.tsx</code> / <code>ExportPage.tsx</code> / <code>ImportPage.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/components/ComposeProjectCard.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/styles.css</code></li>
+    <li><span class="op op-del">-</span> <code>dmig/src/renderer/components/HelpTip.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run lint</code> / <code>npm run typecheck</code></li>
+    <li>Commit: pending</li>
   </ul>
 </section>
 </main>

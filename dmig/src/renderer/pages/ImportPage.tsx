@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import type { DmigManifest, ProgressEvent, DmigErrorPayload } from '../../shared/types.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ErrorBox } from '../components/ErrorBox.js';
+import { PageGuidePanel } from '../components/PageGuidePanel.js';
+import { ImportPageGuideBody } from '../components/StaticPageGuides.js';
 
 export const ImportPage: React.FC = () => {
   const [packDir, setPackDir] = useState<string>('');
@@ -47,11 +49,13 @@ export const ImportPage: React.FC = () => {
   };
 
   return (
-    <>
-      <h2>パッケージからインポート</h2>
+    <div className="page-shell">
+      <div className="page-two-col">
+        <div className="page-primary">
+          <h2>📥 パッケージからインポート</h2>
 
       <div className="card">
-        <label style={{ display: 'block', marginBottom: 8 }}>パッケージのパス (.dmig):</label>
+        <label style={{ display: 'block', marginBottom: 8 }}>📁 パッケージのパス (.dmig):</label>
         <input
           type="text"
           value={packDir}
@@ -66,10 +70,29 @@ export const ImportPage: React.FC = () => {
 
       {manifest && (
         <div className="card">
-          <strong>パッケージ情報</strong>
-          <div style={{ fontSize: 13, color: '#a6adc8', margin: '8px 0' }}>
-            作成: {manifest.createdAt} / OS: {manifest.source.os} / Docker:{' '}
-            {manifest.source.dockerVersion}
+          <strong>📦 パッケージ情報</strong>
+          <table className="guide-table" style={{ marginTop: 10 }}>
+            <tbody>
+              <tr>
+                <th scope="row">📅 作成</th>
+                <td>{manifest.createdAt}</td>
+              </tr>
+              <tr>
+                <th scope="row">🖥 OS</th>
+                <td>{manifest.source.os}</td>
+              </tr>
+              <tr>
+                <th scope="row">🐳 Docker</th>
+                <td>{manifest.source.dockerVersion}</td>
+              </tr>
+              <tr>
+                <th scope="row">🏷️ イメージ数</th>
+                <td>{manifest.contents.images.length} 件</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style={{ fontSize: 13, color: '#a6adc8', margin: '8px 0 12px' }}>
+            取り込むイメージにチェックを付けてください。
           </div>
           {manifest.contents.images.map((img) => (
             <div key={img.name} className="image-row">
@@ -93,9 +116,17 @@ export const ImportPage: React.FC = () => {
       <ErrorBox error={error} />
       {done && (
         <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
-          {done}
+          ✅ {done}
         </div>
       )}
-    </>
+        </div>
+
+        <aside className="page-guide-rail" aria-label="ページ解説">
+          <PageGuidePanel title="📋 このページの解説">
+            <ImportPageGuideBody />
+          </PageGuidePanel>
+        </aside>
+      </div>
+    </div>
   );
 };
