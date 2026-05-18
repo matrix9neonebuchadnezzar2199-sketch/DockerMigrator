@@ -106,6 +106,53 @@ export interface PartialState {
   interruptionReason?: InterruptionReason;
 }
 
+/**
+ * `dmig:probePackage` の判定結果ステータス。
+ *
+ * パッケージの異常はすべてこの値で表現し、IPC レイヤでは throw しない（`Result<T>` の
+ * `ok: false` は Main ハンドラの想定外 throw 用に予約）。UI は `status` を主に分岐し、
+ * `diagnostic` は折りたたみ・開発者向けの補助とする。
+ */
+export type PackageProbeStatus =
+  | 'ok_complete'
+  | 'ok_partial'
+  | 'invalid_manifest'
+  | 'invalid_partial'
+  | 'missing_dir'
+  | 'missing_manifest'
+  | 'version_incompatible';
+
+/**
+ * `dmig:probePackage` の結果サマリ。例外を投げずに完了/中断/異常を判別できる軽量型。
+ *
+ * 不変条件:
+ *   - `status` が `ok_*` のとき: `manifestPresent === true`、`schemaVersion` / `dmigVersion` は埋まる
+ *   - `status` が `ok_partial` のとき: `pendingChunkCount >= 1`
+ *   - `status` が `ok_complete` / `ok_partial` のとき: `diagnostic` は **常に undefined**
+ *   - `status` が `invalid_*` / `version_incompatible` のとき: `diagnostic` に補足を載せる
+ *   - `status` が `missing_dir` / `missing_manifest` のとき: `manifestPresent === false`、
+ *     `schemaVersion` / `dmigVersion` は undefined、`pendingChunkCount` は 0
+ */
+export interface ProbeSummary {
+  packageDir: string;
+  status: PackageProbeStatus;
+  manifestPresent: boolean;
+  schemaVersion?: SchemaVersion;
+  dmigVersion?: string;
+  /** `partialState?.pendingChunks.length` または 0 */
+  pendingChunkCount: number;
+  lastUpdatedAt?: string;
+  interruptionReason?: InterruptionReason;
+  checksumPolicy?: ChecksumPolicy;
+  /** 中断 UI 用。先頭 8 件まで（`PROBE_PREVIEW_LIMIT` と一致させる）。 */
+  pendingChunksPreview?: Array<Pick<ChunkRef, 'contentKind' | 'contentId' | 'chunkIndex'>>;
+  /**
+   * 異常系のみ設定（`invalid_manifest` / `invalid_partial` / `version_incompatible`）。
+   * 正常系では **undefined を保証**する。
+   */
+  diagnostic?: string;
+}
+
 export interface DmigManifest {
   dmigVersion: string;
   createdAt: string;

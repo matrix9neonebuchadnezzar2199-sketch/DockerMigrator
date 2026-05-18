@@ -51,7 +51,13 @@ export const ErrorCodes = {
   EXPORT_PREVIOUS_IS_PARTIAL: 'E2073',
   /** manifest 1.1: previousPackage チェインに中断ノードが含まれる */
   CHAIN_CONTAINS_PARTIAL: 'E2074',
-  /** manifest 1.1: partialState の構造が不正 */
+  /**
+   * manifest 1.1: partialState 構造不正（Importer.validatePartialState）。
+   * `DmigError.detail` は `reason=snake_case` を先頭にした key=value 連結（値の空白は %20）。
+   * 識別子: partial_state_on_v1_0 | empty_pending_chunks | unknown_content_ref |
+   * duplicate_chunk_ref | invalid_chunk_bounds | invalid_sha256_format |
+   * partial_state_incomplete | invalid_content_kind
+   */
   MANIFEST_PARTIAL_INVALID: 'E2075',
 
   COMPRESS_FAILED: 'E3001',
@@ -135,7 +141,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   E2072: 'チャンクの SHA-256 検証に失敗しました。',
   E2073: 'エクスポートの基底パッケージが中断状態です。完了パッケージを基底にしてください。',
   E2074: '基底パッケージのチェインに中断ノードが含まれています。',
-  E2075: 'manifest の partialState が不正です。',
+  E2075: 'manifest の中断状態(partialState)が不正です。',
 
   E3001: 'zstd 圧縮処理に失敗しました。',
   E3002: 'SHA-256 ハッシュの計算に失敗しました。',

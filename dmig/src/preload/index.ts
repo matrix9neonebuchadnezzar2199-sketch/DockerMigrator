@@ -21,6 +21,7 @@ import type {
   DiffPreviewResult,
   SnapshotSummary,
   ComposeLifecycleRequest,
+  ProbeSummary,
 } from '../shared/types.js';
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: DmigErrorPayload };
@@ -34,6 +35,8 @@ export interface DmigAPI {
   exportImages(req: ExportRequest): Promise<Result<DmigManifest>>;
   importImages(req: ImportRequest): Promise<Result<void>>;
   readManifest(packageDir: string): Promise<Result<DmigManifest>>;
+  /** パッケージの完了/中断/異常を throw なしで先読みする */
+  probePackage(packageDir: string): Promise<Result<ProbeSummary>>;
   onProgress(cb: (ev: ProgressEvent) => void): () => void;
 
   /** 稼働中または過去に起動した Compose プロジェクト一覧 */
@@ -81,6 +84,7 @@ const api: DmigAPI = {
   exportImages: (req) => ipcRenderer.invoke('dmig:export', req),
   importImages: (req) => ipcRenderer.invoke('dmig:import', req),
   readManifest: (dir) => ipcRenderer.invoke('dmig:readManifest', dir),
+  probePackage: (packageDir) => ipcRenderer.invoke('dmig:probePackage', packageDir),
   onProgress: (cb) => {
     const listener = (_e: IpcRendererEvent, ev: ProgressEvent) => {
       cb(ev);

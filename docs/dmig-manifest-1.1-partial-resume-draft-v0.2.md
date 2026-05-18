@@ -215,7 +215,7 @@ UI は manifest を先読みして `partialState` の有無で分岐。
 
 - 開いた直後に `checksumPolicy` に従う。
 - `verify-all`: 全 chunk SHA-256。
-- `verify-resumed`: `pendingChunks` の chunk と `chunkIndex ± 1`。
+- `verify-resumed`: `pendingChunks` の chunk と `chunkIndex ± 1`。隣接 chunk は **同一 `(contentKind, contentId)` 内**に限定し、content 境界を越えない。
 - `trust-completed`: `pendingChunks` の chunk のみ。
 
 検証失敗は **E2072**。
@@ -330,3 +330,4 @@ export interface PartialState {
 
 - **v0.1** (2026-05-17): 初版。
 - **v0.2** (2026-05-18): `contents` が配列ではなくオブジェクト（`images` / `volumes` / `composeProjects`）であることが判明したため、`ChunkRef` に `contentKind` を追加して系統識別を可能にした。これに伴い §3.3 と §10 を改訂。`partialState` 本体の構造は変更なし。
+- **v0.2.1** (2026-05-18): §6.2 に `verify-resumed` の隣接 chunk 範囲を補足追記（同一 `contentKind`+`contentId` 内、content 境界を越えない）。step 3 実装と矛盾しないことを明示。

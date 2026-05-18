@@ -29,6 +29,7 @@ import type {
   PreflightRequest,
   ErrorReportRequest,
   DiffPreviewRequest,
+  ProbeSummary,
 } from '@shared/types.js';
 import type { Snapshot } from '@shared/snapshot-types.js';
 import { SnapshotStore } from './core/snapshot/SnapshotStore.js';
@@ -187,6 +188,16 @@ export function registerIpcHandlers(win: BrowserWindow) {
     try {
       const importer = new Importer(docker);
       return { ok: true as const, data: await importer.readManifest(packageDir) };
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
+  });
+
+  ipcMain.handle('dmig:probePackage', async (_e, packageDir: string) => {
+    try {
+      const importer = new Importer(docker);
+      const summary: ProbeSummary = await importer.probe(packageDir);
+      return { ok: true as const, data: summary };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
     }

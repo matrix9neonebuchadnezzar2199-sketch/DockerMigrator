@@ -405,6 +405,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1115">詳細</a></td>
       </tr>
+      <tr>
+        <td>16:45</td>
+        <td>Phase 6 第3回 step 3: Importer 入口分離、<code>dmig:probePackage</code>、E2075 検証、正本 §6.2 補足</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1645">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -568,6 +574,36 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功（指示書フォーマットに合わせた JSDoc・正本 §3.3 表・変更履歴追補後）</li>
     <li>追補コミット: <code>3dd77ec</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1645">
+  <h2>Phase 6 第3回 step 3: Importer 入口分離と probe IPC</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 16:45</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>OpenedPackage</code> 判別共用体（<code>main/core/importer/OpenedPackage.ts</code> 新設）、<code>Importer.openAsBase</code> / <code>openForResume</code> / <code>probe</code>、<code>validatePartialState</code>（E2075・reason 識別子は <code>detail</code> の key=value 連結）。<code>shared/types.ts</code> に <code>PackageProbeStatus</code> / <code>ProbeSummary</code> を追加。<code>dmig:probePackage</code> IPC と <code>window.dmig.probePackage</code>（<code>Result&lt;ProbeSummary&gt;</code>、異常は <code>status</code> に閉じる）。正本 v0.2 の §6.2 に <code>verify-resumed</code> の隣接 chunk 範囲を補足し、変更履歴に v0.2.1 を追記。<code>vitest</code> でフィクスチャ検証。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/importer/OpenedPackage.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/Importer.openedPackage.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/vitest.config.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/Importer.ts</code> / <code>dmig/src/main/ipc.ts</code> / <code>dmig/src/preload/index.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code> / <code>dmig/src/shared/codes.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/package.json</code> / <code>dmig/tsconfig.json</code> / <code>dmig/eslint.config.mjs</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code> / <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> / <code>npm test</code></li>
+    <li>Commit: <em>pending</em></li>
   </ul>
 </section>
 </main>
