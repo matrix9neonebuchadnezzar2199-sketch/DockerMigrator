@@ -5,6 +5,7 @@ import { pipeline } from 'node:stream/promises';
 import { EventEmitter } from 'node:events';
 
 import type { DockerAdapter } from './DockerAdapter.js';
+import type { OpenedPackageBase } from './importer/OpenedPackage.js';
 import { Importer } from './Importer.js';
 import { VolumeExporter } from './VolumeExporter.js';
 import { createZstdDecompressStream } from './compression/zstdStreams.js';
@@ -84,13 +85,12 @@ export class ComposeImporter extends EventEmitter {
       }
 
       if (allImages.size > 0) {
-        await this.imageImporter.importImages(
-          {
-            packageDir: req.packageDir,
-            selectedImages: [...allImages],
-          },
-          signal,
-        );
+        const opened: OpenedPackageBase = {
+          mode: 'base',
+          packageDir: req.packageDir,
+          manifest: dmigManifest,
+        };
+        await this.imageImporter.importImages(opened, [...allImages], signal);
       }
 
       const total = projectPayloads.length;

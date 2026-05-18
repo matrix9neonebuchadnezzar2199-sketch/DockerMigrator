@@ -13,7 +13,6 @@ import type {
   ChunkRef,
   ContentKind,
   DmigManifest,
-  ImportRequest,
   PackageProbeStatus,
   ProgressEvent,
   ProbeSummary,
@@ -306,9 +305,9 @@ export class Importer extends EventEmitter {
     return value.replace(/ /g, '%20').replace(/\n/g, '%0A').replace(/=/g, '%3D');
   }
 
-  async importImages(req: ImportRequest, signal?: AbortSignal): Promise<void> {
-    const manifest = await this.readManifest(req.packageDir);
-    const targets = manifest.contents.images.filter((e) => req.selectedImages.includes(e.name));
+  async importImages(opened: OpenedPackageBase, selectedImages: string[], signal?: AbortSignal): Promise<void> {
+    const manifest = opened.manifest;
+    const targets = manifest.contents.images.filter((e) => selectedImages.includes(e.name));
 
     if (targets.length === 0) {
       throw new DmigError(ErrorCodes.IMAGE_NOT_FOUND, {
@@ -325,7 +324,7 @@ export class Importer extends EventEmitter {
 
       const entry = targets[i];
       const rel = entry.filename.startsWith('images/') ? entry.filename : `images/${entry.filename}`;
-      const filepath = join(req.packageDir, rel);
+      const filepath = join(opened.packageDir, rel);
 
       this.emitProgress({
         taskId: entry.name,

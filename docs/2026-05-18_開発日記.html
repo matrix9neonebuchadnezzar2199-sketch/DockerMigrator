@@ -435,6 +435,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1505">詳細</a></td>
       </tr>
+      <tr>
+        <td>15:24</td>
+        <td>コードレビュー R-1: <code>Importer.importImages</code> を <code>OpenedPackageBase</code> 受け取りに変更（<code>dmig:import</code> 内 manifest 二重読み解消）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1524">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -756,6 +762,36 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code> / <code>npm run build</code>（<code>dmig</code>）</li>
     <li>Commit: <code>6d2b3f0</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1524">
+  <h2>コードレビュー R-1: Importer の manifest 二重読み解消</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 15:24</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>指示書 <code>docs/instructions/code-review-r1-importer-onepass-instructions.md</code> に従い、<code>Importer.importImages</code> を <code>(opened: OpenedPackageBase, selectedImages: string[], signal?)</code> に変更し、内部の <code>readManifest</code> 呼び出しを削除。<code>dmig:import</code> ハンドラで <code>openAsBase(req.packageDir)</code> を <code>try</code> 内で呼び、<code>importImages(opened, req.selectedImages, signal)</code> に渡す。<code>ComposeImporter</code> は既存の <code>dmigManifest</code> から <code>OpenedPackageBase</code> をインライン生成して渡す。<code>ImportRequest</code> 型・IPC・preload・Rendererは不変。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/Importer.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/ipc/importImages.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/ComposeImporter.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>旧 <code>importImages(req: ImportRequest)</code> のオーバーロードは残さず、呼び出し元 2 箇所のみを同時更新。Compose 経路は追加の manifest 読込なし。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code>（19 tests）/ <code>npm run build</code>（<code>dmig</code>）</li>
+    <li>Commit: <code>pending</code></li>
   </ul>
 </section>
 </main>

@@ -18,7 +18,8 @@ export function registerImageImportHandlers(deps: HandlerDeps): void {
     };
     importer.on('progress', onProg);
     try {
-      await importer.importImages(req, controller.signal);
+      const opened = await importer.openAsBase(req.packageDir);
+      await importer.importImages(opened, req.selectedImages, controller.signal);
       return { ok: true as const, data: undefined };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
