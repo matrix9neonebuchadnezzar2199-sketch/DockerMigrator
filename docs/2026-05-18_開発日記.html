@@ -387,6 +387,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-0915">詳細</a></td>
       </tr>
+      <tr>
+        <td>10:52</td>
+        <td>ルート <code>README.md</code> 新設（バッジ・タグ方針・Releases）、<code>AGENTS.md</code> に README 追随ルール、annotated タグ <code>v0.1.0-poc</code> を push</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1052">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -469,6 +475,31 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> 成功</li>
     <li>Commit: <code>a921891</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1052">
+  <h2>GitHub 向け README とタグ</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 10:52</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>リポジトリ直下に <code>README.md</code> を追加。概要・機能表・ディレクトリ構成・開発コマンド・<strong>Semantic Versioning に沿った Git タグ</strong>（annotated 推奨）と <strong>GitHub Releases</strong> の運用メモ、正規リモート URL、ライセンス未整備の注意を記載。<code>AGENTS.md</code> に「機能や要件が変わったら README を都度更新する」方針を追記。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>DockerMigrator/README.md</code></li>
+    <li><span class="op op-mod">~</span> <code>DockerMigrator/AGENTS.md</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>git push origin main</code>、annotated タグ <code>v0.1.0-poc</code> を <code>origin</code> に push</li>
+    <li>Commit: <code>01f0b88</code>（README コミット）</li>
   </ul>
 </section>
 </main>

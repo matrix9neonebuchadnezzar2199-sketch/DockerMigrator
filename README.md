@@ -32,6 +32,8 @@
 
 現行バージョン（`dmig/package.json` の `version`）: **`0.1.0-poc`**（概念実証。本番運用前提の保証はありません）。
 
+Git リモートには **`v0.1.0-poc`** の [annotated tag](https://github.com/matrix9neonebuchadnezzar2199-sketch/DockerMigrator/releases/tag/v0.1.0-poc) を付与済みです（GitHub の「Releases」に説明文やバイナリを載せるのは任意です。タグだけでも `git checkout` や比較の基点になります）。
+
 ---
 
 ## 主な機能
