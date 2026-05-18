@@ -268,3 +268,53 @@ describe('Importer.openAsBase / openForResume / probe', () => {
     expect(p.pendingChunksPreview?.length).toBe(PROBE_PREVIEW_LIMIT);
   });
 });
+
+describe('Importer.validatePartialState（境界）', () => {
+  it('byteOffset===0 かつ byteLength===Number.MAX_SAFE_INTEGER → 通る', () => {
+    const m = baseManifest({
+      schemaVersion: '1.1',
+      partialState: {
+        pendingChunks: [
+          validChunk({ byteOffset: 0, byteLength: Number.MAX_SAFE_INTEGER }),
+        ],
+        lastUpdatedAt: '2026-01-01T00:00:00.000Z',
+        checksumPolicy: 'verify-resumed',
+      },
+    });
+    expect(() => Importer.validatePartialState(m)).not.toThrow();
+  });
+
+  it('byteOffset が負値 → E2075 reason=invalid_chunk_bounds', () => {
+    const m = baseManifest({
+      schemaVersion: '1.1',
+      partialState: {
+        pendingChunks: [validChunk({ byteOffset: -1 })],
+        lastUpdatedAt: '2026-01-01T00:00:00.000Z',
+        checksumPolicy: 'verify-resumed',
+      },
+    });
+    expect(() => Importer.validatePartialState(m)).toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.MANIFEST_PARTIAL_INVALID,
+        detail: expect.stringContaining('reason=invalid_chunk_bounds'),
+      }),
+    );
+  });
+
+  it('同一 (contentKind, contentId, chunkIndex) の重複 → E2075 reason=duplicate_chunk_ref', () => {
+    const m = baseManifest({
+      schemaVersion: '1.1',
+      partialState: {
+        pendingChunks: [validChunk(), validChunk()],
+        lastUpdatedAt: '2026-01-01T00:00:00.000Z',
+        checksumPolicy: 'verify-resumed',
+      },
+    });
+    expect(() => Importer.validatePartialState(m)).toThrow(
+      expect.objectContaining({
+        code: ErrorCodes.MANIFEST_PARTIAL_INVALID,
+        detail: expect.stringContaining('reason=duplicate_chunk_ref'),
+      }),
+    );
+  });
+});
