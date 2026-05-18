@@ -459,6 +459,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1612">詳細</a></td>
       </tr>
+      <tr>
+        <td>16:58</td>
+        <td>Phase 7: 指示書どおりの分割 git commit（7 本）と <code>main</code> push、日記検証欄の整理、<code>electron-vite dev</code> 動作確認</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1658">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -904,6 +910,32 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code>（44 tests）/ <code>npm run build</code>（<code>dmig</code>）</li>
     <li>Commit（指示書 Step 0〜5 + まとめ docs）: <code>39dbd79</code> fixtures / <code>3446828</code> importer / <code>52ee750</code> compose / <code>db7fd9e</code> exporter / <code>d1979e9</code> ipc / <code>d9c43a0</code> coverage / <code>90a8932</code> CHANGELOG・phase7 指示書・日記。いずれも <code>main</code> へ push 済み（日記検証行の追記のみの follow-up コミットあり）。</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1658">
+  <h2>Phase 7: 分割コミット・push と開発サーバ確認</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 16:58</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-scope">diary</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>docs/instructions/phase7-test-coverage-instructions.md</code> のコミット粒度に従い、Step 0（fixtures）から Step 5（周辺テスト）までを <strong>7 本の個別コミット</strong>に分割し、<code>origin/main</code> へ push した。続けて日記エントリ（16:12）の検証欄を実コミット列に合わせる follow-up（<code>18eba7a</code> / <code>b3d4cfb</code> / <code>37af8a0</code>）を積み、先端は <code>37af8a0</code>。別タスクで <code>dmig</code> に対し <code>npm run dev</code>（electron-vite dev）を実行し、Main / preload のビルド成功、レンダラー <code>http://localhost:5173/</code>、Electron 起動まで確認。DevTools の <code>Autofill.enable</code> 系コンソールエラーは既知のノイズで本体成否とは無関係。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code>（本エントリ・目次追記）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>git push origin main</code> 成功（分割コミット群 + 日記 follow-up）</li>
+    <li><code>npm run dev</code>（<code>dmig</code>）: build 成功・プロセス正常終了（タスクログ <code>exit_code: 0</code>）</li>
+    <li>リポジトリ先端（記録時点）: <code>37af8a0</code></li>
   </ul>
 </section>
 </main>
