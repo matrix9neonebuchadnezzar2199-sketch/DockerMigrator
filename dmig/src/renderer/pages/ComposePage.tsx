@@ -14,6 +14,7 @@ import type {
   ComposeLifecycleAction,
 } from '../../shared/types.js';
 import { ErrorCodes, ErrorMessages } from '@shared/codes.js';
+import { EXPORT_RESUME_VIA_IMPORT_HINT } from '@shared/uiCopy.js';
 
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ErrorBox } from '../components/ErrorBox.js';
@@ -25,6 +26,7 @@ import {
 } from '../components/StaticPageGuides.js';
 import { SecretWarningDialog } from '../components/SecretWarningDialog.js';
 import { BindMountDialog } from '../components/BindMountDialog.js';
+import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { DiffPreviewDialog } from '../components/DiffPreviewDialog.js';
 import { useDiffPreview } from '../hooks/useDiffPreview.js';
 import {
@@ -67,6 +69,7 @@ export const ComposePage: React.FC = () => {
   const [currentJobToken, setCurrentJobToken] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<PreflightResult | null>(null);
   const [lastAction, setLastAction] = useState<string>('');
+  const [resumeHint, setResumeHint] = useState<string | null>(null);
 
   const exportProjectNamesRef = useRef<string[]>([]);
   const composeDeltaRef = useRef<ComposeDeltaOpts | null>(null);
@@ -439,6 +442,7 @@ export const ComposePage: React.FC = () => {
       } else {
         setError(r.error);
         setPhase('browse');
+        setResumeHint(EXPORT_RESUME_VIA_IMPORT_HINT);
       }
     } finally {
       setCurrentJobToken(null);
@@ -567,6 +571,7 @@ export const ComposePage: React.FC = () => {
       <div className="page-two-col">
         <div className="page-primary">
           <h2>Compose プロジェクトまるごと パック</h2>
+          <ResumeHintBanner message={resumeHint} onDismiss={() => setResumeHint(null)} />
 
           <div className="tab-bar">
         <button

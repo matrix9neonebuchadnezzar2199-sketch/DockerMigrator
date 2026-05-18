@@ -552,6 +552,42 @@ input[type='text'] {
   background: #6c7086;
   color: #cdd6f4;
 }
+.btn-danger {
+  background: #f38ba8;
+  color: #1e1e2e;
+}
+
+/* エクスポート失敗時: Import から再開の案内 */
+.resume-hint-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: #313244;
+  border: 1px solid #89b4fa;
+  border-radius: 8px;
+  color: #cdd6f4;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.resume-hint-banner-text {
+  flex: 1;
+}
+.resume-hint-banner-dismiss {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #45475a;
+  color: #cdd6f4;
+  border: 1px solid #585b70;
+  border-radius: 4px;
+}
+.resume-hint-banner-dismiss:hover {
+  background: #585b70;
+}
 
 /* シークレット検出 / bind mount 表示 */
 .secret-project {

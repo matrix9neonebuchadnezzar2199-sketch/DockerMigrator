@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import type { ImageInfo, ProgressEvent, DmigErrorPayload } from '../../shared/types.js';
+import { EXPORT_RESUME_VIA_IMPORT_HINT } from '@shared/uiCopy.js';
 import { ProgressBar } from '../components/ProgressBar.js';
 import { ErrorBox } from '../components/ErrorBox.js';
+import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
 
@@ -15,6 +17,7 @@ export const ExportPage: React.FC = () => {
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [running, setRunning] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [resumeHint, setResumeHint] = useState<string | null>(null);
 
   useEffect(() => {
     void window.dmig.listImages().then((r) => {
@@ -44,7 +47,10 @@ export const ExportPage: React.FC = () => {
     });
     setRunning(false);
     if (r.ok) setDone(`完了: ${r.data.contents.images.length} 件のイメージを書き出しました`);
-    else setError(r.error);
+    else {
+      setError(r.error);
+      setResumeHint(EXPORT_RESUME_VIA_IMPORT_HINT);
+    }
   };
 
   const totalSize = images
@@ -56,6 +62,7 @@ export const ExportPage: React.FC = () => {
       <div className="page-two-col">
         <div className="page-primary">
           <h2>📤 エクスポート対象を選択</h2>
+          <ResumeHintBanner message={resumeHint} onDismiss={() => setResumeHint(null)} />
 
       <div className="card">
         <label style={{ display: 'block', marginBottom: 8 }}>💾 出力先 (USBパス):</label>

@@ -417,6 +417,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1355">詳細</a></td>
       </tr>
+      <tr>
+        <td>14:27</td>
+        <td>Phase 6 第3回 step 5: Import <code>probePackage</code> 分岐・再開確認ダイアログ・Export/Compose 失敗時の Import 再開案内・<code>gateImportAfterProbe</code> 単体テスト</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1427">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -639,7 +645,37 @@ body.diary > footer {
   <h3>検証</h3>
   <ul>
     <li><code>npm run lint</code> / <code>npm run typecheck</code></li>
-    <li>Commit: pending</li>
+    <li>Commit: <code>3284f73</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1427">
+  <h2>Phase 6 第3回 step 5: Import プローブ・再開 UI・再開案内帯</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 14:27</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><strong>読み込み</strong>で <code>dmig:probePackage</code> を先に実行し、<code>gateImportAfterProbe</code>（共有）で <code>ok_complete</code> / <code>ok_partial</code> / 異常系へ分岐。<code>ok_partial</code> は <code>ResumeConfirmDialog</code> から <code>resumeExport</code>（<code>jobToken</code> 付き）を起動し、実行中のみ <code>window.dmig.cancel(jobToken)</code>。異常系は <code>ProbeErrorPanel</code>。<code>ExportPage</code> / <code>ComposePage</code> のエクスポート失敗時に <code>ResumeHintBanner</code> で Import からの再開を案内。文言は <code>@shared/uiCopy.ts</code> に集約。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/shared/importProbeUi.ts</code> / <code>importProbeUi.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/shared/uiCopy.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/ResumeConfirmDialog.tsx</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/ProbeErrorPanel.tsx</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/ResumeHintBanner.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/pages/ImportPage.tsx</code> / <code>ExportPage.tsx</code> / <code>ComposePage.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/styles.css</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code> / <code>npm run build</code>（<code>dmig</code>）</li>
   </ul>
 </section>
 </main>
