@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Phase 7 test coverage: importImages 新シグネチャ、ComposeImporter 経路、Exporter 中断・再開シナリオ、`dmig:resumeExport` IPC integration、`validatePartialState` 境界、`DockerAdapter` の `DOCKER_HOST` 分岐の単体・統合テストを追加（19 → 44 件、+25 件）。
+
 ### Changed
 
 - `DockerAdapter` がコンストラクタで `process.env.DOCKER_HOST` を尊重するようになった。設定されている場合は `new Docker()` を引数なしで呼び、`docker-modem` の `defaultOpts()` に解釈を委ねる（`unix://` / `npipe://` / `tcp://` / `ssh://` と `DOCKER_TLS_VERIFY` / `DOCKER_CERT_PATH` / `SSH_AUTH_SOCK` の自動展開を含む）。未設定なら従来どおり OS 別の `socketPath` を明示渡しして振る舞いを完全保持。これにより `execFile('docker', ...)` で起動する子プロセスと `dockerode` 経由の daemon 接続先が常に一致する。

@@ -453,6 +453,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1546">詳細</a></td>
       </tr>
+      <tr>
+        <td>16:12</td>
+        <td>Phase 7 包括指示書: テスト 19→44 件（<code>importImages</code> / Compose / Exporter 再開 / <code>dmig:resumeExport</code> IPC / <code>validatePartialState</code> / <code>DockerAdapter</code> env）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1612">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -865,6 +871,39 @@ body.diary > footer {
   <ul>
     <li>ドキュメントのみの変更。コード変更なし、テスト・ビルド再実行は不要。</li>
     <li>Commit: <code>665f3e6</code>（指示書 3 件）/ <code>f524104</code>（本エントリ + CHANGELOG + Phase 7 計画書）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1612">
+  <h2>Phase 7: テスト厚め化（包括指示書 Step 0〜5）</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 16:12</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>指示書 <code>docs/instructions/phase7-test-coverage-instructions.md</code> に従い、共通 fixture（<code>dmig/src/main/core/__test-fixtures__/index.ts</code>）、<code>Importer.importImages</code> 8 件、<code>ComposeImporter</code> 3 件、<code>Exporter.exportImages</code> 中断シナリオ 3 件（<code>saveImageStream</code> 呼び出し回数で <code>AbortError</code>）、<code>dmig:resumeExport</code> IPC 5 件（<code>test-utils/ipcHarness.ts</code> + <code>vi.mock('electron')</code>）、<code>Importer.validatePartialState</code> 境界 3 件、<code>DockerAdapter</code> の <code>DOCKER_HOST</code> 3 件を追加。<strong>E2074</strong> は本体未実装のため IPC 異常系は <code>PACK_FORMAT_INVALID</code>（存在しない packageDir）に差し替えた。<code>CHANGELOG.md</code> の <code>[Unreleased]</code> に Added 1 行を追記。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/__test-fixtures__/index.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/Importer.importImages.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/ComposeImporter.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/Exporter.resumeFlow.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/exportImages.resume.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/test-utils/ipcHarness.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/DockerAdapter.test.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/Importer.openedPackage.test.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>CHANGELOG.md</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code>（44 tests）/ <code>npm run build</code>（<code>dmig</code>）</li>
+    <li>Commit: <code>pending</code>（マスター指示に従いコミット・push は別操作）</li>
   </ul>
 </section>
 </main>
