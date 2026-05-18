@@ -429,6 +429,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1450">詳細</a></td>
       </tr>
+      <tr>
+        <td>15:05</td>
+        <td>コードレビュー R-3: <code>ipc.ts</code> を責務別モジュールへ分割（<code>DockerAdapter</code> 単一生成・<code>register*</code> 連鎖）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1505">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -718,6 +724,38 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code> / <code>npm run build</code>（<code>dmig</code>）</li>
     <li>Commit: <code>1673faf</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1505">
+  <h2>コードレビュー R-3: Main IPC の責務別分割</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 15:05</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>指示書 <code>docs/instructions/code-review-r3-ipc-split-instructions.md</code> に従い、<code>registerIpcHandlers</code> を薄いオーケストレータに置換。<strong><code>DockerAdapter</code> は 1 回だけ生成</strong>し <code>HandlerDeps</code>（<code>win</code> / <code>docker</code>）として <code>registerSystemHandlers</code> → <code>registerImageExportHandlers</code> → <code>registerImageImportHandlers</code> → <code>registerComposeHandlers</code> → <code>registerPreflightHandlers</code> → <code>registerSnapshotHandlers</code> の順で登録。チャネル名とハンドラ内ロジックは行単位で既存から移設（R-1 / R-2 は未変更）。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/shared.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/system.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/exportImages.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/importImages.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/compose.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/preflight.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/snapshot.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/ipc.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code> / <code>npm run build</code>（<code>dmig</code>）</li>
+    <li>Commit: <code>pending</code></li>
   </ul>
 </section>
 </main>
