@@ -441,6 +441,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1524">詳細</a></td>
       </tr>
+      <tr>
+        <td>15:35</td>
+        <td>コードレビュー R-2: <code>DockerAdapter</code> が <code>DOCKER_HOST</code> を尊重するよう変更（<code>docker</code> CLI と daemon 接続先を一致）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1535">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -792,6 +798,34 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code>（19 tests）/ <code>npm run build</code>（<code>dmig</code>）</li>
     <li>Commit: <code>e9c7b22</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1535">
+  <h2>コードレビュー R-2: <code>DockerAdapter</code> の <code>DOCKER_HOST</code> 尊重</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 15:35</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>指示書 <code>docs/instructions/code-review-r2-dockerhost-instructions.md</code> に従い、<code>DockerAdapter</code> のコンストラクタを <strong><code>DOCKER_HOST</code> が設定されている時は <code>new Docker()</code> を引数なしで呼ぶ</strong>形に変更。<code>docker-modem</code> の <code>defaultOpts()</code> が <code>unix://</code> / <code>npipe://</code> / <code>tcp://</code> / <code>ssh://</code> と <code>DOCKER_TLS_VERIFY</code> / <code>DOCKER_CERT_PATH</code> / <code>SSH_AUTH_SOCK</code> を自動展開する。<code>DOCKER_HOST</code> 未設定なら従来どおり OS 別の <code>socketPath</code>（Win <code>//./pipe/docker_engine</code> / それ以外 <code>/var/run/docker.sock</code>）を明示渡しして振る舞いを完全保持。<code>execFile('docker', ...)</code> 側（<code>ipc/system.ts</code> / <code>ipc/compose.ts</code>）は子プロセスが <code>process.env</code> を継承するため未変更で接続先が一致する。<code>DockerAdapter</code> の他メソッド・IPC チャンネル・preload・Rendererは不変。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/DockerAdapter.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/2026-05-18_開発日記.html</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>選択肢は (A) <code>DockerAdapter</code> 側で <code>DOCKER_HOST</code> を尊重 / (B) <code>execFile</code> 側で env を上書きして socket 固定 / (C) <code>DOCKER_HOST</code> が設定されていたら拒否、の三案。マスター承認により (A) を採用。理由: <strong>Docker Desktop の context 機能やリモート daemon を意図的に使うユーザー</strong>を弾かず、<code>docker</code> CLI と <code>dockerode</code> 経由を同じ daemon に揃えるのが最も自然。TLS / SSH / 証明書まわりは <code>docker-modem</code> 側が完備しているため、<code>DockerAdapter</code> から <code>DOCKER_HOST</code> 以外の env を直接読むことは禁じた（Surgical Changes）。本変更でレビュー指摘 R-1 / R-2 / R-3 の三件すべて完了。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run test</code>（19 tests / 緑）/ <code>npm run build</code>（<code>dmig</code>）</li>
+    <li>Commit: <code>pending</code></li>
   </ul>
 </section>
 </main>

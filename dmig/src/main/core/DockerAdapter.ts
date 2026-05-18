@@ -17,11 +17,21 @@ export class DockerAdapter {
   private readonly docker: Docker;
 
   constructor() {
-    this.docker = new Docker(
-      process.platform === 'win32'
-        ? { socketPath: '//./pipe/docker_engine' }
-        : { socketPath: '/var/run/docker.sock' },
-    );
+    // DOCKER_HOST が設定されている場合は dockerode のデフォルト解釈に委ねる。
+    // docker-modem が unix:// / npipe:// / tcp:// / ssh:// と
+    // DOCKER_TLS_VERIFY / DOCKER_CERT_PATH / SSH_AUTH_SOCK を自動展開するため、
+    // execFile('docker', ...) で起動する子プロセスと daemon 接続先が常に一致する。
+    // 未設定なら従来どおり OS 別の socketPath を明示渡しして振る舞いを完全保持する。
+    const dockerHost = process.env.DOCKER_HOST;
+    if (dockerHost && dockerHost.length > 0) {
+      this.docker = new Docker();
+    } else {
+      this.docker = new Docker(
+        process.platform === 'win32'
+          ? { socketPath: '//./pipe/docker_engine' }
+          : { socketPath: '/var/run/docker.sock' },
+      );
+    }
   }
 
   /**
