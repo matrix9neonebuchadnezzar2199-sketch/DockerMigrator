@@ -1,7 +1,7 @@
 # dmig manifest schemaVersion 1.1 / 中断・再開機能
 
-**Draft v0.2**（Phase 6 第3回 — `ChunkRef.contentKind` 追加）  
-**文書日付**: 2026-05-17（初版）、**v0.2 改訂**: 2026-05-18  
+**Draft v0.2.2**（Phase 6 第3回 step 4 — Exporter 側 partialState 段階 A）  
+**文書日付**: 2026-05-17（初版）、**v0.2 改訂**: 2026-05-18、**v0.2.2 改訂**: 2026-05-14  
 **記録日**: 2026-05-18（マスター承認・設計メモ取り込み済み）
 
 ## v0.1 → v0.2（改訂サマリ）
@@ -125,6 +125,8 @@
 | `byteLength` | number | 必須 | 本 chunk のバイト長 |
 | `expectedSha256` | string | 必須 | 本 chunk の期待 SHA-256（hex 小文字） |
 
+注: **段階 A 運用**（本リリース時点の Exporter）では `expectedSha256` に `'0'` を 64 文字並べたプレースホルダを置く。実チャンクの SHA は **段階 B**（byte 単位の chunk 分割導入）以降で格納する。
+
 - `byteOffset` + `byteLength` は content の総バイト長を超えてはならない。
 - 同一 (`contentKind`, `contentId`, `chunkIndex`) は `pendingChunks` 内に高々 1 個。
 - `contentId` は当該系統（`contentKind`）内での一意性のみ保証される。系統をまたぐと衝突しうるため、識別には常に `contentKind` とセットで扱う。
@@ -192,7 +194,24 @@ JSON 例:
 
 ### 5.1 manifest 再書き込みの原子性
 
-`manifest.json` は一時ファイル + rename による原子的差し替え。
+`manifest.json` は **`write-file-atomic` 等**による一時ファイル + rename 相当の原子的差し替え（実装は `ManifestWriter` に集約）。
+
+### 5.1.1 段階 A 運用（1 entry = 1 chunk）
+
+本リリース時点の Exporter は単一ストリーム書き出し（1 content = 1 ファイル）を採用しており、ストリーム途中での chunk 分割は未実装である。段階 A として以下の運用で `partialState` を維持する。
+
+- 書き出し開始時に各 entry を `pendingChunks` に 1 件登録する:
+  - `chunkIndex`: 0
+  - `byteOffset`: 0
+  - `byteLength`: SizeEstimator の推定値（なければ 1）
+  - `expectedSha256`: `'0'` を 64 文字並べた**プレースホルダ**
+- entry 書き出し完了時に該当 `ChunkRef` を `pendingChunks` から削除し manifest を再書き込みする
+- 全 entry 完了時に `partialState` フィールドごと削除して最終書き込みする
+- 再開時は entry 全体を頭から書き直す（部分復元はしない）
+
+**全ゼロ 64 文字の `expectedSha256` は段階 A 専用のプレースホルダであり、実ハッシュではない。** 段階 B（chunk 分割導入）で実ハッシュに置き換える。`verify-resumed` 等の検証は段階 B 以降に厳密化する。
+
+段階 B（byte 単位の chunk 分割、デフォルト 64MB 想定）は **Phase 6 第5回または Phase 7** で別タスクとして扱う。
 
 ### 5.2 1.0 互換モード
 
@@ -330,4 +349,4 @@ export interface PartialState {
 
 - **v0.1** (2026-05-17): 初版。
 - **v0.2** (2026-05-18): `contents` が配列ではなくオブジェクト（`images` / `volumes` / `composeProjects`）であることが判明したため、`ChunkRef` に `contentKind` を追加して系統識別を可能にした。これに伴い §3.3 と §10 を改訂。`partialState` 本体の構造は変更なし。
-- **v0.2.1** (2026-05-18): §6.2 に `verify-resumed` の隣接 chunk 範囲を補足追記（同一 `contentKind`+`contentId` 内、content 境界を越えない）。step 3 実装と矛盾しないことを明示。
+- **v0.2.2** (2026-05-14): Exporter 側 `partialState` 書き込みを段階 A（1 entry = 1 chunk）で実装することを明文化。§5.1 に `ManifestWriter` / `write-file-atomic` を追記し §5.1.1 を新設。§3.3 に全ゼロハッシュのプレースホルダ規約を注記。段階 B（byte 単位 chunk 分割）は別フェーズに切り出し。

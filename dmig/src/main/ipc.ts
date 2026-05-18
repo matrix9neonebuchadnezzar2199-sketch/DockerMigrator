@@ -7,6 +7,7 @@ import { DockerAdapter } from './core/DockerAdapter.js';
 import { Exporter } from './core/Exporter.js';
 import { Importer } from './core/Importer.js';
 import { ComposeExporter } from './core/ComposeExporter.js';
+import { ComposeExportManifestSession } from './core/manifest/composeExportManifestSession.js';
 import { ComposeImporter } from './core/ComposeImporter.js';
 import { VolumeExporter } from './core/VolumeExporter.js';
 import { SecretScanner } from './core/SecretScanner.js';
@@ -30,6 +31,7 @@ import type {
   ErrorReportRequest,
   DiffPreviewRequest,
   ProbeSummary,
+  ResumeExportRequest,
 } from '@shared/types.js';
 import type { Snapshot } from '@shared/snapshot-types.js';
 import { SnapshotStore } from './core/snapshot/SnapshotStore.js';
@@ -200,6 +202,48 @@ export function registerIpcHandlers(win: BrowserWindow) {
       return { ok: true as const, data: summary };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
+    }
+  });
+
+  ipcMain.handle('dmig:resumeExport', async (_e, req: ResumeExportRequest) => {
+    const controller = jobRegistry.register(req.jobToken);
+    const importer = new Importer(docker);
+    const exporter = new Exporter(docker);
+    const volumeExporter = new VolumeExporter(docker);
+    const composeExporter = new ComposeExporter(docker, exporter, volumeExporter);
+
+    const tracker = new ProgressTracker();
+    const onProg = (ev: ProgressEvent) => {
+      win.webContents.send('dmig:progress', tracker.enrich(ev));
+    };
+    exporter.on('progress', onProg);
+    volumeExporter.on('progress', onProg);
+    composeExporter.on('progress', onProg);
+
+    const compressionLevel = req.compressionLevel ?? 3;
+
+    try {
+      const opened = await importer.openForResume(req.packageDir);
+      const needsComposeResume =
+        (opened.manifest.contents.composeProjects?.length ?? 0) > 0 ||
+        opened.partialState.pendingChunks.some(
+          (c) => c.contentKind === 'composeProject' || c.contentKind === 'volume',
+        );
+
+      if (needsComposeResume) {
+        await composeExporter.resumeComposePack(opened, compressionLevel, controller.signal);
+      } else {
+        await exporter.resumeImagePack(opened, compressionLevel, controller.signal);
+      }
+
+      return { ok: true as const, data: undefined };
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    } finally {
+      exporter.off('progress', onProg);
+      volumeExporter.off('progress', onProg);
+      composeExporter.off('progress', onProg);
+      jobRegistry.unregister(req.jobToken);
     }
   });
 
@@ -447,44 +491,30 @@ export function registerIpcHandlers(win: BrowserWindow) {
         projectNames: effectiveProjectNames,
       };
 
-      const result = await composeExporter.exportProjects(
+      const session = await ComposeExportManifestSession.create(packDir, exportReq, targets, docker);
+      await session.writeInitial();
+
+      await composeExporter.exportProjects(
         exportReq,
         packDir,
         targets,
         controller.signal,
+        session,
       );
 
-      const ping = await docker.ping().catch(() => ({ version: 'unknown' }));
-      const manifest: DmigManifest = {
-        dmigVersion: '1.0.0',
-        createdAt: new Date().toISOString(),
-        source: {
-          os: process.platform,
-          arch: process.arch,
-          dockerVersion: ping.version,
-          appVersion: '0.1.0-poc',
-        },
-        contents: {
-          images: result.imageEntries,
-          volumes: result.volumeEntries,
-          composeProjects: result.composeEntries,
-        },
-        totalSize:
-          result.imageEntries.reduce((s, e) => s + e.compressedSize, 0) +
-          result.volumeEntries.reduce((s, e) => s + e.compressedSize, 0),
-      };
-
       if (req.diffMode === 'delta' && baseSnapshotForDelta && currentSnapshotForDelta) {
-        applyDeltaManifestInPlace(manifest, baseSnapshotForDelta);
+        applyDeltaManifestInPlace(session.manifest, baseSnapshotForDelta);
       }
 
-      await fsp.writeFile(join(packDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
+      await session.finalizeSuccess();
+
+      const manifest = session.manifest;
 
       const checksumLines: string[] = [];
-      for (const img of result.imageEntries) {
+      for (const img of manifest.contents.images) {
         checksumLines.push(`${img.sha256}  ${img.filename}`);
       }
-      for (const vol of result.volumeEntries) {
+      for (const vol of manifest.contents.volumes ?? []) {
         checksumLines.push(`${vol.sha256}  ${vol.filename}`);
       }
       await fsp.writeFile(join(packDir, 'checksums.sha256'), `${checksumLines.join('\n')}\n`, 'utf-8');

@@ -441,6 +441,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1715">詳細</a></td>
       </tr>
+      <tr>
+        <td>13:25</td>
+        <td>Phase 6 第3回 step 4: Exporter partialState 段階 A・<code>ManifestWriter</code>・<code>resumeExport</code> IPC・正本 v0.2.2</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1325">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -751,6 +757,32 @@ body.diary > footer {
 
   <h3>原案からの差分</h3>
   <p>プロンプトは <code>dmig:export</code> の <code>imageRefs</code> 中心だが、本ツールは Compose 経路が主のため <code>exportCompose</code> でも同様の差分フローと <code>projectNames</code> の絞り込みを実装。<code>DiffPreviewDialog</code> はオープン時に除外セットとタブをリセット。<code>ComposeExportRequest</code> を明示 import。</p>
+</section>
+
+<section class="entry" id="entry-1325">
+  <h2>Phase 6 第3回 step 4 — Exporter 側 partialState（段階 A）と再開 IPC</h2>
+  <div class="meta">
+    <span class="date">2026-05-14 13:25</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>write-file-atomic</code> 依存追加（型定義は devDependencies へ移動）。<code>ManifestWriter</code>・<code>partialStateHelpers</code>・<code>ComposeExportManifestSession</code> により manifest を原子的更新。<code>Exporter.exportImages</code> / <code>ComposeExporter.exportProjects</code> で段階 A（1 entry = 1 chunk、<code>expectedSha256</code> は 64 桁ゼロプレースホルダ）。<code>Exporter.resumeImagePack</code>・<code>ComposeExporter.resumeComposePack</code>（完了時 <code>checksums.sha256</code> 再生成）。<code>dmig:resumeExport</code> IPC と Preload <code>resumeExport</code>。<code>exportCompose</code> をセッション経由に統合。正本 <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code> を v0.2.2（§5.1.1・§3.3 注記）。<code>Exporter.partialState.test.ts</code> 追加。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/manifest/ManifestWriter.ts</code> / <code>partialStateHelpers.ts</code> / <code>packagingNames.ts</code> / <code>composeExportManifestSession.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/Exporter.partialState.test.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/Exporter.ts</code> / <code>ComposeExporter.ts</code> / <code>ipc.ts</code> / <code>preload/index.ts</code> / <code>package.json</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm run build</code> / <code>npm test</code> 成功</li>
+  </ul>
 </section>
 </main>
 

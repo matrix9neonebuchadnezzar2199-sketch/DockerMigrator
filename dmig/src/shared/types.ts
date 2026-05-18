@@ -407,6 +407,14 @@ export interface ComposeExportRequest extends Cancellable {
   autoSaveSnapshot?: boolean;
 }
 
+/** 中断済みパッケージの再開エクスポート（Main 専用）。 */
+export interface ResumeExportRequest extends Cancellable {
+  /** 再開対象の .dmig パッケージディレクトリ */
+  packageDir: string;
+  /** zstd 圧縮レベル（省略時は 3） */
+  compressionLevel?: number;
+}
+
 export interface ComposeImportRequest extends Cancellable {
   packageDir: string;
   /** インポート対象のプロジェクト名 */

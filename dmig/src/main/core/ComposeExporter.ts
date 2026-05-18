@@ -1,6 +1,7 @@
 import { createWriteStream, promises as fsp } from 'node:fs';
 import { pipeline } from 'node:stream/promises';
 import { basename, isAbsolute, join, resolve as pathResolve } from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 
@@ -16,6 +17,7 @@ import type { TarBackend } from './tar/TarBackend.js';
 import type {
   ComposeProjectInfo,
   ComposeExportRequest,
+  JobToken,
   ManifestComposeEntry,
   ManifestImageEntry,
   ManifestVolumeEntry,
@@ -26,6 +28,8 @@ import type {
   ProjectManifestBindMount,
   ProjectManifestEnvFile,
 } from '@shared/types.js';
+import { ComposeExportManifestSession } from './manifest/composeExportManifestSession.js';
+import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 
 /**
  * Compose プロジェクトをまるごとパッケージ化する（Phase 5）。
@@ -52,7 +56,8 @@ export class ComposeExporter extends EventEmitter {
     req: ComposeExportRequest,
     packDir: string,
     projectInfos: ComposeProjectInfo[],
-    signal?: AbortSignal,
+    signal: AbortSignal | undefined,
+    session: ComposeExportManifestSession,
   ): Promise<{
     imageEntries: ManifestImageEntry[];
     volumeEntries: ManifestVolumeEntry[];
@@ -116,6 +121,7 @@ export class ComposeExporter extends EventEmitter {
           exportedImages,
           exportedVolumes,
           req.compressionLevel ?? 3,
+          session,
         );
 
         allImageEntries.push(...result.imageEntries);
@@ -128,10 +134,160 @@ export class ComposeExporter extends EventEmitter {
         volumeEntries: allVolumeEntries,
         composeEntries,
       };
+    } catch (e) {
+      const isAbort =
+        this.signal?.aborted ||
+        (e instanceof DmigError && e.code === ErrorCodes.JOB_CANCELLED) ||
+        (e instanceof Error && e.name === 'AbortError');
+      try {
+        await session.finalizeInterrupted(isAbort ? 'user-cancel' : 'error');
+      } catch {
+        /* 最終 manifest 書き込み失敗は無視し、元例外を優先 */
+      }
+      throw e;
     } finally {
       this.signal = undefined;
       this.tarBackend = null;
     }
+  }
+
+  /**
+   * 中断済み Compose パッケージのエクスポートを再開する。
+   * secretActions / bindMountChoices は空として扱う（初回選択と異なる可能性あり）。
+   */
+  async resumeComposePack(
+    opened: OpenedPackageResume,
+    compressionLevel: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    const session = ComposeExportManifestSession.fromResumeState(
+      opened.packageDir,
+      opened.manifest,
+      opened.partialState.pendingChunks,
+    );
+    this.signal = signal;
+
+    const resumeReq: ComposeExportRequest = {
+      projectNames: opened.manifest.contents.composeProjects?.map((c) => c.name) ?? [],
+      outputDir: opened.packageDir,
+      jobToken: randomUUID() as JobToken,
+      secretActions: {},
+      bindMountChoices: {},
+    };
+
+    const allProjects = await this.docker.listComposeProjects();
+
+    try {
+      const queue = [...session.pending];
+      for (const chunk of queue) {
+        if (this.signal?.aborted) {
+          throw new DmigError(ErrorCodes.JOB_CANCELLED, { detail: 'resumeComposePack aborted' });
+        }
+        const stillThere = session.pending.some(
+          (p) =>
+            p.contentKind === chunk.contentKind &&
+            p.contentId === chunk.contentId &&
+            p.chunkIndex === chunk.chunkIndex,
+        );
+        if (!stillThere) {
+          continue;
+        }
+
+        if (chunk.contentKind === 'image') {
+          const entry = await this.imageExporter.exportSingleImagePublic(
+            chunk.contentId,
+            join(opened.packageDir, 'images'),
+            compressionLevel,
+            this.signal,
+          );
+          await session.onImageExported({
+            name: entry.name,
+            filename: `images/${entry.filename}`,
+            originalSize: entry.originalSize,
+            compressedSize: entry.compressedSize,
+            sha256: entry.sha256,
+          });
+        } else if (chunk.contentKind === 'volume') {
+          const entry = await this.volumeExporter.exportOne(
+            chunk.contentId,
+            join(opened.packageDir, 'volumes'),
+            compressionLevel,
+            this.signal,
+          );
+          await session.onVolumeExported(entry);
+        } else {
+          const info = allProjects.find((p) => p.name === chunk.contentId);
+          if (!info) {
+            throw new DmigError(ErrorCodes.COMPOSE_NOT_FOUND, {
+              detail: `project=${chunk.contentId}`,
+            });
+          }
+          const { exportedImages, exportedVolumes } = ComposeExporter.buildResumeDeduplicationSets(session);
+          await this.exportSingleProject(
+            info,
+            resumeReq,
+            opened.packageDir,
+            exportedImages,
+            exportedVolumes,
+            compressionLevel,
+            session,
+          );
+        }
+      }
+
+      await session.finalizeSuccess();
+
+      const checksumLines: string[] = [];
+      for (const img of session.manifest.contents.images) {
+        const rel = img.filename.startsWith('images/') ? img.filename : `images/${img.filename}`;
+        checksumLines.push(`${img.sha256}  ${rel}`);
+      }
+      for (const vol of session.manifest.contents.volumes ?? []) {
+        checksumLines.push(`${vol.sha256}  ${vol.filename}`);
+      }
+      await fsp.writeFile(join(opened.packageDir, 'checksums.sha256'), `${checksumLines.join('\n')}\n`, 'utf-8');
+
+      this.emitProgress({
+        taskId: 'done',
+        phase: 'write',
+        current: 1,
+        total: 1,
+        percentage: 100,
+        message: 'Compose 再エクスポートが完了しました。',
+      });
+    } catch (e) {
+      const isAbort =
+        this.signal?.aborted ||
+        (e instanceof DmigError && e.code === ErrorCodes.JOB_CANCELLED) ||
+        (e instanceof Error && e.name === 'AbortError');
+      try {
+        await session.finalizeInterrupted(isAbort ? 'user-cancel' : 'error');
+      } catch {
+        /* ignore */
+      }
+      throw e;
+    } finally {
+      this.signal = undefined;
+    }
+  }
+
+  private static buildResumeDeduplicationSets(session: ComposeExportManifestSession): {
+    exportedImages: Set<string>;
+    exportedVolumes: Set<string>;
+  } {
+    const pendingImg = new Set(
+      session.pending.filter((c) => c.contentKind === 'image').map((c) => c.contentId),
+    );
+    const pendingVol = new Set(
+      session.pending.filter((c) => c.contentKind === 'volume').map((c) => c.contentId),
+    );
+    const exportedImages = new Set(
+      session.manifest.contents.images.map((i) => i.name).filter((n) => !pendingImg.has(n)),
+    );
+    const exportedVolumes = new Set(
+      (session.manifest.contents.volumes ?? []).map((v) => v.name).filter((n) => !pendingVol.has(n)),
+    );
+    return { exportedImages, exportedVolumes };
   }
 
   private async exportSingleProject(
@@ -141,6 +297,7 @@ export class ComposeExporter extends EventEmitter {
     exportedImages: Set<string>,
     exportedVolumes: Set<string>,
     compressionLevel: number,
+    session: ComposeExportManifestSession,
   ): Promise<{
     imageEntries: ManifestImageEntry[];
     volumeEntries: ManifestVolumeEntry[];
@@ -211,14 +368,16 @@ export class ComposeExporter extends EventEmitter {
           compressionLevel,
           this.signal,
         );
-        imageEntries.push({
+        const imgManifest: ManifestImageEntry = {
           name: entry.name,
           filename: `images/${entry.filename}`,
           originalSize: entry.originalSize,
           compressedSize: entry.compressedSize,
           sha256: entry.sha256,
-        });
+        };
+        imageEntries.push(imgManifest);
         exportedImages.add(svc.image);
+        await session.onImageExported(imgManifest);
         imagePackaged = true;
       } else if (svc.image && exportedImages.has(svc.image)) {
         imagePackaged = true;
@@ -253,6 +412,7 @@ export class ComposeExporter extends EventEmitter {
       );
       volumeEntries.push(entry);
       exportedVolumes.add(volName);
+      await session.onVolumeExported(entry);
       volumeManifestEntries.push({
         name: volName,
         packaged: true,
@@ -371,6 +531,8 @@ export class ComposeExporter extends EventEmitter {
       hasEnvFile: envManifest.some((e) => e.path !== null),
       envFileMasked: envManifest.some((e) => e.masked),
     };
+
+    await session.onComposeProjectExported(composeEntry);
 
     return { imageEntries, volumeEntries, composeEntry };
   }
