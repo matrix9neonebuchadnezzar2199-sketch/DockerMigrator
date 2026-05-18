@@ -11,6 +11,8 @@ export type PageKey = 'export' | 'import' | 'compose' | 'resume';
 export const App: React.FC = () => {
   const [page, setPage] = useState<PageKey>('compose');
   const [dockerVersion, setDockerVersion] = useState<string>('未接続');
+  /** 一度でも開いたページはアンマウントせず状態を保持する */
+  const [composeVisited, setComposeVisited] = useState(page === 'compose');
 
   useEffect(() => {
     void window.dmig.ping().then((r) => {
@@ -19,13 +21,23 @@ export const App: React.FC = () => {
     });
   }, []);
 
+  useEffect(() => {
+    if (page === 'compose') {
+      setComposeVisited(true);
+    }
+  }, [page]);
+
   return (
     <ErrorBoundary>
       <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
       <div className="main">
         {page === 'export' && <ExportPage />}
         {page === 'import' && <ImportPage />}
-        {page === 'compose' && <ComposePage />}
+        {composeVisited && (
+          <div className="main-page-panel" hidden={page !== 'compose'} aria-hidden={page !== 'compose'}>
+            <ComposePage />
+          </div>
+        )}
         {page === 'resume' && <ResumePage />}
       </div>
     </ErrorBoundary>

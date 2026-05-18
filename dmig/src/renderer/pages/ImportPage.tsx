@@ -1,41 +1,42 @@
-import React, { useEffect, useRef, useState } from 'react';
-import type { DmigManifest, ProgressEvent, DmigErrorPayload, ProbeSummary } from '../../shared/types.js';
+import React, { useState } from 'react';
+import type { DmigManifest, DmigErrorPayload, ProbeSummary } from '../../shared/types.js';
 import { ErrorCodes } from '@shared/codes.js';
 import { gateImportAfterProbe } from '@shared/importProbeUi.js';
-import { ProgressBar } from '../components/ProgressBar.js';
+import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
+import { OperationProgress } from '../components/OperationProgress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ImportPageGuideBody } from '../components/StaticPageGuides.js';
 import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
+import { useDmigProgress } from '../hooks/useDmigProgress.js';
+
+const PROBE_PROGRESS_INITIAL = buildProgressEvent({
+  taskId: ProgressTaskIds.PROBE_PACKAGE,
+  phase: 'discover',
+  scope: 'scan',
+  current: 0,
+  total: 100,
+  message: 'パッケージを検証しています…',
+});
 
 export const ImportPage: React.FC = () => {
   const [packDir, setPackDir] = useState<string>('');
   const [manifest, setManifest] = useState<DmigManifest | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [running, setRunning] = useState(false);
+  const [probing, setProbing] = useState(false);
   const [done, setDone] = useState<string | null>(null);
 
   const [probeErrorSummary, setProbeErrorSummary] = useState<ProbeSummary | null>(null);
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
   const [resumeSummary, setResumeSummary] = useState<ProbeSummary | null>(null);
   const [resumeRunning, setResumeRunning] = useState(false);
-  const [resumeProgress, setResumeProgress] = useState<ProgressEvent | null>(null);
   const [resumeJobToken, setResumeJobToken] = useState<string | null>(null);
 
-  const resumeRunningRef = useRef(false);
-  useEffect(() => {
-    resumeRunningRef.current = resumeRunning;
-  }, [resumeRunning]);
-
-  useEffect(() => {
-    return window.dmig.onProgress((ev) => {
-      setProgress(ev);
-      if (resumeRunningRef.current) setResumeProgress(ev);
-    });
-  }, []);
+  const scanProgress = useDmigProgress('scan');
+  const transferProgress = useDmigProgress('transfer');
 
   const loadManifestOnly = async (dir: string) => {
     const r = await window.dmig.readManifest(dir);
@@ -54,8 +55,12 @@ export const ImportPage: React.FC = () => {
     setProbeErrorSummary(null);
     setResumeDialogOpen(false);
     setResumeSummary(null);
+    setProbing(true);
+    scanProgress.setProgress(PROBE_PROGRESS_INITIAL);
 
     const pr = await window.dmig.probePackage(packDir);
+    setProbing(false);
+    scanProgress.clear();
     if (!pr.ok) {
       setError(pr.error);
       return;
@@ -89,11 +94,14 @@ export const ImportPage: React.FC = () => {
     setError(null);
     setDone(null);
     setRunning(true);
+    transferProgress.clear();
     const r = await window.dmig.importImages({
+      jobToken: crypto.randomUUID(),
       packageDir: packDir,
       selectedImages: Array.from(selected),
     });
     setRunning(false);
+    transferProgress.clear();
     if (r.ok) setDone('インポートが完了しました。');
     else setError(r.error);
   };
@@ -102,7 +110,7 @@ export const ImportPage: React.FC = () => {
     if (!resumeSummary) return;
     const jobToken = crypto.randomUUID();
     setResumeJobToken(jobToken);
-    setResumeProgress(null);
+    transferProgress.clear();
     setResumeRunning(true);
     const r = await window.dmig.resumeExport({
       packageDir: resumeSummary.packageDir,
@@ -111,6 +119,7 @@ export const ImportPage: React.FC = () => {
     });
     setResumeRunning(false);
     setResumeJobToken(null);
+    transferProgress.clear();
     if (r.ok) {
       setResumeDialogOpen(false);
       setResumeSummary(null);
@@ -140,6 +149,13 @@ export const ImportPage: React.FC = () => {
         <div className="page-primary">
           <h2>📥 パッケージからインポート</h2>
 
+          <OperationProgress
+            active={probing}
+            progress={scanProgress.progress}
+            fallback={PROBE_PROGRESS_INITIAL}
+          />
+          <OperationProgress active={running} progress={transferProgress.progress} />
+
           <div className="card">
             <label style={{ display: 'block', marginBottom: 8 }}>📁 パッケージのパス (.dmig):</label>
             <input
@@ -151,7 +167,7 @@ export const ImportPage: React.FC = () => {
             />
             <button
               onClick={() => void loadPackage()}
-              disabled={running || resumeRunning || !packDir}
+              disabled={running || resumeRunning || probing || !packDir}
               style={{ marginLeft: 8 }}
             >
               読み込み
@@ -204,7 +220,6 @@ export const ImportPage: React.FC = () => {
             </div>
           )}
 
-          <ProgressBar progress={progress} />
           <ErrorBox error={error} />
           {done && (
             <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
@@ -224,7 +239,7 @@ export const ImportPage: React.FC = () => {
         <ResumeConfirmDialog
           summary={resumeSummary}
           busy={resumeRunning}
-          progress={resumeProgress}
+          progress={transferProgress.progress}
           jobToken={resumeJobToken}
           onConfirmResume={() => void onConfirmResume()}
           onClose={closeResumeDialog}

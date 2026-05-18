@@ -16,15 +16,20 @@ export interface VolumeInfo {
   size?: number;
 }
 
+/** 進捗の用途分類（Renderer 購読フィルタ用。詳細は shared/progress.ts）。 */
+export type ProgressScope = 'discover' | 'scan' | 'snapshot' | 'transfer' | 'system';
+
 export interface ProgressEvent {
   taskId: string;
-  phase: 'save' | 'compress' | 'write' | 'verify' | 'load' | 'decompress' | 'snapshot';
+  phase: 'save' | 'compress' | 'write' | 'verify' | 'load' | 'decompress' | 'snapshot' | 'discover';
   /** 処理済みバイト数 */
   current: number;
   /** 合計バイト数（不明時は 0） */
   total: number;
   message: string;
   percentage: number;
+  /** UI フィルタ用（未設定時は taskId / phase から推定） */
+  scope?: ProgressScope;
   /** 直近の転送速度（bytes/sec） */
   bytesPerSec?: number;
   /** 推定残り時間（秒） */

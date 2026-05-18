@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ProbeSummary, ProgressEvent } from '../../shared/types.js';
+import { ProgressBar } from './ProgressBar.js';
 
 /**
  * 中断パッケージ (`ok_partial`) のエクスポート再開確認。
@@ -74,11 +75,9 @@ export const ResumeConfirmDialog: React.FC<{
               </ul>
             </div>
           )}
-          {busy && progress && (
-            <div style={{ marginTop: 12, color: '#cdd6f4' }}>
-              <div>
-                {progress.message} ({progress.percentage}%)
-              </div>
+          {busy && (
+            <div style={{ marginTop: 12 }}>
+              <ProgressBar variant="inline" progress={progress} />
             </div>
           )}
         </div>

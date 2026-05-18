@@ -1,10 +1,12 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, type IpcMainInvokeEvent } from 'electron';
 import { execFile as execFileCb } from 'node:child_process';
 import { promisify } from 'node:util';
 import { jobRegistry } from '../core/JobRegistry.js';
 import { wrapError } from '../core/errors/DmigError.js';
 import { ErrorCodes } from '../core/errors/codes.js';
 import type { JobToken, CancelResult } from '@shared/types.js';
+import { ProgressTaskIds } from '@shared/progress.js';
+import { createProgressRelay } from '../utils/progressIpc.js';
 import type { HandlerDeps } from './shared.js';
 import { toPayload } from './shared.js';
 
@@ -21,9 +23,27 @@ export function registerSystemHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:listImages', async () => {
+  ipcMain.handle('dmig:listImages', async (event: IpcMainInvokeEvent) => {
+    const relay = createProgressRelay(event.sender);
     try {
-      return { ok: true as const, data: await docker.listImages() };
+      await relay.emit({
+        taskId: ProgressTaskIds.IMAGE_LIST,
+        phase: 'discover',
+        scope: 'discover',
+        current: 0,
+        total: 100,
+        message: 'Docker イメージ一覧を取得しています…',
+      });
+      const data = await docker.listImages();
+      await relay.emit({
+        taskId: ProgressTaskIds.IMAGE_LIST,
+        phase: 'discover',
+        scope: 'discover',
+        current: 100,
+        total: 100,
+        message: `イメージ一覧の取得が完了しました（${data.length} 件）`,
+      });
+      return { ok: true as const, data };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
     }
@@ -46,7 +66,7 @@ export function registerSystemHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:pruneDanglingImages', async () => {
+  ipcMain.handle('dmig:pruneDanglingImages', async (event: IpcMainInvokeEvent) => {
     const answer = await dialog.showMessageBox(win, {
       type: 'warning',
       buttons: ['キャンセル', '実行'],
@@ -59,10 +79,27 @@ export function registerSystemHandlers(deps: HandlerDeps): void {
     if (answer.response !== 1) {
       return { ok: true as const, data: { skipped: true as const } };
     }
+    const relay = createProgressRelay(event.sender);
     try {
+      await relay.emit({
+        taskId: ProgressTaskIds.PRUNE_DANGLING,
+        phase: 'discover',
+        scope: 'system',
+        current: 0,
+        total: 100,
+        message: 'dangling イメージを削除しています…',
+      });
       const { stdout } = await execFile('docker', ['image', 'prune', '-f'], {
         windowsHide: true,
         maxBuffer: 4 * 1024 * 1024,
+      });
+      await relay.emit({
+        taskId: ProgressTaskIds.PRUNE_DANGLING,
+        phase: 'discover',
+        scope: 'system',
+        current: 100,
+        total: 100,
+        message: 'dangling イメージの整理が完了しました',
       });
       return { ok: true as const, data: { skipped: false as const, stdout } };
     } catch (e) {

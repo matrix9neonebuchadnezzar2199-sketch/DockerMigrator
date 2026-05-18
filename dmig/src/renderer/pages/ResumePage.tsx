@@ -1,10 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react';
-import type { DmigErrorPayload, ProbeSummary, ProgressEvent } from '../../shared/types.js';
+import React, { useState } from 'react';
+import type { DmigErrorPayload, ProbeSummary } from '../../shared/types.js';
 import { ErrorCodes } from '@shared/codes.js';
+import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
-import { ProgressBar } from '../components/ProgressBar.js';
+import { OperationProgress } from '../components/OperationProgress.js';
 import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { labelInterruptionReason, warningLabel } from '../lib/i18n/resume.js';
+import { useDmigProgress } from '../hooks/useDmigProgress.js';
+
+const RESUMABLE_SCAN_INITIAL = buildProgressEvent({
+  taskId: ProgressTaskIds.RESUMABLE_SCAN,
+  phase: 'discover',
+  scope: 'scan',
+  current: 0,
+  total: 100,
+  message: '中断パックを検索しています…',
+});
 
 function dirBasename(packageDir: string): string {
   const norm = packageDir.replace(/[/\\]+$/, '');
@@ -24,20 +35,11 @@ export const ResumePage: React.FC = () => {
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
   const [resumeSummary, setResumeSummary] = useState<ProbeSummary | null>(null);
   const [resumeRunning, setResumeRunning] = useState(false);
-  const [resumeProgress, setResumeProgress] = useState<ProgressEvent | null>(null);
   const [resumeJobToken, setResumeJobToken] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
-  const resumeRunningRef = useRef(false);
-  useEffect(() => {
-    resumeRunningRef.current = resumeRunning;
-  }, [resumeRunning]);
-
-  useEffect(() => {
-    return window.dmig.onProgress((ev) => {
-      if (resumeRunningRef.current) setResumeProgress(ev);
-    });
-  }, []);
+  const scanProgress = useDmigProgress('scan');
+  const transferProgress = useDmigProgress('transfer');
 
   const pickFolderAndScan = async () => {
     setError(null);
@@ -61,8 +63,10 @@ export const ResumePage: React.FC = () => {
     setScanned(false);
     setPackages([]);
     setWarnings([]);
+    scanProgress.setProgress(RESUMABLE_SCAN_INITIAL);
     const r = await window.dmig.listResumablePackages({ rootDir: dir, maxDepth: 2 });
     setScanning(false);
+    scanProgress.clear();
     setScanned(true);
     if (!r.ok) {
       setError(r.error);
@@ -76,14 +80,14 @@ export const ResumePage: React.FC = () => {
   const openResumeDialog = (summary: ProbeSummary) => {
     setResumeSummary(summary);
     setResumeDialogOpen(true);
-    setResumeProgress(null);
+    transferProgress.clear();
   };
 
   const onConfirmResume = async () => {
     if (!resumeSummary) return;
     const jobToken = crypto.randomUUID();
     setResumeJobToken(jobToken);
-    setResumeProgress(null);
+    transferProgress.clear();
     setResumeRunning(true);
     const r = await window.dmig.resumeExport({
       packageDir: resumeSummary.packageDir,
@@ -92,6 +96,7 @@ export const ResumePage: React.FC = () => {
     });
     setResumeRunning(false);
     setResumeJobToken(null);
+    transferProgress.clear();
     if (r.ok) {
       setResumeDialogOpen(false);
       setResumeSummary(null);
@@ -123,6 +128,13 @@ export const ResumePage: React.FC = () => {
         <p className="page-lead">
           前回のエクスポートが完了していないパックを探して、続きから書き出します。
         </p>
+
+        <OperationProgress
+          active={scanning}
+          progress={scanProgress.progress}
+          fallback={RESUMABLE_SCAN_INITIAL}
+        />
+        <OperationProgress active={resumeRunning} progress={transferProgress.progress} />
 
         <div className="card">
           <button type="button" onClick={() => void pickFolderAndScan()} disabled={scanning || resumeRunning}>
@@ -197,7 +209,6 @@ export const ResumePage: React.FC = () => {
           </div>
         ))}
 
-        <ProgressBar progress={resumeRunning ? resumeProgress : null} />
         <ErrorBox error={error} />
         {done && (
           <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
@@ -210,7 +221,7 @@ export const ResumePage: React.FC = () => {
         <ResumeConfirmDialog
           summary={resumeSummary}
           busy={resumeRunning}
-          progress={resumeProgress}
+          progress={transferProgress.progress}
           jobToken={resumeJobToken}
           onConfirmResume={() => void onConfirmResume()}
           onClose={closeResumeDialog}

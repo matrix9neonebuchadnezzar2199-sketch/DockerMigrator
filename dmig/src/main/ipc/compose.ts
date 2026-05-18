@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { promises as fsp } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { execFile as execFileCb } from 'node:child_process';
@@ -19,7 +19,6 @@ import type {
   ComposeProjectInfo,
   ComposeLifecycleRequest,
   SecretScanResult,
-  ProgressEvent,
   DmigManifest,
 } from '@shared/types.js';
 import type { Snapshot } from '@shared/snapshot-types.js';
@@ -27,37 +26,84 @@ import { SnapshotStore } from '../core/snapshot/SnapshotStore.js';
 import { Snapshotter } from '../core/snapshot/Snapshotter.js';
 import { DiffEngine } from '../core/diff/DiffEngine.js';
 import { SizeEstimator } from '../core/SizeEstimator.js';
-import { ProgressTracker } from '../core/ProgressTracker.js';
+import { ProgressTaskIds } from '@shared/progress.js';
+import { createProgressRelay } from '../utils/progressIpc.js';
 import type { HandlerDeps } from './shared.js';
 import { applyDeltaManifestInPlace, toPayload } from './shared.js';
 
 const execFile = promisify(execFileCb);
 
 export function registerComposeHandlers(deps: HandlerDeps): void {
-  const { win, docker } = deps;
+  const { docker } = deps;
 
-  ipcMain.handle('dmig:listComposeProjects', async () => {
+  ipcMain.handle('dmig:listComposeProjects', async (event: IpcMainInvokeEvent) => {
+    const relay = createProgressRelay(event.sender);
+    const emitDiscover = async (percentage: number, message: string) => {
+      const pct = Math.min(100, Math.max(0, percentage));
+      await relay.send({
+        taskId: ProgressTaskIds.COMPOSE_DISCOVER,
+        phase: 'discover',
+        scope: 'discover',
+        current: pct,
+        total: 100,
+        percentage: pct,
+        message,
+      });
+    };
+
     try {
-      const projects = await docker.listComposeProjects();
+      await emitDiscover(5, 'Compose プロジェクトを検索しています…');
+
+      const projects = await docker.listComposeProjects(async (info) => {
+        if (info.total > 0) {
+          const pct = 10 + Math.floor((50 * info.discovered) / info.total);
+          await emitDiscover(pct, info.message);
+        } else {
+          await emitDiscover(8, info.message);
+        }
+      });
+
       const estimator = new SizeEstimator(docker);
-      const data: ComposeProjectInfo[] = await Promise.all(
-        projects.map(async (proj) => {
-          try {
-            const est = await estimator.estimateForCompose([proj]);
-            return { ...proj, estimatedSize: est.totalEstimated };
-          } catch {
-            return { ...proj, estimatedSize: proj.estimatedSize };
-          }
-        }),
-      );
+      const total = projects.length;
+      const data: ComposeProjectInfo[] = [];
+      for (let i = 0; i < projects.length; i++) {
+        const proj = projects[i]!;
+        const pct =
+          total > 0 ? 60 + Math.floor((35 * i) / total) : 60;
+        await emitDiscover(
+          pct,
+          total > 0
+            ? `サイズを見積もり中: ${proj.name} (${i + 1}/${total})`
+            : 'サイズを見積もり中…',
+        );
+        try {
+          const est = await estimator.estimateForCompose([proj]);
+          data.push({ ...proj, estimatedSize: est.totalEstimated });
+        } catch {
+          data.push({ ...proj, estimatedSize: proj.estimatedSize });
+        }
+      }
+
+      await emitDiscover(100, total > 0 ? `一覧の取得が完了しました（${total} 件）` : 'Compose プロジェクトは見つかりませんでした');
+
       return { ok: true as const, data };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
     }
   });
 
-  ipcMain.handle('dmig:composeLifecycle', async (_e, req: ComposeLifecycleRequest) => {
+  ipcMain.handle('dmig:composeLifecycle', async (event: IpcMainInvokeEvent, req: ComposeLifecycleRequest) => {
+    const relay = createProgressRelay(event.sender);
+    const actionLabel = req.action === 'stop' ? '停止' : 'イメージ取得';
     try {
+      await relay.emit({
+        taskId: ProgressTaskIds.COMPOSE_LIFECYCLE,
+        phase: 'discover',
+        scope: 'system',
+        current: 0,
+        total: 100,
+        message: `${req.projectName} を${actionLabel}しています…`,
+      });
       const all = await docker.listComposeProjects();
       const proj = all.find((p) => p.name === req.projectName);
       if (!proj) {
@@ -94,6 +140,14 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
         windowsHide: true,
         maxBuffer: 32 * 1024 * 1024,
       });
+      await relay.emit({
+        taskId: ProgressTaskIds.COMPOSE_LIFECYCLE,
+        phase: 'discover',
+        scope: 'system',
+        current: 100,
+        total: 100,
+        message: `${req.projectName} の${actionLabel}が完了しました`,
+      });
       return { ok: true as const, data: undefined };
     } catch (e) {
       return {
@@ -105,12 +159,23 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
 
   ipcMain.handle(
     'dmig:scanSecrets',
-    async (_e, projects: ComposeProjectInfo[]) => {
+    async (event: IpcMainInvokeEvent, projects: ComposeProjectInfo[]) => {
+      const relay = createProgressRelay(event.sender);
       try {
         const scanner = new SecretScanner();
         const result: Record<string, SecretScanResult[]> = {};
+        const total = projects.length;
 
-        for (const proj of projects) {
+        for (let i = 0; i < projects.length; i++) {
+          const proj = projects[i]!;
+          await relay.emit({
+            taskId: ProgressTaskIds.SECRET_SCAN,
+            phase: 'discover',
+            scope: 'scan',
+            current: i,
+            total: total > 0 ? total : 1,
+            message: `シークレットをスキャン中: ${proj.name} (${i + 1}/${total || '?'})`,
+          });
           const scans: SecretScanResult[] = [];
           for (const env of proj.envFiles) {
             let exists = false;
@@ -138,16 +203,14 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     },
   );
 
-  ipcMain.handle('dmig:exportCompose', async (_e, req: ComposeExportRequest) => {
+  ipcMain.handle('dmig:exportCompose', async (event: IpcMainInvokeEvent, req: ComposeExportRequest) => {
     const controller = jobRegistry.register(req.jobToken);
     const exporter = new Exporter(docker);
     const volumeExporter = new VolumeExporter(docker);
     const composeExporter = new ComposeExporter(docker, exporter, volumeExporter);
 
-    const tracker = new ProgressTracker();
-    const progressForwarder = (ev: ProgressEvent) => {
-      win.webContents.send('dmig:progress', tracker.enrich(ev));
-    };
+    const relay = createProgressRelay(event.sender);
+    const progressForwarder = relay.forwarder;
     composeExporter.on('progress', progressForwarder);
     exporter.on('progress', progressForwarder);
     volumeExporter.on('progress', progressForwarder);
@@ -292,16 +355,14 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:importCompose', async (_e, req: ComposeImportRequest) => {
+  ipcMain.handle('dmig:importCompose', async (event: IpcMainInvokeEvent, req: ComposeImportRequest) => {
     const controller = jobRegistry.register(req.jobToken);
     const importer = new Importer(docker);
     const volumeExporter = new VolumeExporter(docker);
     const composeImporter = new ComposeImporter(docker, importer, volumeExporter);
 
-    const tracker = new ProgressTracker();
-    const progressForwarder = (ev: ProgressEvent) => {
-      win.webContents.send('dmig:progress', tracker.enrich(ev));
-    };
+    const relay = createProgressRelay(event.sender);
+    const progressForwarder = relay.forwarder;
     composeImporter.on('progress', progressForwarder);
     importer.on('progress', progressForwarder);
     volumeExporter.on('progress', progressForwarder);

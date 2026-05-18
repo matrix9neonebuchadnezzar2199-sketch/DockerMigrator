@@ -4,6 +4,7 @@
  */
 import { useCallback, useRef, useState } from 'react';
 import type { DiffPreviewRequest, DiffPreviewResult, DmigErrorPayload } from '../../shared/types.js';
+import { useDmigProgress } from './useDmigProgress.js';
 
 export interface UseDiffPreviewState {
   loading: boolean;
@@ -19,6 +20,7 @@ export function useDiffPreview(): UseDiffPreviewState {
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [preview, setPreview] = useState<DiffPreviewResult | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const snapshotProgress = useDmigProgress('snapshot');
 
   const refresh = useCallback(async (req: DiffPreviewRequest): Promise<boolean> => {
     if (tokenRef.current) {
@@ -33,6 +35,7 @@ export function useDiffPreview(): UseDiffPreviewState {
 
     setLoading(true);
     setError(null);
+    snapshotProgress.clear();
     try {
       const result = await window.dmig.computeDiff({ ...req, jobToken: token });
       if (tokenRef.current !== token) return false;
@@ -46,17 +49,19 @@ export function useDiffPreview(): UseDiffPreviewState {
     } finally {
       if (tokenRef.current === token) {
         setLoading(false);
+        snapshotProgress.clear();
         tokenRef.current = null;
       }
     }
-  }, []);
+  }, [snapshotProgress]);
 
   const reset = useCallback(() => {
     setPreview(null);
     setError(null);
     setLoading(false);
+    snapshotProgress.clear();
     tokenRef.current = null;
-  }, []);
+  }, [snapshotProgress]);
 
   return { loading, error, preview, refresh, reset };
 }

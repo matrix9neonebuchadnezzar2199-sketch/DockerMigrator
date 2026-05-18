@@ -10,6 +10,13 @@ import type {
 /** `Importer.probe` と同じシグネチャの走査用コールバック */
 export type PackageProbeFn = (packageDir: string) => Promise<ProbeSummary>;
 
+/** フォルダ走査中の UI 向け進捗。 */
+export type ResumableScanProgressCallback = (info: {
+  current: number;
+  total: number;
+  message: string;
+}) => void | Promise<void>;
+
 /** DoS 抑止の走査上限（テストではコンストラクタで上書き可） */
 export interface ResumableScanLimits {
   maxPackages: number;
@@ -33,7 +40,10 @@ export class ResumableScanner {
     private readonly limits: ResumableScanLimits = DEFAULT_RESUMABLE_SCAN_LIMITS,
   ) {}
 
-  async scan(req: ListResumablePackagesRequest): Promise<ListResumablePackagesResult> {
+  async scan(
+    req: ListResumablePackagesRequest,
+    onProgress?: ResumableScanProgressCallback,
+  ): Promise<ListResumablePackagesResult> {
     const warnings: string[] = [];
     const packages: ProbeSummary[] = [];
     const maxDepth = ResumableScanner.clampDepth(req.maxDepth);
@@ -52,6 +62,13 @@ export class ResumableScanner {
       if (dirsScanned >= this.limits.maxDirsScanned) return;
 
       dirsScanned += 1;
+      if (dirsScanned === 1 || dirsScanned % 10 === 0) {
+        await onProgress?.({
+          current: dirsScanned,
+          total: this.limits.maxDirsScanned,
+          message: `フォルダを走査中… (${dirsScanned} / ${this.limits.maxDirsScanned})`,
+        });
+      }
 
       const manifestPath = join(dir, MANIFEST_NAME);
       let hasManifest = false;

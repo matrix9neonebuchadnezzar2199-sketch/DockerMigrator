@@ -1,11 +1,22 @@
 import React, { useEffect, useState } from 'react';
-import type { ImageInfo, ProgressEvent, DmigErrorPayload } from '../../shared/types.js';
+import type { ImageInfo, DmigErrorPayload } from '../../shared/types.js';
 import { EXPORT_RESUME_VIA_IMPORT_HINT } from '@shared/uiCopy.js';
-import { ProgressBar } from '../components/ProgressBar.js';
+import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
+import { OperationProgress } from '../components/OperationProgress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
+import { useDmigProgress } from '../hooks/useDmigProgress.js';
+
+const IMAGE_LIST_PROGRESS_INITIAL = buildProgressEvent({
+  taskId: ProgressTaskIds.IMAGE_LIST,
+  phase: 'discover',
+  scope: 'discover',
+  current: 0,
+  total: 100,
+  message: 'Docker イメージ一覧を取得しています…',
+});
 
 export const ExportPage: React.FC = () => {
   const [images, setImages] = useState<ImageInfo[]>([]);
@@ -13,18 +24,25 @@ export const ExportPage: React.FC = () => {
   const [outputDir, setOutputDir] = useState<string>(
     typeof navigator !== 'undefined' && navigator.platform.includes('Win') ? 'E:\\' : '/media/usb',
   );
-  const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [running, setRunning] = useState(false);
+  const [listing, setListing] = useState(true);
   const [done, setDone] = useState<string | null>(null);
   const [resumeHint, setResumeHint] = useState<string | null>(null);
 
+  const discoverProgress = useDmigProgress('discover');
+  const transferProgress = useDmigProgress('transfer');
+
   useEffect(() => {
+    discoverProgress.setProgress(IMAGE_LIST_PROGRESS_INITIAL);
     void window.dmig.listImages().then((r) => {
+      setListing(false);
+      discoverProgress.clear();
       if (r.ok) setImages(r.data);
       else setError(r.error);
     });
-    return window.dmig.onProgress(setProgress);
+    // 初回マウントのみ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const toggle = (name: string) => {
@@ -40,12 +58,15 @@ export const ExportPage: React.FC = () => {
     setError(null);
     setDone(null);
     setRunning(true);
+    transferProgress.clear();
     const r = await window.dmig.exportImages({
+      jobToken: crypto.randomUUID(),
       imageNames: Array.from(selected),
       outputDir,
       compressionLevel: 3,
     });
     setRunning(false);
+    transferProgress.clear();
     if (r.ok) setDone(`完了: ${r.data.contents.images.length} 件のイメージを書き出しました`);
     else {
       setError(r.error);
@@ -63,6 +84,13 @@ export const ExportPage: React.FC = () => {
         <div className="page-primary">
           <h2>📤 エクスポート対象を選択</h2>
           <ResumeHintBanner message={resumeHint} onDismiss={() => setResumeHint(null)} />
+
+          <OperationProgress
+            active={listing}
+            progress={discoverProgress.progress}
+            fallback={IMAGE_LIST_PROGRESS_INITIAL}
+          />
+          <OperationProgress active={running} progress={transferProgress.progress} />
 
       <div className="card">
         <label style={{ display: 'block', marginBottom: 8 }}>💾 出力先 (USBパス):</label>
@@ -84,7 +112,7 @@ export const ExportPage: React.FC = () => {
                   type="checkbox"
                   checked={selected.has(tag)}
                   onChange={() => toggle(tag)}
-                  disabled={running}
+                  disabled={running || listing}
                 />
                 <span className="name">{tag}</span>
                 <span className="size">{(img.size / 1024 / 1024).toFixed(1)} MB</span>
@@ -114,12 +142,11 @@ export const ExportPage: React.FC = () => {
         <div>
           上記をパックに含めて書き出します。実行中は進捗バーが更新されます。
         </div>
-        <button onClick={() => void start()} disabled={running || selected.size === 0} style={{ marginTop: 8 }}>
+        <button onClick={() => void start()} disabled={running || listing || selected.size === 0} style={{ marginTop: 8 }}>
           {running ? '実行中...' : '▶ エクスポート開始'}
         </button>
       </div>
 
-      <ProgressBar progress={progress} />
       <ErrorBox error={error} />
       {done && (
         <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>

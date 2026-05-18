@@ -7,6 +7,13 @@ import type { ImageInfo, VolumeInfo, ComposeProjectInfo, ComposeServiceInfo, Bin
 import { DmigError, wrapError } from './errors/DmigError.js';
 import { ErrorCodes } from './errors/codes.js';
 
+/** `listComposeProjects` 走査中の UI 向け進捗。 */
+export type ComposeListProgressCallback = (info: {
+  discovered: number;
+  total: number;
+  message: string;
+}) => void | Promise<void>;
+
 /**
  * dockerode の薄いラッパ。
  * - OS別のソケットパス自動判定
@@ -327,7 +334,13 @@ export class DockerAdapter {
   /**
    * ラベル com.docker.compose.project を持つコンテナを走査しプロジェクト単位に集約する。
    */
-  async listComposeProjects(): Promise<ComposeProjectInfo[]> {
+  async listComposeProjects(onProgress?: ComposeListProgressCallback): Promise<ComposeProjectInfo[]> {
+    await onProgress?.({
+      discovered: 0,
+      total: 0,
+      message: 'Docker から Compose コンテナを検索しています…',
+    });
+
     let containers: import('dockerode').ContainerInfo[];
     try {
       containers = await this.docker.listContainers({
@@ -347,8 +360,16 @@ export class DockerAdapter {
       byProject.set(projectName, arr);
     }
 
+    const totalProjects = byProject.size;
     const projects: ComposeProjectInfo[] = [];
+    let parsed = 0;
     for (const [name, conts] of byProject.entries()) {
+      parsed += 1;
+      await onProgress?.({
+        discovered: parsed,
+        total: totalProjects,
+        message: `プロジェクトを解析中: ${name} (${parsed}/${totalProjects || '?'})`,
+      });
       const first = conts[0];
 
       const configFilesRaw = first.Labels?.['com.docker.compose.project.config_files'] ?? '';

@@ -1,13 +1,13 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { jobRegistry } from '../core/JobRegistry.js';
 import { ErrorCodes, ErrorMessages } from '../core/errors/codes.js';
-import type { ProgressEvent, DiffPreviewRequest } from '@shared/types.js';
+import type { DiffPreviewRequest } from '@shared/types.js';
 import type { Snapshot } from '@shared/snapshot-types.js';
 import { SnapshotStore } from '../core/snapshot/SnapshotStore.js';
 import { Snapshotter } from '../core/snapshot/Snapshotter.js';
 import { DiffEngine } from '../core/diff/DiffEngine.js';
 import { DiffPreview } from '../core/diff/DiffPreview.js';
-import { ProgressTracker } from '../core/ProgressTracker.js';
+import { createProgressRelay } from '../utils/progressIpc.js';
 import type { HandlerDeps } from './shared.js';
 import { toPayload } from './shared.js';
 
@@ -36,13 +36,10 @@ export function registerSnapshotHandlers(deps: HandlerDeps): void {
 
   ipcMain.handle(
     'dmig:computeDiff',
-    async (evt, req: DiffPreviewRequest) => {
-      const senderWin = BrowserWindow.fromWebContents(evt.sender);
+    async (event: IpcMainInvokeEvent, req: DiffPreviewRequest) => {
       const controller = jobRegistry.register(req.jobToken);
-      const tracker = new ProgressTracker();
-      const onProgress = (ev: ProgressEvent): void => {
-        senderWin?.webContents.send('dmig:progress', tracker.enrich(ev));
-      };
+      const relay = createProgressRelay(event.sender);
+      const onProgress = relay.forwarder;
 
       try {
         const store = SnapshotStore.getInstance();

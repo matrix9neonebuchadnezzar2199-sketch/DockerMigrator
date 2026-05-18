@@ -1,32 +1,46 @@
 import React from 'react';
 import type { ProgressEvent } from '../../shared/types.js';
 
+export type ProgressBarProps = {
+  progress: ProgressEvent | null;
+  /** card: 外枠付き（エクスポート実行など） / inline: 既存カード内・ページ先頭用 */
+  variant?: 'card' | 'inline';
+};
+
 /**
  * 進捗バー（Phase 5.1 第3回: bytes/sec と ETA）。
  */
-export const ProgressBar: React.FC<{ progress: ProgressEvent | null }> = ({ progress }) => {
+export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, variant = 'card' }) => {
   if (!progress) return null;
 
   const speed = progress.bytesPerSec ? formatSpeed(progress.bytesPerSec) : null;
   const eta = progress.etaSeconds ? formatEta(progress.etaSeconds) : null;
+  const fillWidth =
+    progress.percentage > 0 ? progress.percentage : progress.phase === 'discover' ? 8 : 0;
 
-  return (
-    <div className="card">
+  const body = (
+    <>
       <div className="progress-bar">
-        <div className="fill" style={{ width: `${progress.percentage}%` }} />
+        <div className="fill" style={{ width: `${fillWidth}%` }} />
       </div>
       <div className="progress-text">
         {progress.percentage}% — {progress.message}
       </div>
-      {(speed || eta) && (
+      {(speed || eta) && progress.phase !== 'discover' && (
         <div className="progress-stats">
           {speed && <span>転送速度: {speed}</span>}
           {speed && eta && <span style={{ margin: '0 8px' }}>·</span>}
           {eta && <span>残り: 約 {eta}</span>}
         </div>
       )}
-    </div>
+    </>
   );
+
+  if (variant === 'inline') {
+    return <div className="progress-inline">{body}</div>;
+  }
+
+  return <div className="card">{body}</div>;
 };
 
 function formatSpeed(bytesPerSec: number): string {

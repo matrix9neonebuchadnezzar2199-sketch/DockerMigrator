@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ComposeProjectInfo,
-  ProgressEvent,
   DmigErrorPayload,
   SecretScanResult,
   SecretAction,
@@ -16,7 +15,8 @@ import type {
 import { ErrorCodes, ErrorMessages } from '@shared/codes.js';
 import { EXPORT_RESUME_VIA_IMPORT_HINT } from '@shared/uiCopy.js';
 
-import { ProgressBar } from '../components/ProgressBar.js';
+import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
+import { OperationProgress } from '../components/OperationProgress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { ComposeProjectCard } from '../components/ComposeProjectCard.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
@@ -29,6 +29,7 @@ import { BindMountDialog } from '../components/BindMountDialog.js';
 import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { DiffPreviewDialog } from '../components/DiffPreviewDialog.js';
 import { useDiffPreview } from '../hooks/useDiffPreview.js';
+import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import {
   formatGbFromBytes,
   formatEtaHuman,
@@ -37,6 +38,15 @@ import {
 } from '../utils/formatTransfer.js';
 
 type Phase = 'browse' | 'bindDlg' | 'secretDlg' | 'running' | 'done';
+
+const COMPOSE_LIST_PROGRESS_INITIAL = buildProgressEvent({
+  taskId: ProgressTaskIds.COMPOSE_DISCOVER,
+  phase: 'discover',
+  scope: 'discover',
+  current: 0,
+  total: 100,
+  message: 'Compose プロジェクトを検索しています…',
+});
 
 /** Phase 6: Compose 差分エクスポート時に exportCompose へ渡すオプション。 */
 interface ComposeDeltaOpts {
@@ -52,11 +62,14 @@ export const ComposePage: React.FC = () => {
   const [projects, setProjects] = useState<ComposeProjectInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [outputDir, setOutputDir] = useState<string>('');
-  const [progress, setProgress] = useState<ProgressEvent | null>(null);
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('browse');
   const [loading, setLoading] = useState(false);
+  const discoverProgress = useDmigProgress('discover');
+  const transferProgress = useDmigProgress('transfer');
+  const snapshotProgress = useDmigProgress('snapshot');
+  const systemProgress = useDmigProgress('system');
   const [tab, setTab] = useState<'export' | 'import'>('export');
 
   const [bindChoicesState, setBindChoicesState] = useState<Record<string, BindMountChoice[]>>({});
@@ -88,14 +101,16 @@ export const ComposePage: React.FC = () => {
   const refreshProjects = useCallback(async () => {
     setLoading(true);
     setError(null);
+    discoverProgress.setProgress(COMPOSE_LIST_PROGRESS_INITIAL);
     const r = await window.dmig.listComposeProjects();
     setLoading(false);
+    discoverProgress.clear();
     if (r.ok) {
       setProjects(r.data);
     } else {
       setError(r.error);
     }
-  }, []);
+  }, [discoverProgress]);
 
   const refreshSnapshots = useCallback(async () => {
     const r = await window.dmig.listSnapshots();
@@ -112,9 +127,12 @@ export const ComposePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    void refreshProjects();
-    return window.dmig.onProgress(setProgress);
-  }, [refreshProjects]);
+    if (projects.length === 0 && !loading) {
+      void refreshProjects();
+    }
+    // 初回マウント時のみ自動取得（再訪問時はキャッシュを維持、再読込ボタンで更新）
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshProjects は安定、projects/loading は初回判定のみ
+  }, []);
 
   useEffect(() => {
     if (tab === 'export' && diffMode) void refreshSnapshots();
@@ -573,6 +591,18 @@ export const ComposePage: React.FC = () => {
           <h2>Compose プロジェクトまるごと パック</h2>
           <ResumeHintBanner message={resumeHint} onDismiss={() => setResumeHint(null)} />
 
+          <OperationProgress
+            active={loading}
+            progress={discoverProgress.progress}
+            fallback={COMPOSE_LIST_PROGRESS_INITIAL}
+          />
+          <OperationProgress active={phase === 'running'} progress={transferProgress.progress} />
+          <OperationProgress active={diffPreview.loading} progress={snapshotProgress.progress} />
+          <OperationProgress
+            active={composeLifecycleBusy !== null}
+            progress={systemProgress.progress}
+          />
+
           <div className="tab-bar">
         <button
           type="button"
@@ -651,7 +681,9 @@ export const ComposePage: React.FC = () => {
 
           <div className="card">
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-              <strong style={{ flex: 1 }}>Compose プロジェクト ({projects.length}件)</strong>
+              <strong style={{ flex: 1 }}>
+                Compose プロジェクト ({loading ? '読み込み中' : `${projects.length}件`})
+              </strong>
               <button type="button" onClick={selectAll} disabled={phase === 'running'}>
                 全選択
               </button>
@@ -707,8 +739,6 @@ export const ComposePage: React.FC = () => {
               </div>
             </div>
 
-            {loading && <div style={{ color: '#a6adc8' }}>読み込み中...</div>}
-
             {!loading && projects.length === 0 && (
               <div style={{ color: '#a6adc8', padding: 16 }}>
                 Compose プロジェクトが検出されませんでした。
@@ -721,7 +751,8 @@ export const ComposePage: React.FC = () => {
               </div>
             )}
 
-            {projects.map((p) => (
+            {!loading &&
+              projects.map((p) => (
               <ComposeProjectCard
                 key={p.name}
                 project={p}
@@ -872,7 +903,6 @@ export const ComposePage: React.FC = () => {
         </>
       )}
 
-      <ProgressBar progress={progress} />
       <ErrorBox error={error} lastAction={lastAction} />
       {done && (
         <div

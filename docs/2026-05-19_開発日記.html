@@ -375,6 +375,18 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-0724">詳細</a></td>
       </tr>
+      <tr>
+        <td>07:39</td>
+        <td>Compose 一覧: 検出件数のリアルタイム表示（<code>compose-discover</code> 進捗）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0739">詳細</a></td>
+      </tr>
+      <tr>
+        <td>08:43</td>
+        <td>全操作向け進捗バー基盤（<code>progressIpc</code> / <code>useDmigProgress</code> / <code>OperationProgress</code>）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0843">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -406,6 +418,61 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（57 passed, 1 skipped）/ <code>build</code></li>
     <li>Commit: <code>b2622bb</code> IPC / <code>85c92b6</code> UI / <code>ea17b81</code> test / <code>a6d2ba6</code> docs（<code>main</code> push 済み）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0739">
+  <h2>Compose プロジェクト一覧: 検出件数のリアルタイム表示</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 07:39</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>Compose ページの再読込中、「読み込み中…」だけではフリーズか判別できない問題を修正。<strong><code>listComposeProjects</code></strong> 走査時に Main から <code>dmig:progress</code>（<code>taskId: compose-discover</code>, <code>phase: discover</code>）を送出し、Renderer でヘッダを <code>検出中 N / M 件</code>・詳細メッセージ・プログレスバーに更新。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code> — <code>ProgressEvent.phase</code> に <code>discover</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/core/DockerAdapter.ts</code> — <code>listComposeProjects(onProgress?)</code></li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/main/ipc/compose.ts</code> — 解析・サイズ見積もりの進捗 IPC</li>
+    <li><span class="op op-mod">~</span> <code>dmig/src/renderer/pages/ComposePage.tsx</code> — <code>discoverProgress</code> 状態と UI</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（57 passed, 1 skipped）</li>
+    <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0843">
+  <h2>全操作向けプログレスバー基盤の設計・実装</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 08:43</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>長時間操作すべてで<strong>プログレスバーを一貫表示</strong>するため、<code>ProgressScope</code>（discover / scan / snapshot / transfer / system）と <code>createProgressRelay</code>（<code>event.sender.send</code> + <code>yieldToRenderer</code>）を導入。Renderer は <code>useDmigProgress(scope)</code> + <code>OperationProgress</code> でページ先頭に inline バーを配置。Compose ページはマウント保持＋初回のみ一覧取得も維持。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/shared/progress.ts</code>, <code>progress.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/utils/progressIpc.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/hooks/useDmigProgress.ts</code>, <code>OperationProgress.tsx</code></li>
+    <li><span class="op op-mod">~</span> 全 IPC（compose / export / import / snapshot / system）+ 全 Page</li>
+    <li><span class="op op-mod">~</span> <code>ProgressBar.tsx</code>（inline variant）, <code>App.tsx</code>（Compose マウント保持）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（60 passed, 1 skipped）</li>
+    <li>Commit: <code>pending</code></li>
   </ul>
 </section>
 </main>

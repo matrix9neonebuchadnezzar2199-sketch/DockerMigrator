@@ -353,6 +353,14 @@ input[type='text'] {
   color: #a6adc8;
 }
 
+.progress-inline {
+  margin: 12px 0 16px;
+  padding: 12px 14px;
+  background: #181825;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+}
+
 .error-box {
   background: #f38ba8;
   color: #1e1e2e;

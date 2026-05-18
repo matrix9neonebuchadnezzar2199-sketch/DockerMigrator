@@ -41,7 +41,15 @@ export function setupImageExportIpcHarness(opts: {
       if (!fn) {
         throw new Error(`ipc handler not registered: ${channel}`);
       }
-      return fn({}, ...args) as Promise<T>;
+      const event = {
+        sender: {
+          isDestroyed: () => false,
+          send: (channel: string, payload: unknown) => {
+            progressRows.push({ channel, payload });
+          },
+        },
+      };
+      return fn(event, ...args) as Promise<T>;
     },
     captureProgress: () => [...progressRows],
     cleanup: () => {

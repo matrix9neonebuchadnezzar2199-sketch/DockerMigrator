@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { promises as fsp } from 'node:fs';
 import { join } from 'node:path';
 import { Exporter } from '../core/Exporter.js';
@@ -7,25 +7,23 @@ import { ComposeExporter } from '../core/ComposeExporter.js';
 import { VolumeExporter } from '../core/VolumeExporter.js';
 import { jobRegistry } from '../core/JobRegistry.js';
 import { ErrorCodes, ErrorMessages } from '../core/errors/codes.js';
-import type { ExportRequest, ProgressEvent, ResumeExportRequest } from '@shared/types.js';
+import type { ExportRequest, ResumeExportRequest } from '@shared/types.js';
 import type { Snapshot } from '@shared/snapshot-types.js';
 import { SnapshotStore } from '../core/snapshot/SnapshotStore.js';
 import { Snapshotter } from '../core/snapshot/Snapshotter.js';
 import { DiffEngine } from '../core/diff/DiffEngine.js';
-import { ProgressTracker } from '../core/ProgressTracker.js';
+import { createProgressRelay } from '../utils/progressIpc.js';
 import type { HandlerDeps } from './shared.js';
 import { applyDeltaManifestInPlace, toPayload } from './shared.js';
 
 export function registerImageExportHandlers(deps: HandlerDeps): void {
-  const { win, docker } = deps;
+  const { docker } = deps;
 
-  ipcMain.handle('dmig:export', async (_e, req: ExportRequest) => {
+  ipcMain.handle('dmig:export', async (event: IpcMainInvokeEvent, req: ExportRequest) => {
     const controller = jobRegistry.register(req.jobToken);
     const exporter = new Exporter(docker);
-    const tracker = new ProgressTracker();
-    const onProg = (ev: ProgressEvent) => {
-      win.webContents.send('dmig:progress', tracker.enrich(ev));
-    };
+    const relay = createProgressRelay(event.sender);
+    const onProg = relay.forwarder;
     exporter.on('progress', onProg);
     let exportReq: ExportRequest = req;
     let baseSnap: Snapshot | null = null;
@@ -110,17 +108,15 @@ export function registerImageExportHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:resumeExport', async (_e, req: ResumeExportRequest) => {
+  ipcMain.handle('dmig:resumeExport', async (event: IpcMainInvokeEvent, req: ResumeExportRequest) => {
     const controller = jobRegistry.register(req.jobToken);
     const importer = new Importer(docker);
     const exporter = new Exporter(docker);
     const volumeExporter = new VolumeExporter(docker);
     const composeExporter = new ComposeExporter(docker, exporter, volumeExporter);
 
-    const tracker = new ProgressTracker();
-    const onProg = (ev: ProgressEvent) => {
-      win.webContents.send('dmig:progress', tracker.enrich(ev));
-    };
+    const relay = createProgressRelay(event.sender);
+    const onProg = relay.forwarder;
     exporter.on('progress', onProg);
     volumeExporter.on('progress', onProg);
     composeExporter.on('progress', onProg);
