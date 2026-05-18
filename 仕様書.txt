@@ -629,3 +629,33 @@ dmig/
 - 追加分のエラーコード一覧・Exporter/Importer 手順・テスト観点は **正本 Markdown** を参照。
 
 ---
+
+## 12. UI 構成（Phase 6 第4回 Step A）
+
+**設計メモ**: `DockerMigrator/docs/dmig-ui-redesign-v0.1.md`
+
+### 12.1 サイドバー（3 グループ）
+
+| グループ | 項目（Step A 時点） |
+|----------|---------------------|
+| 移行元での作業 | プロジェクトを選ぶ / パックを書き出す / **中断したパックを再開** |
+| 移行先での作業 | パックを読み込む |
+| 共通 | 設定・ヘルプは Step F 以降（Step A ではプレースホルダ文言のみ） |
+
+- 技術用語（manifest / partialState 等）は主ラベルから退避し、初心者向け動詞＋目的語に統一。
+- 「概要」「ヘルプ/用語集」は Step C/F で追加（Step A では非表示）。
+
+### 12.2 `dmig:listResumablePackages`
+
+- **入力**: `ListResumablePackagesRequest`（`rootDir`, 任意 `maxDepth` 既定 1、最大 2）。
+- **出力**: `Result<ListResumablePackagesResult>`（`packages: ProbeSummary[]` は **`status === ok_partial` のみ**、`warnings: string[]`）。
+- **実装**: Main `ResumableScanner` が浅い `readdir` 走査 → 各候補で `Importer.probe`。
+- **ハードリミット**: `maxDepth` クランプ最大 2 / 走査ディレクトリ累計 500 / 中断パック列挙 50 件で打ち切り（`truncated_at_50`）/ シンボリックリンク非追跡。
+- **root 不在**: throw せず `warnings: ['root_not_found']` と空 `packages`。
+
+### 12.3 Resume ページ（`page === 'resume'`）
+
+- フォルダ選択（既存 `dmig:selectDirectory`）→ `listResumablePackages` → カード一覧 → 既存 `ResumeConfirmDialog` → `dmig:resumeExport`。
+- Import ページの `ok_partial` 分岐は残置（両経路から再開可能）。
+
+---

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>2026-05-19 開発日記 - DockerMigrator</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --heading: #cbd5e1;
+  --accent: #a78bfa;
+  --accent-deep: #7c3aed;
+  --border: #334155;
+  --code-bg: #0b1220;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --err: #f87171;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body.diary {
+  margin: 0;
+  padding: 40px 20px 80px;
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ===== Header ===== */
+body.diary > header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+body.diary > header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  color: var(--accent);
+  font-weight: 600;
+}
+body.diary > header .subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ===== Common ===== */
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+a:hover {
+  border-bottom-color: var(--accent);
+}
+strong {
+  color: var(--heading);
+  font-weight: 600;
+}
+em.term {
+  font-style: normal;
+  color: var(--accent);
+  font-weight: 500;
+}
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* ===== TOC ===== */
+.diary-toc {
+  margin-bottom: 28px;
+  padding: 16px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.diary-toc h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.diary-toc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.diary-toc th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+.diary-toc td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.diary-toc tr:last-child td { border-bottom: none; }
+.diary-toc td:first-child {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.diary-toc a:hover { color: var(--accent); }
+
+/* ===== Entry Card ===== */
+.entry {
+  margin: 22px 0;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.entry h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: var(--accent);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.entry h2 a.anchor {
+  color: var(--muted);
+  font-size: 14px;
+  margin-left: 8px;
+  border-bottom: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.entry:hover h2 a.anchor { opacity: 1; }
+
+.entry .meta {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.entry .meta .date {
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.entry h3 {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.entry h3:first-of-type {
+  margin-top: 0;
+}
+
+.entry p {
+  margin: 8px 0;
+}
+.entry ul, .entry ol {
+  margin: 8px 0;
+  padding-left: 22px;
+}
+.entry li {
+  margin: 4px 0;
+}
+
+/* ===== Tags / Pills ===== */
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.tag-scope {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.tag-ok {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.tag-warn {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+.tag-err {
+  border-color: var(--err);
+  color: var(--err);
+}
+.tag-type {
+  border-color: var(--muted);
+  color: var(--muted);
+}
+
+/* ===== Code ===== */
+code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  color: var(--heading);
+}
+pre {
+  background: var(--code-bg);
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  margin: 12px 0;
+  overflow-x: auto;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: inherit;
+}
+
+/* ===== Tables ===== */
+.entry table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  font-size: 14px;
+}
+.entry th {
+  text-align: left;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+.entry td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+  color: var(--text);
+}
+.entry tr:last-child td { border-bottom: none; }
+
+/* ===== Inline bar chart (CSS only) ===== */
+.bar-row {
+  display: grid;
+  grid-template-columns: 160px 1fr 60px;
+  gap: 8px;
+  align-items: center;
+  margin: 4px 0;
+  font-size: 13px;
+}
+.bar-row .bar-track {
+  height: 8px;
+  background: var(--code-bg);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.bar-row .bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+.bar-row .bar-value {
+  text-align: right;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ===== Callouts ===== */
+.callout {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--accent);
+  background: rgba(167, 139, 250, 0.05);
+  border-radius: 0 6px 6px 0;
+  font-size: 14px;
+}
+.callout.warn { border-left-color: var(--warn); background: rgba(251, 191, 36, 0.05); }
+.callout.err { border-left-color: var(--err); background: rgba(248, 113, 113, 0.05); }
+.callout.ok { border-left-color: var(--ok); background: rgba(52, 211, 153, 0.05); }
+.callout .callout-label {
+  display: inline-block;
+  font-size: 11px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-right: 8px;
+  font-weight: 600;
+}
+
+/* ===== Changes list (file ops) ===== */
+.changes {
+  list-style: none;
+  padding-left: 0;
+  margin: 8px 0;
+}
+.changes li {
+  padding: 3px 0;
+  font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+}
+.changes .op {
+  display: inline-block;
+  width: 24px;
+  text-align: center;
+  margin-right: 6px;
+  font-family: system-ui, sans-serif;
+}
+.changes .op-add { color: var(--ok); }
+.changes .op-mod { color: var(--warn); }
+.changes .op-del { color: var(--err); }
+.changes .op-ren { color: var(--accent); }
+
+/* ===== Footer ===== */
+body.diary > footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+</style>
+</head>
+<body class="diary">
+<header>
+  <h1>2026-05-19 開発日記</h1>
+  <p class="subtitle">DockerMigrator — Phase 6 第4回 Step A（サイドバー・中断パック列挙）</p>
+</header>
+
+<section class="diary-toc">
+  <h2>目次</h2>
+  <table>
+    <thead>
+      <tr><th>時刻</th><th>概要</th><th>ステータス</th><th>詳細</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>07:24</td>
+        <td>Phase 6 第4回 Step A: サイドバー3グループ・<code>listResumablePackages</code>・<code>ResumePage</code></td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0724">詳細</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<main>
+<section class="entry" id="entry-0724">
+  <h2>Phase 6 第4回 Step A: サイドバー再構成と中断パック列挙 IPC</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 07:24</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>Step A 指示書に従い、サイドバーを<strong>移行元 / 移行先 / 共通</strong>の3グループに再構成し、ラベルを初心者向け文言に変更。<code>dmig:listResumablePackages</code>（<code>ResumableScanner</code> + <code>Importer.probe</code>）と <code>ResumePage</code>（フォルダ走査 → カード一覧 → 既存 <code>ResumeConfirmDialog</code> → <code>resumeExport</code>）を追加。判断: R1（<code>PageKey resume</code>）/ H2（<code>useResumeFlow</code> 延期）/ Import <code>ok_partial</code> 残置。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/core/ResumableScanner.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/pages/ResumePage.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>Sidebar.tsx</code>, <code>App.tsx</code>, <code>styles.css</code></li>
+    <li><span class="op op-mod">~</span> <code>types.ts</code>, <code>preload</code>, <code>ipc/importImages.ts</code></li>
+    <li><span class="op op-add">+</span> テスト + vitest jsdom / Testing Library</li>
+    <li><span class="op op-add">+</span> <code>docs/dmig-ui-redesign-v0.1.md</code>, <code>仕様書.txt</code> §12</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（57 passed, 1 skipped）/ <code>build</code></li>
+    <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
+</main>
+
+<footer>
+  <p>generated by Cursor / one-file HTML</p>
+</footer>
+</body>
+</html>
