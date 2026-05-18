@@ -153,6 +153,22 @@ export interface ProbeSummary {
   diagnostic?: string;
 }
 
+/** 中断パッケージ一覧取得リクエスト（Renderer→Main） */
+export interface ListResumablePackagesRequest {
+  /** 走査対象のルートディレクトリ（ユーザーが選択） */
+  rootDir: string;
+  /** 走査深度。既定 1（rootDir 直下のみ）。最大 2。 */
+  maxDepth?: number;
+}
+
+/** 中断パッケージ一覧取得レスポンス */
+export interface ListResumablePackagesResult {
+  /** 走査時に検出された中断パッケージの probe 結果 */
+  packages: ProbeSummary[];
+  /** 走査時に発生した非致命的エラー（権限不足ディレクトリ等） */
+  warnings: string[];
+}
+
 export interface DmigManifest {
   dmigVersion: string;
   createdAt: string;

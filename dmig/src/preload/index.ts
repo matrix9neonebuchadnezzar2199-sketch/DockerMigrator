@@ -23,6 +23,8 @@ import type {
   ComposeLifecycleRequest,
   ProbeSummary,
   ResumeExportRequest,
+  ListResumablePackagesRequest,
+  ListResumablePackagesResult,
 } from '../shared/types.js';
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: DmigErrorPayload };
@@ -40,6 +42,10 @@ export interface DmigAPI {
   probePackage(packageDir: string): Promise<Result<ProbeSummary>>;
   /** 中断済みパッケージのエクスポートを再開する */
   resumeExport(req: ResumeExportRequest): Promise<Result<void>>;
+  /** 指定フォルダ配下の中断パッケージ一覧 */
+  listResumablePackages(
+    req: ListResumablePackagesRequest,
+  ): Promise<Result<ListResumablePackagesResult>>;
   onProgress(cb: (ev: ProgressEvent) => void): () => void;
 
   /** 稼働中または過去に起動した Compose プロジェクト一覧 */
@@ -89,6 +95,7 @@ const api: DmigAPI = {
   readManifest: (dir) => ipcRenderer.invoke('dmig:readManifest', dir),
   probePackage: (packageDir) => ipcRenderer.invoke('dmig:probePackage', packageDir),
   resumeExport: (req) => ipcRenderer.invoke('dmig:resumeExport', req),
+  listResumablePackages: (req) => ipcRenderer.invoke('dmig:listResumablePackages', req),
   onProgress: (cb) => {
     const listener = (_e: IpcRendererEvent, ev: ProgressEvent) => {
       cb(ev);
