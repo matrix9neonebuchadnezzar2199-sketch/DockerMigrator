@@ -601,9 +601,9 @@ dmig/
 
 ---
 
-## 11. dmig manifest 1.1 / 中断・再開（Phase 6 第3回ドラフト v0.1）
+## 11. dmig manifest 1.1 / 中断・再開（Phase 6 第3回ドラフト v0.1 → **v0.2**）
 
-**正本**: `DockerMigrator/docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md`（2026-05-17 ドラフト本文＋2026-05-18 記録メモ取り込み）
+**正本**: `DockerMigrator/docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md`（v0.2: `ChunkRef.contentKind` 追加・`contents` オブジェクト構造の明文化）
 
 ### 11.1 記録の要約（検証・エラー）
 
@@ -619,9 +619,10 @@ dmig/
 | エントリ意味 | 各 `kind` / `baseRef` | そのエントリが差分か・何に対する差分か。 |
 | 実行進捗 | `partialState`（新規） | 中断・再開のためのチャンク単位メタ。完了時はキーごと省略。 |
 
-### 11.3 設計の要点（v0.1）
+### 11.3 設計の要点（v0.2）
 
 - 未完了のみ **`pendingChunks`** に保持（完了集合は二重管理しない）。空なら **`partialState` 自体を書かない**。
+- **`ChunkRef`**: **`contentKind`**（image / volume / composeProject）＋ **`contentId`**（当該系統内の `name`）でチャンク対象を一意化。v0.1 の `contentId` のみでは系統間衝突があり得た問題を解消。
 - **`checksumPolicy`**（package 単位）＋ **`ChunkRef.expectedSha256`** / **`byteLength`**（チャンク単位）。1.0 読み込み時は policy 不在を **`verify-all` 相当**で扱う想定。
 - Importer は **`openAsBase`**（完了のみ）と **`openForResume`**（中断のみ）を分離。中断 package を **`previousPackage` に指定不可**（E2073/E2074）。不正構造は E2075。
 - 追加分のエラーコード一覧・Exporter/Importer 手順・テスト観点は **正本 Markdown** を参照。

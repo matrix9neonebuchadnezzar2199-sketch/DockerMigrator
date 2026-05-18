@@ -1,8 +1,15 @@
 # dmig manifest schemaVersion 1.1 / 中断・再開機能
 
-**Draft v0.1**（Phase 6 第3回 着手用）  
-**文書日付**: 2026-05-17  
+**Draft v0.2**（Phase 6 第3回 — `ChunkRef.contentKind` 追加）  
+**文書日付**: 2026-05-17（初版）、**v0.2 改訂**: 2026-05-18  
 **記録日**: 2026-05-18（マスター承認・設計メモ取り込み済み）
+
+## v0.1 → v0.2（改訂サマリ）
+
+- **`ChunkRef`** に **`contentKind`**（`'image' | 'volume' | 'composeProject'`）を追加。`contentId` は当該系統内のエントリ **`name`** のみを指す（現行 `DmigManifest.contents` が `{ images, volumes?, composeProjects? }` のオブジェクト構造であることの反映）。
+- v0.1 の「`contentId` だけで `contents` 全体を一意に指す」前提を撤回。**`(contentKind, contentId, chunkIndex)`** で衝突を排除する。
+- **§3.5**・用語「content / entry」を現行実装に合わせて修正。
+- **§10** 型定義サンプルを同期。**実装メモ**の「`name` + 種別プレフィックス」の単一文字列案は破棄し、構造化フィールドに統一。
 
 ---
 
@@ -50,7 +57,7 @@
 |------|------|
 | package | dmig が出力する 1 成果物（ディレクトリ単位）。 |
 | manifest | package 直下の `manifest.json`。本書の対象。 |
-| content / entry | `manifest.contents` の 1 要素。 |
+| content / entry | `manifest.contents` の **いずれかの配列**（`images` / `volumes` / `composeProjects`）に属する 1 要素。 |
 | chunk | 大きな content の分割単位。不要なら 1 chunk = entry 全体。 |
 | 完了 package | すべての chunk 書き出しが終わった package。 |
 | 中断 package | 未完了 chunk が 1 個以上残る package。 |
@@ -111,6 +118,7 @@
 
 ```json
 {
+  "contentKind": "image",
   "contentId": "",
   "chunkIndex": 0,
   "byteOffset": 0,
@@ -119,9 +127,10 @@
 }
 ```
 
-- `contentId`: `contents` エントリを一意に指す安定 ID（実装時は現行の `name` 等との対応表を `types.ts` で確定すること）。
-- `byteOffset` + `byteLength` は content の総バイト長を超えないこと。
-- 同一 `(contentId, chunkIndex)` は `pendingChunks` 内に高々 1 個。
+- `contentKind`: `'image' | 'volume' | 'composeProject'`。`manifest.contents` のどの配列を参照するか。
+- `contentId`: **当該 `contentKind` 配列内**のエントリの `name` と一致させる（現行 `ManifestImageEntry` / `ManifestVolumeEntry` / `ManifestComposeEntry` に独立 `id` が無い前提）。将来 `id` を追加した場合も、ここは系統内の安定キーを指す文字列とする。
+- `byteOffset` + `byteLength` は当該 content の総バイト長を超えないこと。
+- 同一 **`(contentKind, contentId, chunkIndex)`** は `pendingChunks` 内に高々 1 個。
 
 ### 3.4 ChecksumPolicy
 
@@ -133,9 +142,9 @@
 
 1.0 manifest では `checksumPolicy` 不在＝Importer は **`verify-all` 相当**で振る舞う。
 
-### 3.5 contents エントリの拡張
+### 3.5 contents 構造とエントリ拡張
 
-`contents[]` 自体のスキーマは 1.0 から変更しない。chunk 化の情報は `partialState` に閉じる。
+現行どおり `contents` は **オブジェクト**（`images` / `volumes?` / `composeProjects?` の三系統）であり、配列 `contents[]` は採用しない。1.0 からこの骨子は変更しない。chunk 化の情報は `partialState.pendingChunks` に閉じる。
 
 ---
 
@@ -158,7 +167,7 @@
 
 - `schemaVersion: '1.1'` かつ `partialState.pendingChunks` が空配列
 - `schemaVersion: '1.0'` かつ `partialState` を持つ
-- `pendingChunks` が存在しない `contentId` を参照
+- `pendingChunks` が存在しない `(contentKind, contentId)` の組を参照する、または `contentKind` が不正
 - `(offset, length)` が content 範囲を超える
 
 ---
@@ -250,7 +259,10 @@ export type ChecksumPolicy =
 
 export type InterruptionReason = 'user-cancel' | 'error' | 'crash';
 
+export type ContentKind = 'image' | 'volume' | 'composeProject';
+
 export interface ChunkRef {
+  contentKind: ContentKind;
   contentId: string;
   chunkIndex: number;
   byteOffset: number;
@@ -279,6 +291,7 @@ export interface PartialState {
 - `partialState` あり → `openAsBase` で E2070
 - 完了 → `openForResume` で E2071
 - `pendingChunks` 空配列 manifest → E2075
+- `contentKind` / `contentId` の組が manifest 実体と一致しない → E2075
 - `previousPackage` が中断を指す Export → E2073
 - 中断 → 再開 → 完了 → `previousPackage` 指定の一連
 - `checksumPolicy` 各値の検証範囲
@@ -286,7 +299,7 @@ export interface PartialState {
 
 ---
 
-## 12. 未確定事項（v0.2 以降）
+## 12. 未確定事項（v0.3 以降）
 
 - chunk サイズの推奨値とポリシー（可変か固定か）。
 - `resumeToken` を解釈できないバージョン差のときの挙動。
@@ -296,7 +309,7 @@ export interface PartialState {
 
 ---
 
-## 実装メモ（ドラフト v0.1 → コード化時）
+## 実装メモ（ドラフト → コード化時）
 
-- 現行 `ManifestImageEntry` 等に `id` フィールドが無い場合、`contentId` は **`name` + 種別プレフィックス**等で定義し、Exporter/Importer で一貫させる。
+- 現行 `ManifestImageEntry` 等に独立 `id` が無い場合でも、**`contentKind` + `contentId`（= 当該系統の `name`）** で Exporter/Importer を一貫させる。単一文字列へのエンコードは行わない。
 - 本ファイルは `仕様書.txt` の §11 から参照される正本のドラフトとする。

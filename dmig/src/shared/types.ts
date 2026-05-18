@@ -33,7 +33,7 @@ export interface ProgressEvent {
 
 // =============================================================================
 // manifest 1.1: 中断・再開 (partialState)
-// 正本: docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md
+// 正本: docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md
 // =============================================================================
 
 /**
@@ -54,17 +54,20 @@ export type ChecksumPolicy = 'verify-all' | 'verify-resumed' | 'trust-completed'
 export type InterruptionReason = 'user-cancel' | 'error' | 'crash';
 
 /**
+ * manifest `contents` 内のどの配列に属するか。`ChunkRef` が `contentId`（当該系統内の `name`）だけでは
+ * 系統間で衝突し得るため、系統を明示する。
+ */
+export type ContentKind = 'image' | 'volume' | 'composeProject';
+
+/**
  * 未完了チャンクへの参照。
  *
- * `contentId` は manifest `contents` 内の論理エントリを指す。
- * 現行スキーマでは `contents` が配列ではなく `{ images, volumes?, composeProjects? }` 構造であり、
- * 各配列要素の **`name` を contentId として流用**する（将来 `id` を別途追加しても、
- * Importer で正規化すれば ChunkRef 側の string 型は維持できる）。
- *
- * 同一パッケージ内でイメージ名とボリューム名が衝突する可能性は低いが、
- * 将来 `image:...` / `volume:...` 形式へプレフィックス化する余地を残す。
+ * - `contentKind`: `contents.images` / `contents.volumes` / `contents.composeProjects` のいずれか。
+ * - `contentId`: 当該配列内エントリの **`name` と同一**（現行 `Manifest*Entry` に独立 `id` が無い前提）。
+ *   将来 `id` を追加した場合も、`contentId` はその系統内の安定キーを指す文字列として解釈する。
  */
 export interface ChunkRef {
+  contentKind: ContentKind;
   contentId: string;
   chunkIndex: number;
   byteOffset: number;

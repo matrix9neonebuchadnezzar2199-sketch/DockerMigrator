@@ -399,6 +399,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1057">詳細</a></td>
       </tr>
+      <tr>
+        <td>11:15</td>
+        <td>step 1.5: <code>ChunkRef.contentKind</code>、正本ドラフト v0.2、仕様書 §11 更新</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1115">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -424,7 +430,7 @@ body.diary > footer {
   </ul>
 
   <h3>設計判断</h3>
-  <p>全文ドラフトは <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md</code>。実装時は <code>contents</code> の安定キー（現型は <code>name</code> 等）と <code>contentId</code> の対応を <code>types.ts</code> で確定させること。</p>
+  <p>全文ドラフトは <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code>（当初 v0.1 を v0.2 に改訂）。実装時は <code>ChunkRef</code> の <code>contentKind</code> + <code>contentId</code>（系統内 <code>name</code>）と正本を一致させること。</p>
 </section>
 
 <section class="entry" id="entry-0845">
@@ -529,6 +535,33 @@ body.diary > footer {
     <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code></li>
     <li><span class="op op-mod">~</span> <code>dmig/src/shared/codes.ts</code></li>
     <li><span class="op op-mod">~</span> <code>README.md</code> / <code>dmig/.cursorrules</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>npm run lint</code> 成功</li>
+    <li>Commit: <code>47f40c1</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1115">
+  <h2>Phase 6 第3回 step 1.5: ChunkRef.contentKind と正本 v0.2</h2>
+  <div class="meta">
+    <span class="date">2026-05-18 11:15</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>ChunkRef</code> に <code>contentKind: 'image' | 'volume' | 'composeProject'</code> を追加し、<code>contentId</code> を当該系統内の <code>name</code> に限定。正本を <code>dmig-manifest-1.1-partial-resume-draft-v0.2.md</code> にし v0.1 ファイルは削除。<code>仕様書.txt</code> §11・README・日記 #entry-0831 の正本参照を追随。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>dmig/src/shared/types.ts</code></li>
+    <li><span class="op op-add">+</span> <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.2.md</code></li>
+    <li><span class="op op-del">-</span> <code>docs/dmig-manifest-1.1-partial-resume-draft-v0.1.md</code></li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code> / <code>README.md</code> / <code>docs/2026-05-18_開発日記.html</code></li>
   </ul>
 
   <h3>検証</h3>
