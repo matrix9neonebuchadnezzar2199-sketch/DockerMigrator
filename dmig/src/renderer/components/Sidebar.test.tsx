@@ -23,6 +23,15 @@ describe('Sidebar', () => {
     expect(onChange).toHaveBeenCalledWith('resume');
   });
 
+  it('ヘルプ / 用語集をクリックすると onChange(help) が呼ばれる', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Sidebar page="compose" onChange={onChange} dockerVersion="24.0" />);
+    const nav = screen.getByRole('navigation', { name: 'メインメニュー' });
+    await user.click(within(nav).getByRole('button', { name: 'ヘルプ / 用語集' }));
+    expect(onChange).toHaveBeenCalledWith('help');
+  });
+
   it('旧ラベルがなく新ラベルが表示される', () => {
     render(<Sidebar page="export" onChange={vi.fn()} dockerVersion="24.0" />);
     const nav = screen.getByRole('navigation', { name: 'メインメニュー' });
