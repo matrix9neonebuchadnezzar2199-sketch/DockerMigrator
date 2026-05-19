@@ -2,6 +2,18 @@
 
 Phase 6 第4回完了後の最小確認。lab 環境・テスト用 Docker のみ。
 
+## 自動点検（Python）
+
+リポジトリルートで:
+
+```powershell
+python scripts/run_smoke_check.py
+```
+
+- 実行内容: `typecheck` / `lint` / `test` / `build`、任意で `docker version`
+- オプション: `--win`（`build:win`）、`--skip-build`、`--no-docker`、`-v`、`--manual-only`
+- 終了コード: 自動ステップがすべて成功なら `0`
+
 ## 前提
 
 - [ ] `cd dmig && npm run dev` で起動

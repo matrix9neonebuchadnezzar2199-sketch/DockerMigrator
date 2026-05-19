@@ -97,6 +97,14 @@ npm run build:win    # Windows 向けパッケージ（electron-builder）
 npm run build:linux  # Linux 向けパッケージ
 ```
 
+リポジトリルートから **動作点検（自動）**:
+
+```bash
+python scripts/run_smoke_check.py
+```
+
+`typecheck` / `lint` / `test` / `build` と Docker 確認のあと、手動 UI チェックリストを表示します。詳細は [docs/testing/smoke-checklist.md](./docs/testing/smoke-checklist.md)。
+
 - 生成物・依存は **`dmig/.gitignore`** に従い、`node_modules/`・`out/`・`release/` などはコミットしません。
 
 ---
