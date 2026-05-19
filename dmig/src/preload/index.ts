@@ -25,6 +25,8 @@ import type {
   ResumeExportRequest,
   ListResumablePackagesRequest,
   ListResumablePackagesResult,
+  DryRunRequest,
+  DryRunResult,
 } from '../shared/types.js';
 import type { DmigSettings } from '../shared/settings.js';
 
@@ -72,6 +74,8 @@ export interface DmigAPI {
 
   /** エクスポート前の事前検証（空き容量・サイズ推定） */
   preflight(req: PreflightRequest): Promise<Result<PreflightResult>>;
+  /** M9: Validator / preflight 統合ドライラン */
+  runDryRun(req: DryRunRequest): Promise<Result<DryRunResult>>;
   /** エラーレポート ZIP を生成して保存 */
   saveErrorReport(req: ErrorReportRequest): Promise<Result<ErrorReportResult>>;
 
@@ -120,6 +124,7 @@ const api: DmigAPI = {
   cancel: (jobToken) => ipcRenderer.invoke('dmig:cancel', jobToken),
 
   preflight: (req) => ipcRenderer.invoke('dmig:preflight', req),
+  runDryRun: (req) => ipcRenderer.invoke('dmig:runDryRun', req),
   saveErrorReport: (req) => ipcRenderer.invoke('dmig:saveErrorReport', req),
 
   listSnapshots: () => ipcRenderer.invoke('dmig:listSnapshots'),

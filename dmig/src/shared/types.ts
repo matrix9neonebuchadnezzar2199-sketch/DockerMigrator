@@ -574,6 +574,51 @@ export interface PreflightResult {
   warnings: string[];
 }
 
+// ─────────────────────────────────────────────────────────────────
+// M9: ドライラン（Validator / preflight 統合）
+// ─────────────────────────────────────────────────────────────────
+
+export type DryRunSeverity = 'info' | 'warn' | 'error';
+
+export type DryRunFindingCategory =
+  | 'image'
+  | 'volume'
+  | 'bind-mount'
+  | 'secret'
+  | 'capacity'
+  | 'package'
+  | 'other';
+
+export interface DryRunFinding {
+  id: string;
+  severity: DryRunSeverity;
+  category: DryRunFindingCategory;
+  message: string;
+  target?: string;
+  hint?: string;
+}
+
+export type DryRunMode = 'compose-project' | 'export-pack';
+
+export interface DryRunRequest {
+  mode: DryRunMode;
+  /** compose-project / export-pack（新規）の出力先 */
+  outputDir?: string;
+  /** compose-project 用 */
+  projectNames?: string[];
+  /** export-pack（新規）用 */
+  imageNames?: string[];
+  /** export-pack（既存 .dmig）用 */
+  packageDir?: string;
+}
+
+export interface DryRunResult {
+  findings: DryRunFinding[];
+  startedAt: string;
+  finishedAt: string;
+  warnings: string[];
+}
+
 /**
  * エラーレポート ZIP 生成リクエスト。
  */
