@@ -9,6 +9,7 @@
     "resolveJsonModule": true,
     "jsx": "react-jsx",
     "isolatedModules": true,
+    "noEmit": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
