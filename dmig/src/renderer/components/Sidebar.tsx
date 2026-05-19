@@ -30,11 +30,8 @@ export const Sidebar: React.FC<{
   page: PageKey;
   onChange: (p: PageKey) => void;
   dockerVersion: string;
-  /** ウェルカムウィザード表示中はナビ操作を無効化 */
-  navDisabled?: boolean;
-  onShowWelcomeWizard?: () => void;
-}> = ({ page, onChange, dockerVersion, navDisabled = false, onShowWelcomeWizard }) => (
-  <aside className={`sidebar${navDisabled ? ' sidebar--nav-disabled' : ''}`}>
+}> = ({ page, onChange, dockerVersion }) => (
+  <aside className="sidebar">
     <h1>🐳 dmig</h1>
     <nav className="sidebar-nav" aria-label="メインメニュー">
       <section className="sidebar-group" aria-labelledby="sidebar-group-source">
@@ -57,17 +54,7 @@ export const Sidebar: React.FC<{
         <h2 id="sidebar-group-common" className="sidebar-group-title">
           <span aria-hidden="true">⚙</span> 共通
         </h2>
-        {onShowWelcomeWizard && (
-          <button
-            type="button"
-            className="sidebar-welcome-replay"
-            disabled={navDisabled}
-            onClick={onShowWelcomeWizard}
-          >
-            ウェルカム画面を再表示
-          </button>
-        )}
-        <p className="sidebar-placeholder">設定・ヘルプは Step F 以降で追加予定です。</p>
+        <p className="sidebar-placeholder">設定・ヘルプは今後の更新で追加予定です。</p>
       </section>
     </nav>
     <div className="sidebar-docker-version">

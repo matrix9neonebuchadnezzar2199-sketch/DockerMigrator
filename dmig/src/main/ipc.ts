@@ -6,7 +6,6 @@ import { registerImageImportHandlers } from './ipc/importImages.js';
 import { registerComposeHandlers } from './ipc/compose.js';
 import { registerPreflightHandlers } from './ipc/preflight.js';
 import { registerSnapshotHandlers } from './ipc/snapshot.js';
-import { registerSettingsHandlers } from './ipc/settings.js';
 
 /**
  * Renderer ↔ Main の通信定義。
@@ -21,5 +20,4 @@ export function registerIpcHandlers(win: BrowserWindow): void {
   registerComposeHandlers(deps);
   registerPreflightHandlers(deps);
   registerSnapshotHandlers(deps);
-  registerSettingsHandlers();
 }
