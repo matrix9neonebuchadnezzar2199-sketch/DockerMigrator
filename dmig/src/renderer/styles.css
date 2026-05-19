@@ -1002,3 +1002,137 @@ input[type='text'] {
   border-radius: 6px;
   border: 1px solid rgba(243, 139, 168, 0.35);
 }
+
+/* Help / 用語集（Step F） */
+.help-page .help-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.help-tab {
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #cdd6f4;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.help-tab:hover {
+  background: #45475a;
+}
+.help-tab.active {
+  color: #1e1e2e;
+  background: #cba6f7;
+  border-color: #cba6f7;
+}
+.help-section {
+  margin-bottom: 24px;
+}
+.help-section h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #f5e0dc;
+}
+.help-section ol {
+  margin: 0;
+  padding-left: 1.4em;
+  color: #cdd6f4;
+  line-height: 1.6;
+}
+.help-faq dt {
+  margin-top: 12px;
+  font-weight: 600;
+  color: #cba6f7;
+}
+.help-faq dd {
+  margin: 4px 0 0;
+  color: #cdd6f4;
+  line-height: 1.55;
+}
+.help-static-guides-note {
+  margin-top: 16px;
+  padding: 12px;
+  font-size: 13px;
+  color: #a6adc8;
+  background: #181825;
+  border-radius: 6px;
+  border: 1px solid #45475a;
+}
+.glossary-filter-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #a6adc8;
+}
+.glossary-filter {
+  width: 100%;
+  max-width: 420px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #cdd6f4;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+}
+.glossary-filter:focus {
+  outline: 2px solid #cba6f7;
+  outline-offset: 1px;
+}
+.glossary-empty {
+  color: #a6adc8;
+  font-style: italic;
+}
+.glossary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.glossary-entry {
+  padding: 14px 16px;
+  background: #181825;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  scroll-margin-top: 24px;
+}
+.glossary-term {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: #f5e0dc;
+}
+.glossary-reading {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: #a6adc8;
+}
+.glossary-body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #cdd6f4;
+}
+.glossary-related-link {
+  margin-top: 10px;
+  padding: 0;
+  font-size: 13px;
+  color: #89b4fa;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.glossary-related-link:hover {
+  color: #b4befe;
+}
+.help-rail-hint p {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #cdd6f4;
+}
+.help-rail-hint p:last-child {
+  margin-bottom: 0;
+}

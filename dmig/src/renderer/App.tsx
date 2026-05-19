@@ -5,8 +5,9 @@ import { ExportPage } from './pages/ExportPage.js';
 import { ImportPage } from './pages/ImportPage.js';
 import { ComposePage } from './pages/ComposePage.js';
 import { ResumePage } from './pages/ResumePage.js';
+import { HelpPage } from './pages/HelpPage.js';
 
-export type PageKey = 'export' | 'import' | 'compose' | 'resume';
+export type PageKey = 'export' | 'import' | 'compose' | 'resume' | 'help';
 
 export const App: React.FC = () => {
   const [page, setPage] = useState<PageKey>('compose');
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
           </div>
         )}
         {page === 'resume' && <ResumePage />}
+        {page === 'help' && <HelpPage onNavigate={setPage} />}
       </div>
     </ErrorBoundary>
   );

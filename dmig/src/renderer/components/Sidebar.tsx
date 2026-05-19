@@ -9,7 +9,7 @@ function NavItem({
 }: {
   page: PageKey;
   current: PageKey;
-  label: string;
+  label: React.ReactNode;
   onChange: (p: PageKey) => void;
 }) {
   const active = current === page;
@@ -54,7 +54,17 @@ export const Sidebar: React.FC<{
         <h2 id="sidebar-group-common" className="sidebar-group-title">
           <span aria-hidden="true">⚙</span> 共通
         </h2>
-        <p className="sidebar-placeholder">設定・ヘルプは今後の更新で追加予定です。</p>
+        <NavItem
+          page="help"
+          current={page}
+          label={
+            <>
+              <span aria-hidden="true">❓ </span>
+              ヘルプ / 用語集
+            </>
+          }
+          onChange={onChange}
+        />
       </section>
     </nav>
     <div className="sidebar-docker-version">
