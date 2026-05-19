@@ -11,6 +11,7 @@ import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { useResumeFlow } from '../hooks/useResumeFlow.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
+import { RollbackInlineSection } from '../components/RollbackInlineSection.js';
 
 const PROBE_PROGRESS_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.PROBE_PACKAGE,
@@ -203,6 +204,9 @@ export const ImportPage: React.FC = () => {
           )}
 
           <ErrorBox error={error} />
+          {done === 'インポートが完了しました。' && packDir ? (
+            <RollbackInlineSection mode="import" packageDir={packDir} />
+          ) : null}
           {done && (
             <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
               ✅ {done}

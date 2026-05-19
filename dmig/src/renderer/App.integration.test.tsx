@@ -34,6 +34,9 @@ function makeDmigMock(): DmigAPI {
     computeDiff: vi.fn(),
     composeLifecycle: vi.fn(),
     pruneDanglingImages: vi.fn(),
+    listRollbacks: vi.fn().mockResolvedValue({ ok: true, data: { records: [], warnings: [] } }),
+    runRollback: vi.fn(),
+    loadRollbackRecord: vi.fn().mockResolvedValue({ ok: true, data: null }),
   } as DmigAPI;
 }
 

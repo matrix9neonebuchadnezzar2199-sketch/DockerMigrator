@@ -10,6 +10,7 @@ import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
 import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
+import { RollbackInlineSection } from '../components/RollbackInlineSection.js';
 
 const IMAGE_LIST_PROGRESS_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.IMAGE_LIST,
@@ -32,6 +33,7 @@ export const ExportPage: React.FC = () => {
   const [done, setDone] = useState<string | null>(null);
   const [resumeHint, setResumeHint] = useState<string | null>(null);
   const [dryRunHasErrors, setDryRunHasErrors] = useState(false);
+  const [lastPackDir, setLastPackDir] = useState('');
 
   const discoverProgress = useDmigProgress('discover');
   const transferProgress = useDmigProgress('transfer');
@@ -74,7 +76,10 @@ export const ExportPage: React.FC = () => {
     });
     setRunning(false);
     transferProgress.clear();
-    if (r.ok) setDone(`完了: ${r.data.contents.images.length} 件のイメージを書き出しました`);
+    if (r.ok) {
+      setLastPackDir(r.data.packDir);
+      setDone(`完了: ${r.data.manifest.contents.images.length} 件のイメージを書き出しました`);
+    }
     else {
       setError(r.error);
       setResumeHint(EXPORT_RESUME_VIA_IMPORT_HINT);
@@ -175,6 +180,7 @@ export const ExportPage: React.FC = () => {
       </div>
 
       <ErrorBox error={error} />
+      {done && lastPackDir ? <RollbackInlineSection mode="export" packageDir={lastPackDir} /> : null}
       {done && (
         <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
           ✅ {done}
