@@ -588,7 +588,7 @@ export const ComposePage: React.FC = () => {
     <div className="page-shell">
       <div className="page-two-col">
         <div className="page-primary">
-          <h2>Compose プロジェクトまるごと パック</h2>
+          <h2>プロジェクトを選ぶ</h2>
           <ResumeHintBanner message={resumeHint} onDismiss={() => setResumeHint(null)} />
 
           <OperationProgress
