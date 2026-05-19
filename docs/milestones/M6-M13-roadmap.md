@@ -87,7 +87,7 @@ flowchart TB
 | — | 第4回 UI | 地図・辞書・コンパス・現在地 | Overview / Help / Footer / Indicator | A | **完了** |
 | — | M1–M5 | PoC 仕上げ | 設定最小・Lucide・smoke・`v0.3.0-poc` | 第4回 UI | **完了** |
 | **M6** | 配布・リリース整備 | PoC を触れる形で固定 | Release notes、`build:win`、smoke、§9.1 確認 | M1–M5 | **完了**（2026-05-19、`v0.3.0-poc` タグは M1 時点） |
-| **M8** | UX v3（横断） | M4 見送り・第4回仕上げ | D-004 / D-005、Lucide 拡張 | M6 | 未着手 |
+| **M8** | UX v3（横断） | M4 見送り・第4回仕上げ | D-004 / D-005、ログページ | M6 | **完了**（2026-05-19） |
 | **M7** | 設定 v2 | 機能連動の設定束ね | 閾値・保持期間等 + `defaultExportDir` 配線。theme/i18n は M11 寄り | M10 | 未着手 |
 | **M9** | ドライラン UI（A） | 仕様 S4 を GUI 統合 | Validator / preflight 横断 UI | コア一部あり | **部分** |
 | **M10** | ロールバック（I） | 仕様 S12 | `rollback.json`、Import 後ロールバック UI | M9 推奨 | **未実装** |
@@ -122,14 +122,14 @@ flowchart TB
 
 ---
 
-## M8 — UX v3（横断）
+## M8 — UX v3（横断）（完了 2026-05-19）
 
-| ID | 内容 | 優先度目安 |
-|----|------|------------|
-| D-004 | Compose 選択 → Footer CTA を `export` に動的切替 | 中 |
-| D-005 | 共通ログビューアページ | 低〜中 |
-| — | Lucide を作業ページへ（D-007 は Sidebar のみ） | 低 |
-| — | `resume` の `flowStep` 要否（実装は source index 3、Step E 案はなし） | マスター判断 |
+| ID | 内容 | 状態 |
+|----|------|------|
+| D-004 | export / resume / import 完了時の Footer 動的 CTA | **完了** |
+| D-005 | 共通ログビューア（1000 件 FIFO） | **完了** |
+| — | Lucide ページ内（F2 / M13） | 見送り |
+| — | `resume` flowStep | 現状維持（G1） |
 
 ---
 

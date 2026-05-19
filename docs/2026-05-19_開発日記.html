@@ -453,6 +453,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1335">詳細</a></td>
       </tr>
+      <tr>
+        <td>13:49</td>
+        <td>M8 UX v3（ログビューア・Footer 動的 CTA）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1349">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -899,6 +905,32 @@ body.diary > footer {
     <li><code>npm run build:win</code> — <code>release/dmig Setup 0.3.0-poc.exe</code> 生成 OK</li>
     <li>GitHub Release Draft — <code>gh</code> 未導入時は手動（本文は <code>docs/releases/v0.3.0-poc.md</code>）</li>
     <li>Commit: <code>f2d6b3b</code> release notes / <code>28d5024</code> roadmap+diary</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1349">
+  <h2>M8 UX v3（ログビューア・動的 Footer CTA）</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 13:49</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><strong>D-004</strong>: <code>DynamicCtaContext</code> で export / resume / import 完了時に Footer CTA を動的表示。<strong>D-005</strong>: <code>LogsPage</code>（progress 購読・1000 件 FIFO・フィルタ/検索/コピー）。テスト 101→112 passed。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>useLogBuffer.tsx</code>, <code>LogsPage.tsx</code>, <code>DynamicCtaContext.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>NextStepFooter.tsx</code>, Export/Import/Resume, <code>App.tsx</code>, <code>Sidebar.tsx</code></li>
+    <li><span class="op op-mod">~</span> 仕様書 §12.11, CHANGELOG, ロードマップ M8</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>typecheck</code> / <code>test</code> — 112 passed, 1 skipped</li>
+    <li>Commit: pending</li>
   </ul>
 </section>
 </main>
