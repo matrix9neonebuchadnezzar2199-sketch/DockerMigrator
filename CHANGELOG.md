@@ -7,6 +7,7 @@
 
 ### Added
 
+- 初回起動時に「移行元/移行先」を尋ねるウェルカムウィザード（`WelcomeWizard`）。設定は `dmig-settings.json` に永続化。サイドバーから再表示可能。
 - Phase 6 第4回 Step A: サイドバーを移行元/移行先/共通の3グループに再構成、`ResumePage`（中断パック検索・再開）、`dmig:listResumablePackages` IPC と `ResumableScanner`（浅い走査 + `ok_partial` のみ列挙）。
 - Phase 7 test coverage: importImages 新シグネチャ、ComposeImporter 経路、Exporter 中断・再開シナリオ、`dmig:resumeExport` IPC integration、`validatePartialState` 境界、`DockerAdapter` の `DOCKER_HOST` 分岐の単体・統合テストを追加（19 → 44 件、+25 件）。
 

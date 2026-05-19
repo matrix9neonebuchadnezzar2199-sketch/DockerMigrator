@@ -393,6 +393,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-0915">詳細</a></td>
       </tr>
+      <tr>
+        <td>09:26</td>
+        <td>Phase 6 第4回 Step B: ウェルカムウィザード（Settings S2 / モーダル）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0926">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -503,6 +509,39 @@ body.diary > footer {
   <ul>
     <li><code>git log --follow</code> で旧パス <code>3c120f2</code> まで追跡可能</li>
     <li>Commit: <code>1d10bec</code>（<code>main</code> push 済み）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0926">
+  <h2>Phase 6 第4回 Step B: 初回起動ウェルカムウィザード</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 09:26</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>事前調査で Settings IPC・<code>SettingsPage</code> が<strong>未存在</strong>と判明し <strong>案 S2</strong>（<code>userData/dmig-settings.json</code> + <code>dmig:getSettings</code> / <code>updateSettings</code>）を採用。<code>WelcomeWizard</code> モーダルで移行元→<code>compose</code> / 移行先→<code>import</code> / あとで決める（ページ据え置き・いずれも完了永続化）。再表示はサイドバー共通「ウェルカム画面を再表示」。マスター提示の §9 デフォルト方針どおり実装。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>案 S1 不採用（既存 Settings なし）。<code>SettingsPage</code> なし → 設定画面経由再表示は見送り、サイドバーに代替。</li>
+    <li><code>#entry-0739</code> / <code>#entry-0843</code> は同一コミット <code>e81dda4</code>（progress 基盤一体実装）。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>Settings.ts</code>, <code>ipc/settings.ts</code>, <code>WelcomeWizard.tsx</code>, <code>useWelcomeWizard.ts</code> + テスト 4 本</li>
+    <li><span class="op op-mod">~</span> <code>App.tsx</code>, <code>Sidebar.tsx</code>, <code>types.ts</code>, <code>preload</code>, <code>ipc.ts</code>, <code>styles.css</code></li>
+    <li><span class="op op-add">+</span> <code>docs/instructions/phase6-r4-step-b-instructions.md</code></li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code> §12.4, <code>dmig-ui-redesign-v0.1.md</code>, <code>CHANGELOG.md</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（81 passed, 1 skipped）/ <code>build</code></li>
+    <li>Commit: <code>1587fa3</code> Settings / <code>a11d5ba</code> wizard / <code>3e8f967</code> App / <code>07a4f35</code> Compose h2 / <code>0e221b3</code> docs（<code>main</code> push 済み）</li>
   </ul>
 </section>
 </main>

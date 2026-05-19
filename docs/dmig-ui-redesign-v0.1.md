@@ -49,7 +49,7 @@ Step A では「概要」「ヘルプ/用語集」を **メニューに出さな
 
 | Step | 内容 |
 |------|------|
-| B | 初回起動ウィザード |
+| B | 初回起動ウィザード（**実装済み**: モーダル、`WelcomeWizard`、Settings JSON） |
 | C | SourceOverview / TargetOverview、取り込み状況 |
 | D | ステップインジケータ |
 | E | 「次にやること」フッター |
@@ -60,3 +60,10 @@ Step A では「概要」「ヘルプ/用語集」を **メニューに出さな
 - **R1**: `/resume` 相当 → `PageKey: 'resume'` を採用。
 - **H2**: `useResumeFlow` 抽出は Step C 以降に延期（ResumePage と Import の重複は Step A では許容）。
 - Import の `ok_partial` → `ResumeConfirmDialog` 経路は **残置**。
+
+### Step B 確定事項（2026-05-19）
+
+- モーダルオーバーレイ（専用 `PageKey` なし）。ウィザード中はサイドバー `pointer-events: none`。
+- Escape / 背景クリックは無効。「あとで決める」も `welcomeWizardCompleted: true` で永続スキップ。
+- 永続化: `userData/dmig-settings.json`（案 S2、既存 Settings IPC なしのため新設）。
+- 再表示: サイドバー共通「ウェルカム画面を再表示」（`SettingsPage` は未実装のため）。
