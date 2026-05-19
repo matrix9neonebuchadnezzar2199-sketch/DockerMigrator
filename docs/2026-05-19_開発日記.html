@@ -441,6 +441,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1320">詳細</a></td>
       </tr>
+      <tr>
+        <td>13:22</td>
+        <td>M6–M13 着手順・Phase 対応表（案 B）確定</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1322">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -827,6 +833,38 @@ body.diary > footer {
   <h3>検証</h3>
   <ul>
     <li>ドキュメントのみ。Commit: <code>d1e1c98</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1322">
+  <h2>M6–M13 着手順と Phase 番号整理（案 B）確定</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 13:22</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>ロードマップレビューに基づき、作業順 <strong>M6→M8→M9→M10→M7→M11→M12→M13</strong>、仕様書 Phase は論理グループのまま <strong>案 B（§9.1 対応表）</strong> を採用。M6 に Release 固定と対応表追加を内包。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li><strong>D-009</strong>: M8 を M7 より先（第4回 UX 仕上げ・Step B 方針整合）。M7 は M10 後に機能連動設定を束ねる。</li>
+    <li><strong>D-010</strong>: 仕様書 §9 表は書き換えず §9.1 で M シリーズと対応。</li>
+    <li><strong>D-011</strong>: M6 最優先（Release 線引き）。</li>
+    <li><strong>D-012</strong>: theme / i18n は M11 前後。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>docs/milestones/M6-M13-roadmap.md</code></li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code> §9.1</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li>ドキュメントのみ。次: M6 指示書作成。</li>
   </ul>
 </section>
 </main>

@@ -19,7 +19,24 @@
 
 ---
 
-## ロードマップ（依存関係）
+## 確定方針（2026-05-19）
+
+マスター見解を反映した **作業順の正史**（判断 ID は差し替え用）。
+
+| ID | 論点 | 採用 |
+|----|------|------|
+| **D-009** | M シリーズ着手順 | **M6 → M8 → M9 → M10 → M7 → M11 → M12 → M13**（原案の M7 を M10 後へ後置） |
+| **D-010** | 仕様書 Phase 番号の整理 | **案 B**: §9 の Phase は論理グルーピングのまま維持。実装作業順は M シリーズ。対応表を **M6 で追加**（仕様書 §9.1 + 本ドキュメント） |
+| **D-011** | M6 のスコープ | 配布固定 + **Phase↔M 対応表**（コード変更は最小。`build:win` / Release / smoke） |
+| **D-012** | M7 の位置づけ | M9/M10 で見えた設定項目を束ねる。**theme / i18n** は機能と独立した UX 改善のため **M11 前後** でまとめて入れる |
+
+**M8 を M7 より先にする理由（要約）**: Step B 撤回時の「要件確定後に設定を新規設計」と整合。M3 最小 Settings は維持しつつ、D-004 等の第4回 UX 仕上げを先に閉じる。M9/M10 実装で具体的な永続化項目が増えてから M7 で束ねる。
+
+**M6 を最優先する理由**: Release 本文で PoC の線を引く。M7 以降と並行すると Release が膨らみ続ける典型を避ける。
+
+---
+
+## ロードマップ（依存関係・確定順）
 
 ```mermaid
 flowchart TB
@@ -31,12 +48,12 @@ flowchart TB
   end
 
   subgraph poc_close [PoC 締め]
-    M6[M6 配布・リリース整備]
+    M6[M6 配布・対応表・リリース整備]
   end
 
   subgraph ux [UX 拡張]
-    M7[M7 設定 v2]
     M8[M8 UX v3 横断]
+    M7[M7 設定 v2 機能連動]
   end
 
   subgraph core [コア機能]
@@ -45,18 +62,17 @@ flowchart TB
   end
 
   subgraph platform [プラットフォーム]
-    M11[M11 WSL2 丸ごと L]
+    M11[M11 WSL2 + theme i18n 目安]
     M12[M12 プロファイル スケジュール お掃除]
     M13[M13 v1.0 ゲート E2E 配布]
   end
 
   done --> M6
-  M6 --> M7
   M6 --> M8
-  M7 --> M8
   M8 --> M9
   M9 --> M10
-  M10 --> M11
+  M10 --> M7
+  M7 --> M11
   M11 --> M12
   M12 --> M13
 ```
@@ -70,9 +86,9 @@ flowchart TB
 | — | Phase 7 | 中断・再開のテスト厚め | fixture + main テスト拡充 | R3 | **完了** |
 | — | 第4回 UI | 地図・辞書・コンパス・現在地 | Overview / Help / Footer / Indicator | A | **完了** |
 | — | M1–M5 | PoC 仕上げ | 設定最小・Lucide・smoke・`v0.3.0-poc` | 第4回 UI | **完了** |
-| **M6** | 配布・リリース整備 | PoC を触れる形で固定 | GitHub Release、`build:win`、smoke 運用 | M1–M5 | **一部残** |
-| **M7** | 設定 v2 | Step B 代替の完成 | theme / i18n、`defaultExportDir` 実運用配線 | M3 | 未着手 |
-| **M8** | UX v3（横断） | M4 見送り分 | Footer 動的 CTA、ログビューア、Lucide 拡張 | M4 | 未着手 |
+| **M6** | 配布・リリース整備 | PoC を触れる形で固定 | Release、`build:win`、smoke、**§9.1 対応表** | M1–M5 | **着手次** |
+| **M8** | UX v3（横断） | M4 見送り・第4回仕上げ | D-004 / D-005、Lucide 拡張 | M6 | 未着手 |
+| **M7** | 設定 v2 | 機能連動の設定束ね | 閾値・保持期間等 + `defaultExportDir` 配線。theme/i18n は M11 寄り | M10 | 未着手 |
 | **M9** | ドライラン UI（A） | 仕様 S4 を GUI 統合 | Validator / preflight 横断 UI | コア一部あり | **部分** |
 | **M10** | ロールバック（I） | 仕様 S12 | `rollback.json`、Import 後ロールバック UI | M9 推奨 | **未実装** |
 | **M11** | WSL2 丸ごと（L） | Windows 専用 | 仕様書 Phase 8 | M10 前後可 | 未着手 |
@@ -82,24 +98,26 @@ flowchart TB
 
 ---
 
-## M6 — 配布・リリース整備
+## M6 — 配布・リリース整備（次着手）
 
 | 項目 | 内容 |
 |------|------|
-| スコープ | GitHub Release 本文（バイナリなし可）、`build:win` 手動/CI、smoke 手順の定着 |
+| スコープ | GitHub Release 本文（バイナリなし可）、`build:win` 手動/CI、smoke 定着、**仕様書 §9.1 Phase↔M 対応表**（案 B） |
 | 既存 | `scripts/run_smoke_check.py`、タグ `v0.3.0-poc`、`docs/testing/smoke-checklist.md` |
-| 判断 | [D-002](./M1-M5-implementation-log.md) Release 本文 |
+| 判断 | [D-002](./M1-M5-implementation-log.md) Release、[D-010](./M6-M13-roadmap.md) 対応表、[D-011](./M6-M13-roadmap.md) M6 スコープ |
+| コード | 最小（build スクリプト微調整程度）。指示書は `docs/instructions/phase6-m6-distribution-instructions.md` 予定 |
 
 ---
 
-## M7 — 設定 v2
+## M7 — 設定 v2（M10 後・M11 前後）
 
 | 項目 | 内容 |
 |------|------|
-| スコープ | テーマ、言語（`i18next` 既存）、`defaultExportDir` を Export/Compose で既定利用 |
+| スコープ | M9/M10 で見えた永続化項目の束ね、`defaultExportDir` の実運用配線 |
+| スコープ（別枠） | **theme / i18n** — 機能と独立した UX 改善。**M11 前後** でまとめて入れる（D-012） |
 | スコープ外 | Step B ウィザード復活 |
 | 現状 | M3: `SettingsPage` + `dmig-settings.json`（`restoreLastPage` / `lastPage`） |
-| 判断 | [D-003](./M1-M5-implementation-log.md) 拡張 |
+| 判断 | [D-003](./M1-M5-implementation-log.md)、[D-012](./M6-M13-roadmap.md) |
 
 ---
 
@@ -114,17 +132,24 @@ flowchart TB
 
 ---
 
-## M9–M10 — 仕様書 §9 との対応（Phase 番号の整理）
+## 仕様書 §9 Phase と M シリーズ（案 B・正史）
 
-仕様書 §9 の **「Phase 6 = ドライラン・ロールバック」** と、実績の **「Phase 6 = manifest 1.1 + 第4回 UI」** は番号が重複している。以降の機能マイルストーンでは **A / I を M9 / M10** と明示する。
+- **仕様書 Phase**: 設計上の論理グルーピング（§9 表は原則改変しない）。
+- **M シリーズ**: 実装作業の時系列・リリース単位の正史。
+- **重複注意**: 仕様書「Phase 6 = ドライラン・ロールバック」と、実績「Phase 6 = 第3回 manifest + 第4回 UI」は**別物**。混同時は本表を参照。
 
-| 仕様書 Phase | 機能 | マイルストーン | 現状メモ |
-|--------------|------|----------------|----------|
-| 6（表） | A: ドライラン | **M9** | `dmig:preflight`・Compose 利用あり。S4 横断 UI は未整備 |
-| 6（表） | I: ロールバック | **M10** | `rollback` コード・UI なし |
-| 8 | L: WSL2 | **M11** | Phase 7 計画書「次は Phase 8」 |
-| 9 | C/D/N | **M12** | プロファイル・スケジュール・お掃除 |
-| 10 | E2E・インストーラ | **M13** | D-006 は M5 で App 統合テスト採用 |
+詳細表は [仕様書.txt §9.1](../../仕様書.txt)（M6 で追加）。
+
+| 仕様書 Phase | 仕様書上の内容 | 実装マイルストーン / 実績 |
+|--------------|----------------|---------------------------|
+| 7 | B: 差分・再開（テスト厚め） | **完了**（Phase 7、`0.3.0-poc`） |
+| 6（表の行） | A: ドライラン | **M9**（`preflight` 一部あり） |
+| 6（表の行） | I: ロールバック | **M10**（未実装） |
+| — | （実績）manifest 1.1 + 再開 UI | Phase 6 第3回・**完了** |
+| — | （実績）UI 第4回 A–F–C–E–D | Phase 6 第4回 + M1–M5・**完了** |
+| 8 | L: WSL2 | **M11** |
+| 9 | C/D/N | **M12** |
+| 10 | E2E・インストーラ | **M13**（E2E 本体は D-006 見送り可） |
 
 ---
 
@@ -136,16 +161,13 @@ flowchart TB
 | Help | 辞書 | 完了（F） | — |
 | Footer | コンパス | 完了（E）+ M4 Docker 案内 | M8 D-004 |
 | StepIndicator | 現在地 | 完了（D）+ M4 | `resume` flowStep 要否 |
-| Settings | 環境 | 最小（M3） | **M7** |
+| Settings | 環境 | 最小（M3） | **M7**（M10 後）、theme/i18n は **M11** 寄り |
 
 ---
 
-## 推奨着手順
+## 着手順（確定）
 
-1. **M6** — 配布確認（コスト小）
-2. **M7 または M8** — 体感 UX なら M8（D-004）、設定なら M7
-3. **M9 → M10** — 仕様の未完了コア（A / I）
-4. **M11 以降** — プラットフォーム・v1.0
+**M6 → M8 → M9 → M10 → M7 → M11 → M12 → M13**（[D-009](#確定方針2026-05-19)）
 
 各マイルストーン着手時は **設計 → `docs/milestones/` 記録 → 実装 → 開発日記**（M1–M5 と同型）。指示書は `docs/instructions/` に Step 単位で起こす。
 
@@ -156,3 +178,4 @@ flowchart TB
 | 日付 | 内容 |
 |------|------|
 | 2026-05-19 | 初版（チャットで合意した全体設計を文書化） |
+| 2026-05-19 | 確定方針 D-009〜D-012、着手順 M6→M8→…、案 B（§9.1）を M6 に内包 |
