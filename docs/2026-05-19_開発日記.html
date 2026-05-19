@@ -387,6 +387,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-0843">詳細</a></td>
       </tr>
+      <tr>
+        <td>09:15</td>
+        <td>Phase 6 第3回 Step 6 指示書を <code>completed/</code> へアーカイブ</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0915">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -473,6 +479,30 @@ body.diary > footer {
   <ul>
     <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（60 passed, 1 skipped）</li>
     <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0915">
+  <h2>Phase 6 第3回 Step 6 指示書のアーカイブ移動</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 09:15</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>完了済みの Step 6 指示書を <code>docs/instructions/completed/phase6-r3-step6.md</code> へ <strong>git mv</strong>。先頭にアーカイブ注記（完了日・関連コミット・CHANGELOG v0.2.0-poc 参照）を付与。<code>instructions/</code> 直下は未完了・進行中のみ残す運用の初適用。README は未作成のためポリシー追記は見送り。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>docs/instructions/phase6-r3-step6-instructions.md</code> → <code>docs/instructions/completed/phase6-r3-step6.md</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>git log --follow</code> で旧パス <code>3c120f2</code> まで追跡可能</li>
+    <li>Commit: <code>1d10bec</code>（<code>main</code> push 済み）</li>
   </ul>
 </section>
 </main>
