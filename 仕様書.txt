@@ -732,4 +732,13 @@ dmig/
 - **ログ**: `PageKey: logs`。サイドバー共通グループ「ログ」。`LogBufferProvider` が `dmig:progress` を購読し最大 1000 件 FIFO。レベルフィルタ・検索・TSV コピー・クリア。Main 永続化は対象外（D-005 / E2）。
 - **動的 CTA**: `DynamicCtaContext` + `usePageDynamicCta`。`dynamicCta` が非 null のとき静的 CTA を上書き（`.next-step-cta-dynamic`）。export / resume 完了 → `import`、import 完了 → `source-overview`。ページ離脱で自動クリア。
 
+### 12.12 ドライラン UI（M9）
+
+- **配置**: サイドバー共通「ドライラン」（`PageKey: dryrun`、概要/ログの近傍）。Compose / Export 作業ページ下部にも「ドライラン実行」セクション（`DryRunInlineSection`）。
+- **IPC**: `dmig:runDryRun`（F2）。`preflight` / `SecretScanner` / `Importer.probe` を Main でオーケストレーションし `DryRunFinding[]` に正規化。
+- **モード**: `compose-project`（`outputDir` + `projectNames`）/ `export-pack`（既存 `.dmig` は `packageDir` → probe、新規は `outputDir` + `imageNames` → preflight）。
+- **結果表示**: フラットリスト（重大度バッジ・カテゴリ・target・message）、レベルフィルタ・検索・TSV コピー（`severity\tcategory\ttarget\tmessage\thint`）。空結果は「検出された問題はありません」。
+- **bind mount**: `listComposeProjects` の bindMounts を列挙。読み取り専用または既知安全パスは `info`、書き込み可能ホストパスは `warn`（`error` は出さない）。
+- **方針（E1）**: 検出のみ。自動修正・手動チェックリスト・結果永続化は対象外（M12 検討）。エラー検出時は Compose / Export の主要アクションに `title` ツールチップ警告のみ（ブロックしない）。
+
 ---

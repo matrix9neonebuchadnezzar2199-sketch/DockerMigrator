@@ -89,7 +89,7 @@ flowchart TB
 | **M6** | 配布・リリース整備 | PoC を触れる形で固定 | Release notes、`build:win`、smoke、§9.1 確認 | M1–M5 | **完了**（2026-05-19、`v0.3.0-poc` タグは M1 時点） |
 | **M8** | UX v3（横断） | M4 見送り・第4回仕上げ | D-004 / D-005、ログページ | M6 | **完了**（2026-05-19） |
 | **M7** | 設定 v2 | 機能連動の設定束ね | 閾値・保持期間等 + `defaultExportDir` 配線。theme/i18n は M11 寄り | M10 | 未着手 |
-| **M9** | ドライラン UI（A） | 仕様 S4 を GUI 統合 | Validator / preflight 横断 UI | コア一部あり | **部分** |
+| **M9** | ドライラン UI（A） | 仕様 S4 を GUI 統合 | Validator / preflight 横断 UI | M8 | **完了**（2026-05-19、pending SHA） |
 | **M10** | ロールバック（I） | 仕様 S12 | `rollback.json`、Import 後ロールバック UI | M9 推奨 | **未実装** |
 | **M11** | WSL2 丸ごと（L） | Windows 専用 | 仕様書 Phase 8 | M10 前後可 | 未着手 |
 | **M12** | 運用拡張（C/D/N） | プロファイル等 | 仕様書 Phase 9 | M11 以降 | 未着手 |

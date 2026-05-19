@@ -459,6 +459,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1349">詳細</a></td>
       </tr>
+      <tr>
+        <td>14:04</td>
+        <td>M9 ドライラン UI（runDryRun・DryRunPage・Compose/Export 統合）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1404">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -931,6 +937,38 @@ body.diary > footer {
   <ul>
     <li><code>typecheck</code> / <code>test</code> — 112 passed, 1 skipped</li>
     <li>Commit: <code>eb68697</code> 指示書 / <code>d4d4c3e</code> feat / <code>75b13f9</code> docs</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1404">
+  <h2>M9 ドライラン UI</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 14:04</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>Step 1 で <code>Validator</code> クラス不在・3 系統分散を確認し <strong>F2</strong>（<code>dmig:runDryRun</code>）を採用。Main に <code>dryRunNormalizers.ts</code>、Renderer に <code>DryRunPage</code> / <code>DryRunResultList</code> / <code>DryRunInlineSection</code>。Compose / Export にインライン実行とエラー時ツールチップ（ブロックなし）。テスト 112→134 passed。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>bind mount: 読み取り専用・安全パスは <code>info</code>、書き込み可能は <code>warn</code>（<code>error</code> なし、E1）。</li>
+    <li>export-pack: <code>packageDir</code> あり → <code>probePackage</code>、なし → <code>preflight(imageNames)</code>。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dryRun.ts</code>, <code>dryRunNormalizers.ts</code>, <code>DryRunPage.tsx</code>, <code>DryRunResultList.tsx</code>, <code>useDryRun.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>App.tsx</code>, <code>Sidebar.tsx</code>, <code>ComposePage.tsx</code>, <code>ExportPage.tsx</code>, <code>preload</code>, <code>types.ts</code></li>
+    <li><span class="op op-mod">~</span> 仕様書 §12.12, CHANGELOG, ロードマップ M9</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code> — 134 passed, 1 skipped</li>
+    <li>Commit: <code>pending</code>（push 後に SHA 補正）</li>
   </ul>
 </section>
 </main>
