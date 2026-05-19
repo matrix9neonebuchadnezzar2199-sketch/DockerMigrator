@@ -1,6 +1,6 @@
 import type { PageKey } from '../App.js';
 
-/** Step D 用フロー内ステップ参照（将来の StepIndicator で流用）。 */
+/** Step D（StepIndicator）用フロー内ステップ参照。ラベルは `flowSteps.ts`。 */
 export type FlowStepRef = {
   group: 'source' | 'target';
   index: number;

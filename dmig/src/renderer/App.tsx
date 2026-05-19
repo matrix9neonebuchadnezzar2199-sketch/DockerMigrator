@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Sidebar } from './components/Sidebar.js';
 import { NextStepFooter } from './components/NextStepFooter.js';
+import { StepIndicator } from './components/StepIndicator.js';
 import { ExportPage } from './pages/ExportPage.js';
 import { ImportPage } from './pages/ImportPage.js';
 import { ComposePage } from './pages/ComposePage.js';
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
       <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
       <div className="main">
         <div className="main-body">
+          <StepIndicator page={page} />
           {page === 'source-overview' && <SourceOverviewPage onNavigate={setPage} />}
           {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
           {page === 'export' && <ExportPage />}
