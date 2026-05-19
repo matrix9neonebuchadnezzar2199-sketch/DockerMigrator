@@ -31,21 +31,24 @@ export const RollbackPage: React.FC = () => {
   const pickFolderAndScan = async () => {
     setIpcError(null);
     reset();
-    const picked = await window.dmig.selectDirectory({
-      title: 'ロールバック対象を探すフォルダを選択',
-      defaultPath: rootDir || undefined,
-    });
-    if (!picked.ok) {
-      setIpcError(picked.error);
-      return;
+    try {
+      const picked = await window.dmig.selectDirectory({
+        title: 'ロールバック対象を探すフォルダを選択',
+        defaultPath: rootDir || undefined,
+      });
+      if (!picked.ok) {
+        setIpcError(picked.error);
+        return;
+      }
+      if (!picked.data) {
+        return;
+      }
+      setRootDir(picked.data);
+      setScanned(false);
+      await listRecords({ rootDir: picked.data, maxDepth: 2 });
+    } finally {
+      setScanned(true);
     }
-    if (!picked.data) {
-      return;
-    }
-    setRootDir(picked.data);
-    setScanned(false);
-    await listRecords({ rootDir: picked.data, maxDepth: 2 });
-    setScanned(true);
   };
 
   const openRollbackDialog = async (summary: RollbackSummary) => {
@@ -114,8 +117,15 @@ export const RollbackPage: React.FC = () => {
         </div>
       ) : null}
 
-      {scanned && supportedRecords.length === 0 && !scanning ? (
-        <div className="card rollback-empty">このフォルダに取り消し可能なパックはありません。</div>
+      {scanned && !scanning && records.length === 0 ? (
+        <div className="card rollback-empty">
+          このフォルダに .dmig パック（manifest.json）は見つかりませんでした。
+        </div>
+      ) : null}
+      {scanned && !scanning && records.length > 0 && supportedRecords.length === 0 ? (
+        <p className="rollback-warn card">
+          ロールバック可能なパックはありません（M10 以前・実行済み・非対応）。下の一覧で状態を確認してください。
+        </p>
       ) : null}
 
       {records.map((summary) => (

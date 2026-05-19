@@ -32,6 +32,22 @@ describe('RollbackManager', () => {
     expect(loaded?.packageDir).toBe(root);
   });
 
+  it('listRecords: ルート直下の images/ は走査しない（誤配置対策）', async () => {
+    const root = await tmp.create('rb-skip-root-images-');
+    await mkdir(join(root, 'images', 'deep'), { recursive: true });
+    await writeFile(join(root, 'images', 'deep', 'blob.bin'), 'x', 'utf-8');
+    const pack = join(root, 'pack.dmig');
+    await mkdir(pack, { recursive: true });
+    await writePackWithManifest(pack);
+    const docker = makeDockerAdapterMock();
+    const mgr = new RollbackManager(docker);
+    await mgr.saveRecord(pack, createRollbackRecord(pack, 'export', []));
+
+    const result = await mgr.listRecords({ rootDir: root, maxDepth: 2 });
+    expect(result.records).toHaveLength(1);
+    expect(result.records[0]!.packageDir).toBe(pack);
+  });
+
   it('listRecords: manifest + rollback.json を検出', async () => {
     const root = await tmp.create('rb-list-');
     const pack = join(root, 'pack.dmig');

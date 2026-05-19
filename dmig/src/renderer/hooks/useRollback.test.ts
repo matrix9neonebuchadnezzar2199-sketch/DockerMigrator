@@ -45,6 +45,22 @@ describe('useRollback', () => {
     });
   });
 
+  it('listRollbacks が例外のとき error 状態になる', async () => {
+    window.dmig = {
+      ...window.dmig,
+      listRollbacks: vi.fn().mockRejectedValue(new Error('IPC channel missing')),
+    } as typeof window.dmig;
+
+    const { result } = renderHook(() => useRollback());
+    await act(async () => {
+      await result.current.listRecords({ rootDir: '/usb', maxDepth: 1 });
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe('error');
+      expect(result.current.error).toContain('IPC channel missing');
+    });
+  });
+
   it('runRollback で lastResult を設定', async () => {
     window.dmig = {
       ...window.dmig,

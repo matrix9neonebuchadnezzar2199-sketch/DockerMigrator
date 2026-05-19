@@ -30,13 +30,18 @@ export function useRollback() {
   const listRecords = useCallback(async (req: ListRollbacksRequest) => {
     setStatus('loading');
     setError(null);
-    const r = await window.dmig.listRollbacks(req);
-    if (r.ok) {
-      setRecords(r.data.records);
-      setListWarnings(r.data.warnings);
-      setStatus('idle');
-    } else {
-      setError(r.error.message);
+    try {
+      const r = await window.dmig.listRollbacks(req);
+      if (r.ok) {
+        setRecords(r.data.records);
+        setListWarnings(r.data.warnings);
+        setStatus('idle');
+      } else {
+        setError(r.error.message);
+        setStatus('error');
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
       setStatus('error');
     }
   }, []);

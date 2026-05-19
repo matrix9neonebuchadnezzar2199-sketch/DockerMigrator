@@ -37,6 +37,7 @@ import {
   USB_ASSUMED_BYTES_PER_SEC,
 } from '../utils/formatTransfer.js';
 import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
+import { RollbackInlineSection } from '../components/RollbackInlineSection.js';
 
 type Phase = 'browse' | 'bindDlg' | 'secretDlg' | 'running' | 'done';
 
@@ -65,6 +66,7 @@ export const ComposePage: React.FC = () => {
   const [outputDir, setOutputDir] = useState<string>('');
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [done, setDone] = useState<string | null>(null);
+  const [lastExportPackDir, setLastExportPackDir] = useState('');
   const [phase, setPhase] = useState<Phase>('browse');
   const [loading, setLoading] = useState(false);
   const discoverProgress = useDmigProgress('discover');
@@ -451,6 +453,7 @@ export const ComposePage: React.FC = () => {
 
       if (r.ok) {
         const m = r.data.manifest;
+        setLastExportPackDir(r.data.packDir);
         setDone(
           `エクスポート完了: ${m.contents.composeProjects?.length ?? 0} プロジェクト ` +
             `/ ${m.contents.images.length} イメージ ` +
@@ -924,6 +927,9 @@ export const ComposePage: React.FC = () => {
       )}
 
       <ErrorBox error={error} lastAction={lastAction} />
+      {tab === 'export' && phase === 'done' && lastExportPackDir ? (
+        <RollbackInlineSection mode="export" packageDir={lastExportPackDir} />
+      ) : null}
       {done && (
         <div
           className="card"

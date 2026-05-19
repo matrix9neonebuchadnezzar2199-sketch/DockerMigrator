@@ -22,6 +22,9 @@ export const DEFAULT_ROLLBACK_SCAN_LIMITS = {
   maxDirsScanned: 500,
 } as const;
 
+/** パック外（manifest なし階層）では走査しないディレクトリ名 */
+const PACK_INTERNAL_DIR_NAMES = new Set(['images', 'volumes', 'compose']);
+
 const TRUNCATED_WARNING = 'truncated_at_50';
 
 type EntryOutcome = {
@@ -136,7 +139,10 @@ export class RollbackManager {
       }
 
       for (const ent of entries) {
-        if (!ent.isDirectory() || truncated) {
+        if (!ent.isDirectory() || truncated || ent.isSymbolicLink()) {
+          continue;
+        }
+        if (PACK_INTERNAL_DIR_NAMES.has(ent.name)) {
           continue;
         }
         const child = join(dir, ent.name);
