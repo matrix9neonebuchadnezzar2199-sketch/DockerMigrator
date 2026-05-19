@@ -670,6 +670,13 @@ dmig/
 - サイドバー各グループ先頭の「概要」から遷移。起動時の初期 `PageKey` は **`source-overview`**。
 - **移行元概要**: できること / 作業の流れ（3 ステップ）/ 作業ページカード（compose・export・resume へ 1 クリック遷移）。第一カードを主 CTA。
 - **移行先概要**: できること / 作業の流れ（2 ステップ）/ 作業ページカード（import のみ）。
-- 動的情報は載せない（Docker 接続・件数等は Step E）。Help は用語・詳細フロー、Overview はグループ単位の地図。
+- 動的情報は載せない（Docker 接続・件数等は Step E で扱わない）。Help は用語・詳細フロー、Overview はグループ単位の地図。
+
+### 12.6 NextStepFooter（Step E）
+
+- `App.tsx` の `.main` 内、本文（`.main-body`）の下に `position: sticky; bottom: 0` で常時表示（Help ページ除く）。
+- データ: `dmig/src/renderer/data/nextSteps.ts`（`PageKey` → 説明文 + 任意 CTA）。完全静的（D1）。
+- CTA あり: `source-overview`→compose、`compose`→export、`target-overview`→import。CTA なし: export / resume / import（ページ内操作に任せる）。
+- `flowStep` フィールドは Step D（StepIndicator）向けに定義済み。Docker 接続表示・非表示トグルは含めない。
 
 ---

@@ -417,6 +417,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1133">詳細</a></td>
       </tr>
+      <tr>
+        <td>11:42</td>
+        <td>Phase 6 第4回 Step E: NextStepFooter（次にやること・静的）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1142">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -662,6 +668,39 @@ body.diary > footer {
     <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code></li>
     <li>テスト: <strong>75 passed</strong>, 1 skipped（Step F 後 67 から +8）</li>
     <li>Commit: <code>bd1b57f</code> 指示書 / <code>6e6b009</code> feat / <code>8a95270</code> test / <code>0d7e808</code> docs</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1142">
+  <h2>Phase 6 第4回 Step E: NextStepFooter</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 11:42</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>NextStepFooter</code> を <code>App.tsx</code> の <code>.main-body</code> 直下に sticky 配置。各 <code>PageKey</code> ごとの説明 + 単一 CTA（G1）を <code>nextSteps.ts</code> で静的定義。Help は非表示。Docker 接続表示・状態連動は入れず（Step D / 将来拡張用に <code>flowStep</code> のみ定義）。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>配置 F3: Sidebar 右コンテンツ領域内 sticky。モーダルより背面に自然に隠れる。</li>
+    <li>Overview（地図）・Help（辞書）・Footer（コンパス）の三層を維持。Help リンクは Sidebar に任せ冗長化を避けた。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>nextSteps.ts</code>, <code>NextStepFooter.tsx</code>、各 test</li>
+    <li><span class="op op-mod">~</span> <code>App.tsx</code>, <code>styles.css</code>（<code>.main-body</code> 分割）</li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code> §12.6, UI メモ, CHANGELOG</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code></li>
+    <li>テスト: <strong>85 passed</strong>, 1 skipped（Step C 後 75 から +10）</li>
+    <li>Commit: PENDING</li>
   </ul>
 </section>
 </main>

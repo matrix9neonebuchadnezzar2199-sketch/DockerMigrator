@@ -58,7 +58,7 @@ Phase 6 第4回の実施順序（Step B 撤回後）: **A → F → C → E → 
 | B | 初回起動ウィザード（`WelcomeWizard` / Settings JSON） | **撤回**（2026-05-19） |
 | F | ヘルプ/用語集（18 語・hash 深リンク）、SVG アイコン | **完了**（アイコンは stretch、未実施） |
 | C | SourceOverview / TargetOverview、初期 PageKey `source-overview` | **完了** |
-| E | 「次にやること」フッター | 未着手 |
+| E | NextStepFooter（静的・G1・F3 配置） | **完了** |
 | D | ステップインジケータ | 未着手 |
 
 ### Step B 撤回（2026-05-19）
