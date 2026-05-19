@@ -6,6 +6,7 @@ import {
   LayoutList,
   Package,
   PlayCircle,
+  ScrollText,
   Settings,
   Upload,
 } from 'lucide-react';
@@ -111,6 +112,13 @@ export const Sidebar: React.FC<{
         <h2 id="sidebar-group-common" className="sidebar-group-title">
           <Settings size={ICON_SIZE} aria-hidden="true" /> 共通
         </h2>
+        <NavItem
+          page="logs"
+          current={page}
+          label="ログ"
+          icon={<ScrollText size={ICON_SIZE} />}
+          onChange={onChange}
+        />
         <NavItem
           page="help"
           current={page}

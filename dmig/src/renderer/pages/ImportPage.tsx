@@ -10,6 +10,7 @@ import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { useResumeFlow } from '../hooks/useResumeFlow.js';
+import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
 
 const PROBE_PROGRESS_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.PROBE_PACKAGE,
@@ -51,6 +52,12 @@ export const ImportPage: React.FC = () => {
       }
     },
     setError,
+  );
+
+  usePageDynamicCta(
+    done === 'インポートが完了しました。' && !error
+      ? { label: 'ホームへ戻る', targetPage: 'source-overview' }
+      : null,
   );
 
   const loadManifestOnly = async (dir: string) => {

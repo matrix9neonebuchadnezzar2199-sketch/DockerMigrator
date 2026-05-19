@@ -11,6 +11,9 @@ import { HelpPage } from './pages/HelpPage.js';
 import { SourceOverviewPage } from './pages/SourceOverviewPage.js';
 import { TargetOverviewPage } from './pages/TargetOverviewPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { LogsPage } from './pages/LogsPage.js';
+import { DynamicCtaProvider } from './context/DynamicCtaContext.js';
+import { LogBufferProvider } from './hooks/useLogBuffer.js';
 
 export type PageKey =
   | 'source-overview'
@@ -20,7 +23,8 @@ export type PageKey =
   | 'target-overview'
   | 'import'
   | 'help'
-  | 'settings';
+  | 'settings'
+  | 'logs';
 
 const VALID_PAGES: PageKey[] = [
   'source-overview',
@@ -31,6 +35,7 @@ const VALID_PAGES: PageKey[] = [
   'import',
   'help',
   'settings',
+  'logs',
 ];
 
 function isPageKey(value: string): value is PageKey {
@@ -87,9 +92,11 @@ export const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
-      <div className="main">
-        <div className="main-body">
+      <LogBufferProvider>
+        <DynamicCtaProvider>
+          <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
+          <div className="main">
+            <div className="main-body">
           <StepIndicator page={page} onNavigate={setPage} />
           {page === 'source-overview' && <SourceOverviewPage onNavigate={setPage} />}
           {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
@@ -103,9 +110,12 @@ export const App: React.FC = () => {
           {page === 'resume' && <ResumePage />}
           {page === 'help' && <HelpPage onNavigate={setPage} />}
           {page === 'settings' && <SettingsPage />}
-        </div>
-        <NextStepFooter page={page} onNavigate={setPage} dockerConnected={dockerConnected} />
-      </div>
+              {page === 'logs' && <LogsPage />}
+            </div>
+            <NextStepFooter page={page} onNavigate={setPage} dockerConnected={dockerConnected} />
+          </div>
+        </DynamicCtaProvider>
+      </LogBufferProvider>
     </ErrorBoundary>
   );
 };

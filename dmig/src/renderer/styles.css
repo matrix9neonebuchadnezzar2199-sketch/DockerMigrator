@@ -1439,3 +1439,96 @@ input[type='text'] {
   background: #b4befe;
   border-color: #b4befe;
 }
+
+.next-step-cta-dynamic {
+  background: #a6e3a1;
+  border-color: #a6e3a1;
+  color: #1e1e2e;
+  font-weight: 600;
+}
+
+.next-step-cta-dynamic:hover {
+  background: #94e2d5;
+  border-color: #94e2d5;
+}
+
+/* M8: ログビューア */
+.logs-page .page-lead {
+  margin-bottom: 16px;
+}
+
+.logs-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.logs-level-filters {
+  display: flex;
+  gap: 12px;
+}
+
+.logs-level-label {
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.logs-search {
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+.logs-copy-status {
+  font-size: 12px;
+  color: #a6adc8;
+}
+
+.logs-list {
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+
+.logs-empty {
+  margin: 0;
+  color: #a6adc8;
+}
+
+.logs-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-size: 12px;
+}
+
+.logs-entry {
+  display: grid;
+  grid-template-columns: 140px 56px 100px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #313244;
+}
+
+.logs-entry.log-warn .logs-level {
+  color: #f9e2af;
+}
+
+.logs-entry.log-error .logs-level {
+  color: #f38ba8;
+}
+
+.logs-entry.log-info .logs-level {
+  color: #89b4fa;
+}
+
+.logs-time {
+  color: #6c7086;
+}
+
+.logs-source {
+  color: #cba6f7;
+}

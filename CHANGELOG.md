@@ -7,6 +7,9 @@
 
 ### Added
 
+- **M8**: 共通ログビューア（`PageKey: logs`、最大 1000 件 FIFO、フィルタ・検索・TSV コピー）。
+- **M8**: `DynamicCtaContext` による NextStepFooter 動的 CTA（export / resume / import 完了時）。
+
 ### Changed
 
 ### Fixed

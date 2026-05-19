@@ -718,7 +718,7 @@ dmig/
 
 ### 12.9 横断 UX v2（M4）
 
-- **NextStepFooter**: `dockerConnected === false` のとき Docker 起動案内のみ（CTA 非表示）。Compose 選択に応じた動的 CTA は見送り（D-004）。
+- **NextStepFooter**: `dockerConnected === false` のとき Docker 起動案内のみ（CTA 非表示）。Compose 選択連動 CTA は M8（§12.11）で完了時動的 CTA を実装。
 - **useResumeFlow**: Import / Resume で中断パック再開ダイアログを共有。
 - **用語集**: `partial-state` / `pending-chunks` / `interrupted-pack` / `resume-export` の関連ページは `source-overview`（M2）。
 
@@ -726,5 +726,10 @@ dmig/
 
 - 手動: `docs/testing/smoke-checklist.md`。
 - 自動: `dmig/src/renderer/App.integration.test.tsx`（起動・設定遷移の smoke）。Playwright 実 E2E は見送り（D-006）。
+
+### 12.11 ログビューア・動的 Footer CTA（M8）
+
+- **ログ**: `PageKey: logs`。サイドバー共通グループ「ログ」。`LogBufferProvider` が `dmig:progress` を購読し最大 1000 件 FIFO。レベルフィルタ・検索・TSV コピー・クリア。Main 永続化は対象外（D-005 / E2）。
+- **動的 CTA**: `DynamicCtaContext` + `usePageDynamicCta`。`dynamicCta` が非 null のとき静的 CTA を上書き（`.next-step-cta-dynamic`）。export / resume 完了 → `import`、import 完了 → `source-overview`。ページ離脱で自動クリア。
 
 ---

@@ -8,6 +8,7 @@ import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
+import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
 
 const IMAGE_LIST_PROGRESS_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.IMAGE_LIST,
@@ -32,6 +33,10 @@ export const ExportPage: React.FC = () => {
 
   const discoverProgress = useDmigProgress('discover');
   const transferProgress = useDmigProgress('transfer');
+
+  usePageDynamicCta(
+    done && !error ? { label: 'インポートへ進む', targetPage: 'import' } : null,
+  );
 
   useEffect(() => {
     discoverProgress.setProgress(IMAGE_LIST_PROGRESS_INITIAL);

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DmigAPI } from '../../preload/index.js';
 import type { ProbeSummary } from '../../shared/types.js';
+import { renderWithProviders } from '../test-utils/renderWithProviders.js';
 import { ResumePage } from './ResumePage.js';
 
 function partialSummary(over: Partial<ProbeSummary> = {}): ProbeSummary {
@@ -58,7 +59,7 @@ describe('ResumePage', () => {
 
   function mountWithDmig(overrides: Partial<DmigAPI> = {}) {
     window.dmig = makeDmigMock(overrides);
-    return render(<ResumePage />);
+    return renderWithProviders(<ResumePage />);
   }
 
   it('空配列 → 空状態文言', async () => {

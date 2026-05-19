@@ -7,6 +7,7 @@ import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { labelInterruptionReason, warningLabel } from '../lib/i18n/resume.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { useResumeFlow } from '../hooks/useResumeFlow.js';
+import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
 
 const RESUMABLE_SCAN_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.RESUMABLE_SCAN,
@@ -52,6 +53,8 @@ export const ResumePage: React.FC = () => {
       if (rootDir) void runScan(rootDir);
     },
   );
+
+  usePageDynamicCta(done && !error ? { label: 'インポートへ進む', targetPage: 'import' } : null);
 
   const pickFolderAndScan = async () => {
     setError(null);
