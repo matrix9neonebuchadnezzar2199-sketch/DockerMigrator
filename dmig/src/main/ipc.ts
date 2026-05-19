@@ -6,6 +6,7 @@ import { registerImageImportHandlers } from './ipc/importImages.js';
 import { registerComposeHandlers } from './ipc/compose.js';
 import { registerPreflightHandlers } from './ipc/preflight.js';
 import { registerDryRunHandlers } from './ipc/dryRun.js';
+import { registerRollbackHandlers } from './ipc/rollback.js';
 import { registerSnapshotHandlers } from './ipc/snapshot.js';
 import { registerSettingsHandlers } from './ipc/settings.js';
 
@@ -22,6 +23,7 @@ export function registerIpcHandlers(win: BrowserWindow): void {
   registerComposeHandlers(deps);
   registerPreflightHandlers(deps);
   registerDryRunHandlers(deps);
+  registerRollbackHandlers(deps);
   registerSnapshotHandlers(deps);
   registerSettingsHandlers();
 }

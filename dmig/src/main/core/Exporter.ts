@@ -24,6 +24,8 @@ import type {
   ProgressEvent,
 } from '@shared/types.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
+import { RollbackManager } from './RollbackManager.js';
+import { buildExportPackDirectoryEntry, createRollbackRecord } from './rollbackRecordBuilder.js';
 
 const DMIG_VERSION = '0.2.0-poc';
 const APP_VERSION = '0.1.0-poc';
@@ -178,6 +180,12 @@ export class Exporter extends EventEmitter {
       percentage: 100,
       message: 'エクスポートが完了しました。',
     });
+
+    const rollbackManager = new RollbackManager(this.docker);
+    await rollbackManager.saveRecord(
+      packDir,
+      createRollbackRecord(packDir, 'export', [buildExportPackDirectoryEntry(packDir)]),
+    );
 
     return { manifest, packDir };
   }

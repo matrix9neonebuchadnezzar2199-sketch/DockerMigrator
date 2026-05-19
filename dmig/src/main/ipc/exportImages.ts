@@ -99,7 +99,7 @@ export function registerImageExportHandlers(deps: HandlerDeps): void {
         }
       }
 
-      return { ok: true as const, data: manifest };
+      return { ok: true as const, data: { manifest, packDir } };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
     } finally {

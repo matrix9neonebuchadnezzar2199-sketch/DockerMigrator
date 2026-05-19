@@ -18,6 +18,12 @@ import type {
   ProbeSummary,
 } from '@shared/types.js';
 import type { OpenedPackage, OpenedPackageBase, OpenedPackageResume } from './importer/OpenedPackage.js';
+import { RollbackManager } from './RollbackManager.js';
+import {
+  buildDockerImageEntry,
+  createRollbackRecord,
+} from './rollbackRecordBuilder.js';
+import type { RollbackEntry } from '@shared/types.js';
 
 /** `ProbeSummary.pendingChunksPreview` の最大件数（マジックナンバー回避）。 */
 export const PROBE_PREVIEW_LIMIT = 8;
@@ -305,9 +311,15 @@ export class Importer extends EventEmitter {
     return value.replace(/ /g, '%20').replace(/\n/g, '%0A').replace(/=/g, '%3D');
   }
 
-  async importImages(opened: OpenedPackageBase, selectedImages: string[], signal?: AbortSignal): Promise<void> {
+  async importImages(
+    opened: OpenedPackageBase,
+    selectedImages: string[],
+    signal?: AbortSignal,
+    options?: { skipRollbackSave?: boolean },
+  ): Promise<RollbackEntry[]> {
     const manifest = opened.manifest;
     const targets = manifest.contents.images.filter((e) => selectedImages.includes(e.name));
+    const rollbackEntries: RollbackEntry[] = [];
 
     if (targets.length === 0) {
       throw new DmigError(ErrorCodes.IMAGE_NOT_FOUND, {
@@ -345,6 +357,15 @@ export class Importer extends EventEmitter {
         message: `(${i + 1}/${targets.length}) ${entry.name}: Docker にロード中...`,
       });
       await this.loadOne(filepath, entry.name);
+      rollbackEntries.push(await buildDockerImageEntry(this.docker, entry.name));
+    }
+
+    if (!options?.skipRollbackSave && rollbackEntries.length > 0) {
+      const manager = new RollbackManager(this.docker);
+      await manager.saveRecord(
+        opened.packageDir,
+        createRollbackRecord(opened.packageDir, 'import', rollbackEntries),
+      );
     }
 
     this.emitProgress({
@@ -355,6 +376,8 @@ export class Importer extends EventEmitter {
       percentage: 100,
       message: 'インポートが完了しました。',
     });
+
+    return rollbackEntries;
   }
 
   private async verifyChecksum(filepath: string, expected: string): Promise<void> {

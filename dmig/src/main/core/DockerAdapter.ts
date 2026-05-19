@@ -327,6 +327,36 @@ export class DockerAdapter {
     }
   }
 
+  /**
+   * イメージを削除する。404 は「既に無い」として成功扱い（呼び出し側で skipped へ）。
+   */
+  async removeImage(imageRef: string): Promise<void> {
+    try {
+      await this.docker.getImage(imageRef).remove({ force: true });
+    } catch (e: unknown) {
+      const err = e as { statusCode?: number };
+      if (err?.statusCode === 404) {
+        return;
+      }
+      throw wrapError(e, ErrorCodes.DOCKER_API_ERROR, `removeImage(${imageRef})`);
+    }
+  }
+
+  /**
+   * 名前付きボリュームを削除する。404 は「既に無い」として成功扱い。
+   */
+  async removeVolume(volumeName: string): Promise<void> {
+    try {
+      await this.docker.getVolume(volumeName).remove({ force: true });
+    } catch (e: unknown) {
+      const err = e as { statusCode?: number };
+      if (err?.statusCode === 404) {
+        return;
+      }
+      throw wrapError(e, ErrorCodes.VOLUME_IMPORT_FAILED, `removeVolume(${volumeName})`);
+    }
+  }
+
   // ─────────────────────────────────────────────────────────────
   // Phase 5: Compose プロジェクト検出
   // ─────────────────────────────────────────────────────────────

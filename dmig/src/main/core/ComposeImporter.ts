@@ -19,7 +19,14 @@ import type {
   ProgressEvent,
   DmigManifest,
   ManifestComposeEntry,
+  RollbackEntry,
 } from '@shared/types.js';
+import { RollbackManager } from './RollbackManager.js';
+import {
+  buildDirectoryEntry,
+  buildDockerVolumeEntry,
+  createRollbackRecord,
+} from './rollbackRecordBuilder.js';
 
 /**
  * Compose プロジェクトをパッケージから復元する。
@@ -29,7 +36,7 @@ export class ComposeImporter extends EventEmitter {
   private signal: AbortSignal | undefined;
 
   constructor(
-    _docker: DockerAdapter,
+    private readonly docker: DockerAdapter,
     private readonly imageImporter: Importer,
     private readonly volumeExporter: VolumeExporter,
   ) {
@@ -84,13 +91,18 @@ export class ComposeImporter extends EventEmitter {
         }
       }
 
+      const rollbackEntries: RollbackEntry[] = [];
+      const opened: OpenedPackageBase = {
+        mode: 'base',
+        packageDir: req.packageDir,
+        manifest: dmigManifest,
+      };
+
       if (allImages.size > 0) {
-        const opened: OpenedPackageBase = {
-          mode: 'base',
-          packageDir: req.packageDir,
-          manifest: dmigManifest,
-        };
-        await this.imageImporter.importImages(opened, [...allImages], signal);
+        const imageEntries = await this.imageImporter.importImages(opened, [...allImages], signal, {
+          skipRollbackSave: true,
+        });
+        rollbackEntries.push(...imageEntries);
       }
 
       const total = projectPayloads.length;
@@ -110,7 +122,16 @@ export class ComposeImporter extends EventEmitter {
           message: `(${i + 1}/${total}) プロジェクト ${entry.name} をインポート中...`,
         });
 
-        await this.importSingleProject(pm, req);
+        const projectEntries = await this.importSingleProject(pm, req);
+        rollbackEntries.push(...projectEntries);
+      }
+
+      if (rollbackEntries.length > 0) {
+        const manager = new RollbackManager(this.docker);
+        await manager.saveRecord(
+          req.packageDir,
+          createRollbackRecord(req.packageDir, 'import', rollbackEntries),
+        );
       }
     } finally {
       this.signal = undefined;
@@ -118,7 +139,11 @@ export class ComposeImporter extends EventEmitter {
     }
   }
 
-  private async importSingleProject(pm: ProjectManifest, req: ComposeImportRequest): Promise<void> {
+  private async importSingleProject(
+    pm: ProjectManifest,
+    req: ComposeImportRequest,
+  ): Promise<RollbackEntry[]> {
+    const entries: RollbackEntry[] = [];
     const destDir = req.destinationDirs[pm.projectName];
     if (!destDir) {
       throw new DmigError(ErrorCodes.DESTINATION_DIR_INVALID, {
@@ -163,9 +188,14 @@ export class ComposeImporter extends EventEmitter {
       await this.untarZstd(tarPath, expandTo, `${pm.projectName}/${svc.name} ビルドコンテキスト`);
     }
 
+    entries.push(
+      buildDirectoryEntry(destDir, `Compose プロジェクト ${pm.projectName} の配置先（ホストファイルが削除されます）`),
+    );
+
     for (const vol of pm.volumes) {
       if (!vol.packaged || !vol.tarFile) continue;
       await this.volumeExporter.importOne(vol.name, req.packageDir, vol.tarFile, { overwrite: false });
+      entries.push(buildDockerVolumeEntry(vol.name));
     }
 
     for (const bm of pm.bindMounts) {
@@ -173,7 +203,15 @@ export class ComposeImporter extends EventEmitter {
       const tarPath = join(packageProjectDir, bm.tarFile);
       const remappedHost = req.bindMountRemap?.[bm.hostPath] ?? bm.hostPath;
       await this.untarZstd(tarPath, remappedHost, `${pm.projectName} bind mount`);
+      entries.push(
+        buildDirectoryEntry(
+          remappedHost,
+          `bind mount 展開先（ホストファイルが削除されます）: ${pm.projectName}`,
+        ),
+      );
     }
+
+    return entries;
   }
 
   /**

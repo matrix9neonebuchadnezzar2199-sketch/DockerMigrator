@@ -7,6 +7,8 @@ import { Exporter } from '../core/Exporter.js';
 import { Importer } from '../core/Importer.js';
 import { ComposeExporter } from '../core/ComposeExporter.js';
 import { ComposeExportManifestSession } from '../core/manifest/composeExportManifestSession.js';
+import { RollbackManager } from '../core/RollbackManager.js';
+import { buildExportPackDirectoryEntry, createRollbackRecord } from '../core/rollbackRecordBuilder.js';
 import { ComposeImporter } from '../core/ComposeImporter.js';
 import { VolumeExporter } from '../core/VolumeExporter.js';
 import { SecretScanner } from '../core/SecretScanner.js';
@@ -331,6 +333,12 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
         checksumLines.push(`${vol.sha256}  ${vol.filename}`);
       }
       await fsp.writeFile(join(packDir, 'checksums.sha256'), `${checksumLines.join('\n')}\n`, 'utf-8');
+
+      const rollbackManager = new RollbackManager(docker);
+      await rollbackManager.saveRecord(
+        packDir,
+        createRollbackRecord(packDir, 'export', [buildExportPackDirectoryEntry(packDir)]),
+      );
 
       if (req.diffMode === 'delta' && baseSnapshotForDelta && currentSnapshotForDelta) {
         if (req.autoSaveSnapshot !== false) {

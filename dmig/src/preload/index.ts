@@ -27,6 +27,12 @@ import type {
   ListResumablePackagesResult,
   DryRunRequest,
   DryRunResult,
+  ExportImagesResult,
+  ListRollbacksRequest,
+  ListRollbacksResult,
+  RunRollbackRequest,
+  RunRollbackResult,
+  RollbackRecord,
 } from '../shared/types.js';
 import type { DmigSettings } from '../shared/settings.js';
 
@@ -38,7 +44,7 @@ export type Result<T> = { ok: true; data: T } | { ok: false; error: DmigErrorPay
 export interface DmigAPI {
   ping(): Promise<Result<{ version: string }>>;
   listImages(): Promise<Result<ImageInfo[]>>;
-  exportImages(req: ExportRequest): Promise<Result<DmigManifest>>;
+  exportImages(req: ExportRequest): Promise<Result<ExportImagesResult>>;
   importImages(req: ImportRequest): Promise<Result<void>>;
   readManifest(packageDir: string): Promise<Result<DmigManifest>>;
   /** パッケージの完了/中断/異常を throw なしで先読みする */
@@ -76,6 +82,11 @@ export interface DmigAPI {
   preflight(req: PreflightRequest): Promise<Result<PreflightResult>>;
   /** M9: Validator / preflight 統合ドライラン */
   runDryRun(req: DryRunRequest): Promise<Result<DryRunResult>>;
+  /** M10: ロールバック可能パック一覧 */
+  listRollbacks(req: ListRollbacksRequest): Promise<Result<ListRollbacksResult>>;
+  /** M10: ロールバック実行 */
+  runRollback(req: RunRollbackRequest): Promise<Result<RunRollbackResult>>;
+  loadRollbackRecord(packageDir: string): Promise<Result<RollbackRecord | null>>;
   /** エラーレポート ZIP を生成して保存 */
   saveErrorReport(req: ErrorReportRequest): Promise<Result<ErrorReportResult>>;
 
@@ -125,6 +136,9 @@ const api: DmigAPI = {
 
   preflight: (req) => ipcRenderer.invoke('dmig:preflight', req),
   runDryRun: (req) => ipcRenderer.invoke('dmig:runDryRun', req),
+  listRollbacks: (req) => ipcRenderer.invoke('dmig:listRollbacks', req),
+  runRollback: (req) => ipcRenderer.invoke('dmig:runRollback', req),
+  loadRollbackRecord: (packageDir) => ipcRenderer.invoke('dmig:loadRollbackRecord', packageDir),
   saveErrorReport: (req) => ipcRenderer.invoke('dmig:saveErrorReport', req),
 
   listSnapshots: () => ipcRenderer.invoke('dmig:listSnapshots'),

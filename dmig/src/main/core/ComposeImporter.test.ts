@@ -78,7 +78,7 @@ describe('ComposeImporter.importProjects', () => {
 
     const docker = makeDockerAdapterMock();
     const imageImporter = new Importer(docker);
-    const spy = vi.spyOn(imageImporter, 'importImages').mockResolvedValue(undefined);
+    const spy = vi.spyOn(imageImporter, 'importImages').mockResolvedValue([]);
     const composeImporter = new ComposeImporter(docker, imageImporter, new VolumeExporter(docker));
 
     await composeImporter.importProjects(
@@ -155,7 +155,7 @@ describe('ComposeImporter.importProjects', () => {
     const importVolSpy = vi.fn().mockResolvedValue(undefined);
     const docker = makeDockerAdapterMock({ importVolumeStream: importVolSpy });
     const imageImporter = new Importer(docker);
-    vi.spyOn(imageImporter, 'importImages').mockResolvedValue(undefined);
+    vi.spyOn(imageImporter, 'importImages').mockResolvedValue([]);
     const composeImporter = new ComposeImporter(docker, imageImporter, new VolumeExporter(docker));
 
     await composeImporter.importProjects(
