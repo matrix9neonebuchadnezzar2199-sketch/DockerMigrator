@@ -7,7 +7,11 @@
 
 ### Added
 
-- （なし）
+### Changed
+
+### Fixed
+
+### Removed
 
 ## [0.3.0-poc] - 2026-05-19
 
