@@ -105,6 +105,8 @@ python scripts/run_smoke_check.py
 
 `typecheck` / `lint` / `test` / `build` と Docker 確認のあと、手動 UI チェックリストを表示します。詳細は [docs/testing/smoke-checklist.md](./docs/testing/smoke-checklist.md)。
 
+**今後のマイルストーン（M6–M13）**: [docs/milestones/M6-M13-roadmap.md](./docs/milestones/M6-M13-roadmap.md)
+
 - 生成物・依存は **`dmig/.gitignore`** に従い、`node_modules/`・`out/`・`release/` などはコミットしません。
 
 ---

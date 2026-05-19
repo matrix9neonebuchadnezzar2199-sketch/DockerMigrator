@@ -435,6 +435,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1201">詳細</a></td>
       </tr>
+      <tr>
+        <td>13:20</td>
+        <td>M6–M13 マイルストーン全体設計の文書化</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1320">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -790,6 +796,37 @@ body.diary > footer {
     <li>タグ <code>v0.3.0-poc</code> と GitHub Release（バイナリなし）— マスター確認後でも可</li>
     <li><code>build:win</code> 手動確認</li>
     <li>D-004 Footer 動的 CTA、D-005 ログビューア、D-006 Playwright は将来差し替え可</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1320">
+  <h2>M6–M13 マイルストーン全体設計の記録</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 13:20</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>v0.3.0-poc</code> 完了後の次作業を <strong>M6（配布）〜 M13（v1.0 ゲート）</strong> に整理し、依存関係・仕様書 §9 との対応・M1–M5 の D-xxx 見送り分を1本のロードマップに文書化した。実装は未着手（設計記録のみ）。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>仕様書の「Phase 6 = ドライラン・ロールバック」と実績の「Phase 6 = manifest + 第4回 UI」の番号重複を、<strong>M9（A）/ M10（I）</strong> で明示分離。</li>
+    <li>推奨着手順: M6 → M7 or M8 → M9→M10 → M11以降。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>docs/milestones/M6-M13-roadmap.md</code></li>
+    <li><span class="op op-mod">~</span> <code>docs/milestones/M1-M5-implementation-log.md</code>（ロードマップリンク）</li>
+    <li><span class="op op-mod">~</span> <code>README.md</code>（マイルストーン参照）</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li>ドキュメントのみ。Commit: pending</li>
   </ul>
 </section>
 </main>
