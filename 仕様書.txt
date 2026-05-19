@@ -640,10 +640,10 @@ dmig/
 |----------|---------------------|
 | 移行元での作業 | プロジェクトを選ぶ / パックを書き出す / **中断したパックを再開** |
 | 移行先での作業 | パックを読み込む |
-| 共通 | 設定・ヘルプは Step F 以降（Step A ではプレースホルダ文言のみ） |
+| 共通 | **ヘルプ / 用語集**（`page === 'help'`）。設定は将来タスク |
 
 - 技術用語（manifest / partialState 等）は主ラベルから退避し、初心者向け動詞＋目的語に統一。
-- 「概要」「ヘルプ/用語集」は Step C/F で追加（Step A では非表示）。
+- 「概要」は Step C で追加予定。ヘルプ/用語集は Step F で追加済み。
 
 ### 12.2 `dmig:listResumablePackages`
 
@@ -657,5 +657,12 @@ dmig/
 
 - フォルダ選択（既存 `dmig:selectDirectory`）→ `listResumablePackages` → カード一覧 → 既存 `ResumeConfirmDialog` → `dmig:resumeExport`。
 - Import ページの `ok_partial` 分岐は残置（両経路から再開可能）。
+
+### 12.4 Help ページ（`page === 'help'`）
+
+- サイドバー共通グループ「ヘルプ / 用語集」から遷移。`PageKey: 'help'`。
+- **2 タブ**: 「使い方ガイド」（移行元・移行先・中断再開・FAQ）と「用語集」（`dmig/src/renderer/data/glossary.ts`、18 語）。
+- 用語集: 部分一致テキストフィルタ、`article id="{entry.id}"` で `location.hash` 深リンク（マウント時・`hashchange` で用語集タブへ切替 + `scrollIntoView`）。
+- 各作業ページの `StaticPageGuides` レールは現状維持（Help は要約 + 用語のハブ）。
 
 ---
