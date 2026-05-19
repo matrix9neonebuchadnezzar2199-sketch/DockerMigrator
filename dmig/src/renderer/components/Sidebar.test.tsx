@@ -23,6 +23,24 @@ describe('Sidebar', () => {
     expect(onChange).toHaveBeenCalledWith('resume');
   });
 
+  it('移行元グループの概要クリックで onChange(source-overview)', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Sidebar page="compose" onChange={onChange} dockerVersion="24.0" />);
+    const overviewButtons = screen.getAllByRole('button', { name: '概要' });
+    await user.click(overviewButtons[0]!);
+    expect(onChange).toHaveBeenCalledWith('source-overview');
+  });
+
+  it('移行先グループの概要クリックで onChange(target-overview)', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Sidebar page="compose" onChange={onChange} dockerVersion="24.0" />);
+    const overviewButtons = screen.getAllByRole('button', { name: '概要' });
+    await user.click(overviewButtons[1]!);
+    expect(onChange).toHaveBeenCalledWith('target-overview');
+  });
+
   it('ヘルプ / 用語集をクリックすると onChange(help) が呼ばれる', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
