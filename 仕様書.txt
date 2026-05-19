@@ -598,7 +598,7 @@ dmig/
 |---|---|---|---|
 | 7 | B: 差分・再開（テスト厚め） | Phase 7 テスト厚め化 | 完了（`v0.3.0-poc`） |
 | 6 | A: ドライラン | **M9** | 一部（`preflight` IPC 等） |
-| 6 | I: ロールバック | **M10** | 未着手 |
+| 6 | I: ロールバック | **M10** | 完了（`v0.3.0-poc` 開発中） |
 | （実績・別枠） | manifest 1.1 / 中断・再開 UI | Phase 6 第3回 | 完了 |
 | （実績・別枠） | UI 再設計 A→F→C→E→D、M1–M5 | Phase 6 第4回 + M1–M5 | 完了（`v0.3.0-poc`） |
 | 8 | L: WSL2 丸ごと | **M11** | 未着手 |
@@ -740,5 +740,20 @@ dmig/
 - **結果表示**: フラットリスト（重大度バッジ・カテゴリ・target・message）、レベルフィルタ・検索・TSV コピー（`severity\tcategory\ttarget\tmessage\thint`）。空結果は「検出された問題はありません」。
 - **bind mount**: `listComposeProjects` の bindMounts を列挙。読み取り専用または既知安全パスは `info`、書き込み可能ホストパスは `warn`（`error` は出さない）。
 - **方針（E1）**: 検出のみ。自動修正・手動チェックリスト・結果永続化は対象外（M12 検討）。エラー検出時は Compose / Export の主要アクションに `title` ツールチップ警告のみ（ブロックしない）。
+
+### 12.13 ロールバック UI（M10）
+
+- **配置**: サイドバー共通「ロールバック」（`PageKey: rollback`）。Import / Export 完了直後は各ページ下部に `RollbackInlineSection`（同一パックに対する取り消し）。
+- **記録ファイル**: パックルート `<packageDir>/rollback.json`（B1: エクスポート元パック上にも生成され得る PoC 仕様）。`schemaVersion: 1`、`kind: import | export`、`entries[]`。
+- **ロールバック対象**:
+  - **Import**: `docker-image`（load 後の `sha256:` を `target`、manifest 名を `hint`）、`docker-volume`、`directory`（Compose の配置先・bind mount 展開先。`hint` にホスト削除の警告）。
+  - **Export**: `directory` 1 件（`packDir` 全体。`kind: export` 時は中身の有無にかかわらず削除）。
+  - **予約**: `docker-network` はスキーマのみ（executor は no-op）。
+- **IPC**: `dmig:listRollbacks`（浅い走査）、`dmig:loadRollbackRecord`、`dmig:runRollback`。記録の save は `Importer` / `ComposeImporter` / `Exporter`（および compose export 成功後の `ipc/compose.ts`）が担当。IPC 層は薄く保つ。
+- **安全策**: 実行前に `RollbackConfirmDialog`（種別内訳・directory 件数を warn 表示）。`directory` 削除は **空ディレクトリのみ**（`readdir` で子要素 0 を確認）。シンボリックリンクは `lstat` で判定しリンク自体のみ削除（追跡しない）。Export の `directory` のみ強制再帰削除。
+- **Compose Import と directory_not_empty**: Import 直後は配置先・bind mount 先にファイルが残るため、`directory` エントリは **ほぼ常に `directory_not_empty:{entryId}` でスキップされるのが既定動作**（ユーザーデータ保護）。イメージ・ボリュームは通常どおり取り消し可能。残ったホストファイルは利用者が意図的に手動削除する設計。UI（`RollbackResultSummary`）でもこの意図を明示する。
+- **互換性**: `manifest.json` はあるが `rollback.json` が無いパック（M10 以前）は `supported: false` として一覧表示し、実行ボタンは無効。
+- **冪等性**: `executedAt` 設定済みの再実行は `already_executed` 警告のみ（エントリは再処理しない）。
+- **警告コード（`RunRollbackResult.warnings`）**: `already_executed` / `image_id_unresolved` / `target_not_found` / `directory_not_empty:{id}` / `docker_unreachable` 等。
 
 ---

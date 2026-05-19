@@ -10,6 +10,8 @@
 - **M8**: 共通ログビューア（`PageKey: logs`、最大 1000 件 FIFO、フィルタ・検索・TSV コピー）。
 - **M8**: `DynamicCtaContext` による NextStepFooter 動的 CTA（export / resume / import 完了時）。
 - **M9**: ドライラン UI（`dmig:runDryRun`、`DryRunPage`、Compose / Export 内インライン検査、結果リストのフィルタ・TSV コピー）。
+- **M10**: ロールバック UI（`RollbackPage`、Import / Export インライン、`rollback.json` スキーマ、`dmig:listRollbacks` / `runRollback` / `loadRollbackRecord`）。
+- **M10**: Import 取り消し用 Docker 削除（`DockerAdapter.removeImage` / `removeVolume`）。Compose Import の directory は空チェック時のみ削除（既定は `directory_not_empty` スキップ）。
 
 ### Changed
 

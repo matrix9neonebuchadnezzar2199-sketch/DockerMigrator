@@ -465,6 +465,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1404">詳細</a></td>
       </tr>
+      <tr>
+        <td>14:25</td>
+        <td>M10 ロールバック（Step 2–7: 型・RollbackManager・UI 骨格）</td>
+        <td><span class="tag tag-warn">WARN</span></td>
+        <td><a href="#entry-1425">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -971,6 +977,38 @@ body.diary > footer {
     <li>Commit: <code>82602c1</code> main / <code>0688bbf</code> ui / <code>8eb6d83</code> compose+export / <code>da8e404</code> docs</li>
   </ul>
 </section>
+
+<section class="entry" id="entry-1425">
+  <h2>M10 ロールバック UI 完了</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 14:25</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>rollback.json</code> による Import / Export 取り消し。Compose Import の <code>directory</code> は空チェック時のみ削除（直後は <code>directory_not_empty</code> スキップが既定）。§12.13 明記・6 コミット分割・<code>main</code> push。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>記録 save は <code>Importer</code> / <code>ComposeImporter</code> 内（IPC 薄層維持）。</li>
+    <li>image <code>target</code> は <code>sha256:</code>、タグは <code>hint</code>。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>RollbackManager.ts</code>, <code>rollbackRecordBuilder.ts</code>, <code>rollback.ts</code> (IPC), <code>RollbackPage.tsx</code>, <code>Rollback*.tsx</code>, <code>useRollback.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>Importer.ts</code>, <code>ComposeImporter.ts</code>, <code>Exporter.ts</code>, <code>DockerAdapter.ts</code>, <code>types.ts</code>, <code>preload</code></li>
+    <li><span class="op op-mod">~</span> <code>ImportPage.tsx</code>, <code>ExportPage.tsx</code>, <code>App.tsx</code>, <code>Sidebar.tsx</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code> — 153 passed, 2 skipped</li>
+    <li>Commit: <code>pending</code>（Step 8 完了後に SHA 追記）</li>
+  </ul>
+</section>
 </main>
 
 <footer>
@@ -978,3 +1016,4 @@ body.diary > footer {
 </footer>
 </body>
 </html>
+
