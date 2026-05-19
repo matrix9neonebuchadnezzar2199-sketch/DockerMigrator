@@ -130,6 +130,7 @@ export interface DockerAdapterMockOptions {
     opts?: { overwrite?: boolean },
   ) => Promise<void>;
   inspectVolume?: (name: string) => Promise<unknown>;
+  getImageOriginalSize?: (imageRef: string) => Promise<number>;
 }
 
 /** DockerAdapter のテスト用スタブ。未指定メソッドは安全な既定実装。 */
@@ -171,10 +172,19 @@ export function makeDockerAdapterMock(opts: DockerAdapterMockOptions = {}): Dock
       Mountpoint: '/mnt',
     }));
 
+  const getImageOriginalSize =
+    opts.getImageOriginalSize ??
+    (async (ref: string) => {
+      const list = await listImages();
+      const match = list.find((i) => i.repoTags.includes(ref));
+      return match?.size ?? 4096;
+    });
+
   return {
     ping,
     listImages,
     resolveImageId,
+    getImageOriginalSize,
     saveImageStream,
     loadImageStream,
     exportVolumeStream,

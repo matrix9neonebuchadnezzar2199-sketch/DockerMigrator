@@ -137,8 +137,6 @@ export const ImportPage: React.FC = () => {
             progress={scanProgress.progress}
             fallback={PROBE_PROGRESS_INITIAL}
           />
-          <OperationProgress active={running} progress={transferProgress.progress} />
-
           <div className="card">
             <label style={{ display: 'block', marginBottom: 8 }}>📁 パッケージのパス (.dmig):</label>
             <input
@@ -197,6 +195,7 @@ export const ImportPage: React.FC = () => {
                   <span className="size">{(img.compressedSize / 1024 / 1024).toFixed(1)} MB (圧縮)</span>
                 </div>
               ))}
+              <OperationProgress active={running} progress={transferProgress.progress} />
               <button onClick={() => void start()} disabled={running || selected.size === 0} style={{ marginTop: 12 }}>
                 {running ? 'インポート中...' : '▶ インポート開始'}
               </button>

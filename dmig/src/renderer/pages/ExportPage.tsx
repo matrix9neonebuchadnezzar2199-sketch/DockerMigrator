@@ -102,8 +102,6 @@ export const ExportPage: React.FC = () => {
             progress={discoverProgress.progress}
             fallback={IMAGE_LIST_PROGRESS_INITIAL}
           />
-          <OperationProgress active={running} progress={transferProgress.progress} />
-
       <div className="card">
         <label style={{ display: 'block', marginBottom: 8 }}>💾 出力先 (USBパス):</label>
         <input
@@ -166,6 +164,8 @@ export const ExportPage: React.FC = () => {
           }
           onHasErrorFindings={setDryRunHasErrors}
         />
+
+        <OperationProgress active={running} progress={transferProgress.progress} />
 
         <button
           onClick={() => void start()}

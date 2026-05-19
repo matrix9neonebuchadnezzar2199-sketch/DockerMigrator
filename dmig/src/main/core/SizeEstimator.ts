@@ -167,6 +167,11 @@ export class SizeEstimator {
    * ディレクトリの総サイズを再帰的に計算する。
    * シンボリックリンクは辿らない（ループ回避）。
    */
+  /** ディレクトリのバイト合計（bind / build context の進捗 total 用）。 */
+  async measureDirectoryBytes(dir: string): Promise<number> {
+    return this.estimateDirSize(dir);
+  }
+
   private async estimateDirSize(dir: string): Promise<number> {
     let total = 0;
     try {

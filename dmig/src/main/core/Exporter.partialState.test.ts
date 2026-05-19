@@ -1,6 +1,7 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { ChunkRef, DmigManifest, ExportRequest } from '@shared/types.js';
@@ -20,6 +21,8 @@ function makeDockerStub(): DockerAdapter {
       { id: '1', repoTags: ['imgA'], size: 4096, created: 0 },
       { id: '2', repoTags: ['imgB'], size: 4096, created: 0 },
     ]),
+    getImageOriginalSize: vi.fn().mockResolvedValue(4096),
+    saveImageStream: vi.fn().mockResolvedValue(Readable.from(Buffer.from('layer'))),
   } as unknown as DockerAdapter;
 }
 

@@ -103,7 +103,7 @@ npm run build:linux  # Linux 向けパッケージ
 python scripts/run_smoke_check.py
 ```
 
-`typecheck` / `lint` / `test` / `build` と Docker 確認のあと、手動 UI チェックリストを表示します。詳細は [docs/testing/smoke-checklist.md](./docs/testing/smoke-checklist.md)。
+`typecheck` / `lint` / `test` / `build` と Docker 確認のあと、手動 UI チェックリストのパスを表示します。詳細は [docs/testing/smoke-checklist.html](./docs/testing/smoke-checklist.html)（[一覧](./docs/testing/index.html)）。
 
 **今後のマイルストーン（M6–M13）**: [docs/milestones/M6-M13-roadmap.md](./docs/milestones/M6-M13-roadmap.md)
 

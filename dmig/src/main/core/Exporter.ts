@@ -23,6 +23,7 @@ import type {
   ManifestImageEntry,
   ProgressEvent,
 } from '@shared/types.js';
+import { buildProgressEvent } from '@shared/progress.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 import { RollbackManager } from './RollbackManager.js';
 import { buildExportPackDirectoryEntry, createRollbackRecord } from './rollbackRecordBuilder.js';
@@ -316,6 +317,7 @@ export class Exporter extends EventEmitter {
     const hash = createHash('sha256');
 
     const tarStream = await this.docker.saveImageStream(imageName);
+    const originalTotal = await this.docker.getImageOriginalSize(imageName);
 
     const counter = new Transform({
       transform(chunk: Buffer, _enc, cb) {
@@ -340,14 +342,16 @@ export class Exporter extends EventEmitter {
     });
 
     const timer = setInterval(() => {
-      this.emitProgress({
-        taskId: imageName,
-        phase: 'compress',
-        current: compressedSize,
-        total: 0,
-        percentage: 0,
-        message: `${imageName}: 圧縮中... 元 ${this.fmtMB(originalSize)} → ${this.fmtMB(compressedSize)}`,
-      });
+      const totalBytes = Math.max(originalTotal, originalSize, 1);
+      this.emitProgress(
+        buildProgressEvent({
+          taskId: imageName,
+          phase: 'compress',
+          current: originalSize,
+          total: totalBytes,
+          message: `${imageName}: 圧縮中... 元 ${this.fmtMB(originalSize)} / ${this.fmtMB(totalBytes)} → 圧縮 ${this.fmtMB(compressedSize)}`,
+        }),
+      );
     }, 500);
 
     const pipeOpts = signal ? { signal } : {};

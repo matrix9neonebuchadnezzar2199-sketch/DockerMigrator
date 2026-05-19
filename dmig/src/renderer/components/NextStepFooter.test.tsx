@@ -43,12 +43,9 @@ describe('NextStepFooter', () => {
     expect(onNavigate).toHaveBeenCalledWith('compose');
   });
 
-  it('compose: CTA で export へ', async () => {
-    const user = userEvent.setup();
-    const onNavigate = vi.fn();
-    renderFooter(<NextStepFooter page="compose" onNavigate={onNavigate} dockerConnected />);
-    await user.click(screen.getByRole('button', { name: 'パックを書き出す' }));
-    expect(onNavigate).toHaveBeenCalledWith('export');
+  it('compose: フッター非表示（ページ内ウィザードで完結）', () => {
+    renderFooter(<NextStepFooter page="compose" onNavigate={vi.fn()} dockerConnected />);
+    expect(screen.queryByRole('contentinfo', { name: '次にやること' })).toBeNull();
   });
 
   it('export: 説明のみ、CTA ボタンなし', () => {

@@ -22,7 +22,8 @@ describe('nextSteps', () => {
     expect(getNextStepForPage('help')).toBeNull();
   });
 
-  it('compose に flowStep source index 1', () => {
-    expect(getNextStepForPage('compose')?.flowStep).toEqual({ group: 'source', index: 1 });
+  it('compose はフッター非表示・flowStep source index 1', () => {
+    expect(getNextStepForPage('compose')).toBeNull();
+    expect(NEXT_STEPS_BY_PAGE.compose.flowStep).toEqual({ group: 'source', index: 1 });
   });
 });

@@ -103,7 +103,7 @@ flowchart TB
 | 項目 | 内容 |
 |------|------|
 | スコープ | GitHub Release 本文（バイナリなし可）、`build:win` 手動/CI、smoke 定着、**仕様書 §9.1 Phase↔M 対応表**（案 B） |
-| 既存 | `scripts/run_smoke_check.py`、タグ `v0.3.0-poc`、`docs/testing/smoke-checklist.md` |
+| 既存 | `scripts/run_smoke_check.py`、タグ `v0.3.0-poc`、`docs/testing/smoke-checklist.html` |
 | 判断 | [D-002](./M1-M5-implementation-log.md) Release、[D-010](./M6-M13-roadmap.md) 対応表、[D-011](./M6-M13-roadmap.md) M6 スコープ |
 | 成果物 | `docs/releases/v0.3.0-poc.md`、`docs/instructions/m6-release-prep-instructions.md` |
 | タグ | `v0.3.0-poc` は M1–M5 時点で付与済み（M6 では付け替えなし） |

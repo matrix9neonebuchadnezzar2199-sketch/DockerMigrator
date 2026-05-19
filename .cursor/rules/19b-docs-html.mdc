@@ -1,0 +1,40 @@
+---
+description: DockerMigrator 運用資料の HTML 正本規約。docs/ 配下の手順書・チェックリスト・スモーク資料は Markdown ではなく単一 HTML で管理する。
+globs: ["**/docs/**/*.html", "**/docs/testing/**"]
+alwaysApply: false
+---
+
+# 運用資料 HTML 規約（DockerMigrator）
+
+## 適用範囲
+
+| 種別 | 形式 | 例 |
+|------|------|-----|
+| 手順・チェックリスト・スモーク | **HTML 正本** | `docs/testing/*.html` |
+| 開発日記 | HTML（`04-diary-workflow.mdc`） | `docs/*_開発日記.html` |
+| README / CHANGELOG / ADR / マイルストーン履歴 | Markdown のまま | `README.md`, `CHANGELOG.md`, `docs/milestones/*.md` |
+| 実装指示書（アーカイブ） | Markdown 可 | `docs/instructions/*.md` |
+
+**新規の運用手順・テストチェックリストは Markdown で作らない。** テンプレート: `.cursor/templates/doc-template.html`。
+
+## ファイル要件
+
+- 1 ファイル完結（`<style>` インライン、外部 CDN 禁止）
+- `<html lang="ja">`、`<body class="doc">`
+- パレット・タイポは `04a-diary-style.mdc` と同系（ダーク固定）
+- 目次はアンカー付き（`#section-id`）
+- チェック項目は `<input type="checkbox">` でブラウザ上インタラクティブに可
+
+## ディレクトリ
+
+- `docs/testing/index.html` … テスト資料の入口
+- ファイル名は kebab-case、拡張子 `.html`
+
+## スクリプト連携
+
+- `scripts/run_smoke_check.py` は HTML パスを表示し、本文はターミナルにダンプしない（`file:///` を案内）
+
+## 関連
+
+- `04-diary-workflow.mdc` / `04a-diary-style.mdc`
+- `19-docs-readme.mdc`（README / CHANGELOG）

@@ -707,6 +707,132 @@ input[type='text'] {
 .compose-footer-stats strong {
   color: #cdd6f4;
 }
+/* 縦型フロー手順（Compose 書き出しなど） */
+.flow-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.flow-step {
+  border: 1px solid #45475a;
+  border-radius: 10px;
+  background: #1e1e2e;
+  overflow: hidden;
+}
+.flow-step--locked {
+  opacity: 0.72;
+}
+.flow-step--done {
+  border-color: #585b70;
+}
+.flow-step--active {
+  border-color: #89b4fa;
+  box-shadow: 0 0 0 1px rgba(137, 180, 250, 0.35);
+}
+.flow-step-heading {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+}
+.flow-step-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 14px 16px;
+  text-align: left;
+  color: #cdd6f4;
+  background: #181825;
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+.flow-step-toggle:disabled {
+  cursor: not-allowed;
+}
+.flow-step-toggle:not(:disabled):hover {
+  background: #313244;
+}
+.flow-step-badge {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #45475a;
+  color: #cdd6f4;
+  font-weight: 700;
+  font-size: 14px;
+}
+.flow-step--done .flow-step-badge {
+  background: #a6e3a1;
+  color: #1e1e2e;
+}
+.flow-step--active .flow-step-badge {
+  background: #89b4fa;
+  color: #1e1e2e;
+}
+.flow-step-title-wrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.flow-step-title {
+  font-weight: 600;
+  font-size: 15px;
+  line-height: 1.35;
+}
+.flow-step-status-label {
+  font-size: 12px;
+  color: #a6adc8;
+  font-weight: 400;
+}
+.flow-step-summary {
+  font-size: 13px;
+  color: #bac2de;
+  line-height: 1.4;
+  word-break: break-all;
+}
+.flow-step-chevron {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #a6adc8;
+  margin-top: 4px;
+}
+.flow-step-body {
+  padding: 0 16px 16px;
+  border-top: 1px solid #313244;
+}
+.flow-step-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.flow-step-advanced {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border: 1px dashed #585b70;
+  border-radius: 8px;
+  background: #181825;
+}
+.flow-step-advanced > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: #bac2de;
+  font-weight: 600;
+}
+.flow-step-lead {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #a6adc8;
+}
+
 .compose-footer-stat-sep {
   color: #585b70;
 }

@@ -38,6 +38,10 @@ import {
 } from '../utils/formatTransfer.js';
 import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
 import { RollbackInlineSection } from '../components/RollbackInlineSection.js';
+import { FlowStepSection, type FlowStepStatus } from '../components/FlowStepSection.js';
+
+/** 書き出しタブの縦型手順数 */
+const EXPORT_FLOW_LAST_STEP = 4;
 
 type Phase = 'browse' | 'bindDlg' | 'secretDlg' | 'running' | 'done';
 
@@ -101,6 +105,10 @@ export const ComposePage: React.FC = () => {
   const [composeLifecycleBusy, setComposeLifecycleBusy] = useState<string | null>(null);
   const preflightDebounceGen = useRef(0);
   const [dryRunHasErrors, setDryRunHasErrors] = useState(false);
+
+  /** 書き出しウィザード: 解放済みの最大手順・展開中の手順（0 は完了済みのみ折りたたみ） */
+  const [exportFlowUnlocked, setExportFlowUnlocked] = useState(1);
+  const [exportFlowExpanded, setExportFlowExpanded] = useState(1);
 
   const refreshProjects = useCallback(async () => {
     setLoading(true);
@@ -589,6 +597,55 @@ export const ComposePage: React.FC = () => {
     }
   };
 
+  const exportStepStatus = useCallback(
+    (step: number): FlowStepStatus => {
+      if (step > exportFlowUnlocked) return 'locked';
+      if (step < exportFlowUnlocked) return 'done';
+      return 'active';
+    },
+    [exportFlowUnlocked],
+  );
+
+  const advanceExportFlow = (fromStep: number) => {
+    const next = Math.min(fromStep + 1, EXPORT_FLOW_LAST_STEP);
+    setExportFlowUnlocked((u) => Math.max(u, next));
+    setExportFlowExpanded(next);
+  };
+
+  const toggleExportFlowStep = (step: number) => {
+    if (step > exportFlowUnlocked || exportStepStatus(step) === 'active') return;
+    setExportFlowExpanded((cur) => (cur === step ? 0 : step));
+  };
+
+  const isExportStepExpanded = (step: number) => {
+    if (exportStepStatus(step) === 'locked') return false;
+    if (exportFlowExpanded === 0) return exportStepStatus(step) === 'active';
+    return exportFlowExpanded === step;
+  };
+
+  const exportStep1Summary = outputDir.trim() ? outputDir.trim() : '未指定';
+
+  const exportStep2Summary = useMemo(() => {
+    if (!diffMode) return '全量書き出し';
+    if (!selectedSnapshotId) return '差分 — 基底スナップショット未選択';
+    const snap = snapshots.find((s) => s.id === selectedSnapshotId);
+    return snap
+      ? `差分 — ${new Date(snap.createdAt).toLocaleString('ja-JP')}`
+      : '差分エクスポート';
+  }, [diffMode, selectedSnapshotId, snapshots]);
+
+  const exportStep3Summary =
+    selected.size === 0
+      ? '未選択'
+      : `${selected.size} / ${projects.length} 件 · ${formatGbFromBytes(transferBytesDisplay)}`;
+
+  useEffect(() => {
+    if (phase === 'running' || phase === 'bindDlg' || phase === 'secretDlg') {
+      setExportFlowUnlocked(EXPORT_FLOW_LAST_STEP);
+      setExportFlowExpanded(EXPORT_FLOW_LAST_STEP);
+    }
+  }, [phase]);
+
   return (
     <div className="page-shell">
       <div className="page-two-col">
@@ -601,7 +658,6 @@ export const ComposePage: React.FC = () => {
             progress={discoverProgress.progress}
             fallback={COMPOSE_LIST_PROGRESS_INITIAL}
           />
-          <OperationProgress active={phase === 'running'} progress={transferProgress.progress} />
           <OperationProgress active={diffPreview.loading} progress={snapshotProgress.progress} />
           <OperationProgress
             active={composeLifecycleBusy !== null}
@@ -614,35 +670,74 @@ export const ComposePage: React.FC = () => {
           className={tab === 'export' ? 'tab active' : 'tab'}
           onClick={() => setTab('export')}
         >
-          エクスポート
+          書き出す
         </button>
         <button
           type="button"
           className={tab === 'import' ? 'tab active' : 'tab'}
           onClick={() => setTab('import')}
         >
-          インポート
+          取り込む
         </button>
       </div>
 
       {tab === 'export' && (
-        <>
-          <div className="card">
-            <label style={{ display: 'block', marginBottom: 8 }}>出力先 (USB等):</label>
+        <div className="flow-wizard" aria-label="Compose パックの書き出し手順">
+          <p className="flow-step-lead">
+            上から順に進めます。各ステップを終えたら「次へ」で折りたたみ（▲）、次の手順が開きます。ここで行うのは
+            Compose プロジェクトをまとめた <strong>.dmig パック</strong> の書き出しです（サイドバー「パックを書き出す」は Docker
+            イメージのみ）。
+          </p>
+          <FlowStepSection
+            step={1}
+            title="出力先を決める"
+            summary={exportStep1Summary}
+            status={exportStepStatus(1)}
+            expanded={isExportStepExpanded(1)}
+            onToggle={() => toggleExportFlowStep(1)}
+          >
+            <p className="flow-step-lead">
+              USB やバックアップ用フォルダのパスを指定します。書き出した .dmig フォルダがここに作成されます。
+            </p>
+            <label style={{ display: 'block', marginBottom: 8 }}>出力先フォルダ:</label>
             <input
               type="text"
               value={outputDir}
               onChange={(e) => setOutputDir(e.target.value)}
               placeholder="E:\\backup"
               disabled={phase === 'running'}
-              style={{ width: 360 }}
+              style={{ width: '100%', maxWidth: 480 }}
             />
-            <button type="button" onClick={browseOutputDir} disabled={phase === 'running'} style={{ marginLeft: 8 }}>
-              📂 選択...
+            <button
+              type="button"
+              onClick={() => void browseOutputDir()}
+              disabled={phase === 'running'}
+              style={{ marginTop: 8 }}
+            >
+              📂 フォルダを選ぶ…
             </button>
-          </div>
+            <div className="flow-step-actions">
+              <button
+                type="button"
+                onClick={() => advanceExportFlow(1)}
+                disabled={!outputDir.trim() || phase === 'running'}
+              >
+                次へ — 差分オプションへ
+              </button>
+            </div>
+          </FlowStepSection>
 
-          <div className="card">
+          <FlowStepSection
+            step={2}
+            title="差分オプション（任意）"
+            summary={exportStep2Summary}
+            status={exportStepStatus(2)}
+            expanded={isExportStepExpanded(2)}
+            onToggle={() => toggleExportFlowStep(2)}
+          >
+            <p className="flow-step-lead">
+              通常は全量書き出しのままで問題ありません。前回のスナップショットとの差分だけ書き出す場合のみ有効にしてください。
+            </p>
             <div className="diff-controls">
               <label>
                 <input
@@ -651,7 +746,7 @@ export const ComposePage: React.FC = () => {
                   onChange={(e) => setDiffMode(e.target.checked)}
                   disabled={phase === 'running'}
                 />
-                差分エクスポート
+                差分書き出しを使う
               </label>
               {diffMode && (
                 <>
@@ -682,29 +777,39 @@ export const ComposePage: React.FC = () => {
                 </>
               )}
             </div>
-          </div>
+            <div className="flow-step-actions">
+              <button type="button" onClick={() => advanceExportFlow(2)} disabled={phase === 'running'}>
+                次へ — プロジェクトを選ぶ
+              </button>
+            </div>
+          </FlowStepSection>
 
-          <div className="card">
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-              <strong style={{ flex: 1 }}>
-                Compose プロジェクト ({loading ? '読み込み中' : `${projects.length}件`})
+          <FlowStepSection
+            step={3}
+            title="プロジェクトを選ぶ"
+            summary={exportStep3Summary}
+            status={exportStepStatus(3)}
+            expanded={isExportStepExpanded(3)}
+            onToggle={() => toggleExportFlowStep(3)}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+              <strong style={{ flex: '1 1 200px' }}>
+                検出: {loading ? '読み込み中…' : `${projects.length} 件`}
               </strong>
               <button type="button" onClick={selectAll} disabled={phase === 'running'}>
-                全選択
+                すべて選択
               </button>
               <button type="button" onClick={clearAll} disabled={phase === 'running'}>
-                全解除
+                選択解除
               </button>
-              <button type="button" onClick={refreshProjects} disabled={loading || phase === 'running'}>
+              <button type="button" onClick={() => void refreshProjects()} disabled={loading || phase === 'running'}>
                 🔄 再読込
               </button>
             </div>
 
-            <div className="compose-expert-bar">
-              <div className="compose-expert-bar-header">
-                <span className="compose-expert-bar-title">🛠️ 熟練者向けワンクリック</span>
-              </div>
-              <div className="compose-expert-bar-buttons">
+            <details className="flow-step-advanced">
+              <summary>熟練者向けの一括操作（任意）</summary>
+              <div className="compose-expert-bar-buttons" style={{ marginTop: 10 }}>
                 <button
                   type="button"
                   className="btn-compact"
@@ -742,7 +847,7 @@ export const ComposePage: React.FC = () => {
                   🧹 dangling イメージ整理
                 </button>
               </div>
-            </div>
+            </details>
 
             {!loading && projects.length === 0 && (
               <div style={{ color: '#a6adc8', padding: 16 }}>
@@ -769,11 +874,34 @@ export const ComposePage: React.FC = () => {
                 composeOpsLocked={composeLifecycleBusy !== null}
               />
             ))}
-          </div>
 
-          <div className="card">
+            <div className="flow-step-actions">
+              <button
+                type="button"
+                onClick={() => advanceExportFlow(3)}
+                disabled={selected.size === 0 || phase === 'running'}
+              >
+                次へ — 確認して書き出す
+              </button>
+            </div>
+          </FlowStepSection>
+
+          <FlowStepSection
+            step={4}
+            title="確認して .dmig パックを書き出す"
+            summary={
+              phase === 'done' && done
+                ? '書き出し完了'
+                : selected.size > 0
+                  ? `${selected.size} 件 · ${formatGbFromBytes(transferBytesDisplay)}`
+                  : '未実行'
+            }
+            status={phase === 'done' ? 'done' : exportStepStatus(4)}
+            expanded={isExportStepExpanded(4)}
+            onToggle={() => toggleExportFlowStep(4)}
+          >
             <div>
-              選択中: {selected.size} / {projects.length} 件
+              選択: <strong>{selected.size}</strong> / {projects.length} 件
             </div>
             <div className="compose-footer-stats">
               <span>
@@ -792,7 +920,7 @@ export const ComposePage: React.FC = () => {
                 推定サイズ: {(preflight.estimate.totalEstimated / 1024 / 1024 / 1024).toFixed(2)} GB
                 {' / '}空き容量: {(preflight.space.freeBytes / 1024 / 1024 / 1024).toFixed(2)} GB
                 {preflight.space.status === 'warning' && (
-                  <span style={{ color: '#f9e2af', marginLeft: 8 }}>⚠ ぎりぎり</span>
+                  <span style={{ color: '#f9e2af', marginLeft: 8 }}>⚠ 空きがぎりぎり</span>
                 )}
               </div>
             )}
@@ -809,30 +937,57 @@ export const ComposePage: React.FC = () => {
               onHasErrorFindings={setDryRunHasErrors}
             />
 
-            <button
-              type="button"
-              onClick={() => void startExport()}
-              disabled={phase === 'running' || selected.size === 0}
-              style={{ marginTop: 8 }}
-              title={
-                dryRunHasErrors
-                  ? 'ドライランでエラー検出。確認してください'
-                  : undefined
-              }
-            >
-              {phase === 'running' ? '実行中...' : '▶ エクスポート開始'}
-            </button>
-            {phase === 'running' && currentJobToken && (
+            <OperationProgress active={phase === 'running'} progress={transferProgress.progress} />
+
+            <div className="flow-step-actions">
               <button
                 type="button"
-                onClick={() => void onCancelJob()}
-                style={{ marginTop: 8, marginLeft: 8, background: '#f38ba8' }}
+                onClick={() => void startExport()}
+                disabled={
+                  phase === 'running' ||
+                  selected.size === 0 ||
+                  !outputDir.trim() ||
+                  exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
+                }
+                title={
+                  dryRunHasErrors
+                    ? 'ドライランでエラー検出。確認してください'
+                    : exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
+                      ? '手順 1〜3 を完了してください'
+                      : undefined
+                }
               >
-                ⏹ 中止
+                {phase === 'running' ? '書き出し中…' : '▶ パックを書き出す'}
               </button>
-            )}
-          </div>
-        </>
+              {phase === 'running' && currentJobToken && (
+                <button
+                  type="button"
+                  onClick={() => void onCancelJob()}
+                  style={{ background: '#f38ba8' }}
+                >
+                  ⏹ 中止
+                </button>
+              )}
+            </div>
+
+            {done && tab === 'export' ? (
+              <div
+                className="card"
+                style={{
+                  marginTop: 16,
+                  background: '#a6e3a1',
+                  color: '#1e1e2e',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {done}
+              </div>
+            ) : null}
+            {phase === 'done' && lastExportPackDir ? (
+              <RollbackInlineSection mode="export" packageDir={lastExportPackDir} />
+            ) : null}
+          </FlowStepSection>
+        </div>
       )}
 
       {tab === 'import' && (
@@ -904,6 +1059,8 @@ export const ComposePage: React.FC = () => {
                 </div>
               ))}
 
+              <OperationProgress active={phase === 'running'} progress={transferProgress.progress} />
+
               <button
                 type="button"
                 onClick={runImport}
@@ -927,10 +1084,7 @@ export const ComposePage: React.FC = () => {
       )}
 
       <ErrorBox error={error} lastAction={lastAction} />
-      {tab === 'export' && phase === 'done' && lastExportPackDir ? (
-        <RollbackInlineSection mode="export" packageDir={lastExportPackDir} />
-      ) : null}
-      {done && (
+      {done && tab === 'import' && (
         <div
           className="card"
           style={{ background: '#a6e3a1', color: '#1e1e2e', whiteSpace: 'pre-wrap' }}
@@ -967,7 +1121,7 @@ export const ComposePage: React.FC = () => {
 
         <aside className="page-guide-rail" aria-label="ページ解説">
           <PageGuidePanel
-            title={tab === 'export' ? '📋 エクスポート — ページ解説' : '📋 インポート — ページ解説'}
+            title={tab === 'export' ? '📋 書き出し — ページ解説' : '📋 取り込み — ページ解説'}
           >
             {tab === 'export' ? <ComposeExportGuideBody /> : <ComposeImportGuideBody />}
           </PageGuidePanel>

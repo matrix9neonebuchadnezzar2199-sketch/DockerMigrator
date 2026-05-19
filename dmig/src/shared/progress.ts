@@ -61,10 +61,35 @@ export function buildProgressEvent(input: {
   message: string;
   scope?: ProgressScope;
 }): ProgressEvent {
-  const percentage =
-    input.total > 0 ? Math.min(100, Math.floor((input.current / input.total) * 100)) : 0;
+  const percentage = computeProgressPercentage(input.current, input.total);
   return applyProgressScope({
     ...input,
     percentage,
   });
+}
+
+/** current / total から 0–100 の進捗率（Main・Renderer 共通）。 */
+export function computeProgressPercentage(current: number, total: number): number {
+  if (total <= 0 || current < 0) {
+    return 0;
+  }
+  return Math.min(100, Math.floor((current / total) * 100));
+}
+
+/**
+ * 表示用の進捗率。percentage が 0 でも current/total があれば再計算する
+ * （圧縮フェーズで legacy が percentage: 0 だけ送っていた場合の互換）。
+ */
+export function resolveDisplayPercentage(ev: ProgressEvent): number {
+  if (ev.percentage > 0) {
+    return Math.min(100, ev.percentage);
+  }
+  const fromRatio = computeProgressPercentage(ev.current, ev.total);
+  if (fromRatio > 0) {
+    return fromRatio;
+  }
+  if (ev.phase === 'discover') {
+    return 8;
+  }
+  return 0;
 }

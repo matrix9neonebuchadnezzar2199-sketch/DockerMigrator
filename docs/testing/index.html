@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>テスト・スモーク資料 — DockerMigrator</title>
+<style>
+:root {
+  --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8;
+  --accent: #a78bfa; --border: #334155;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0 auto; padding: 48px 20px; max-width: 720px;
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, "Segoe UI", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 15px; line-height: 1.7;
+}
+h1 { color: var(--accent); font-size: 24px; margin: 0 0 8px; }
+p.lead { color: var(--muted); margin: 0 0 24px; }
+ul { padding-left: 0; list-style: none; }
+li {
+  margin: 12px 0; padding: 16px 18px;
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+}
+a { color: var(--accent); font-weight: 600; font-size: 17px; }
+a span { display: block; font-weight: 400; font-size: 14px; color: var(--muted); margin-top: 4px; }
+</style>
+</head>
+<body>
+<h1>テスト・スモーク資料</h1>
+<p class="lead">運用手順・チェックリストは HTML 正本（ブラウザで開く）。Markdown は廃止。</p>
+<ul>
+  <li>
+    <a href="smoke-checklist.html">手動スモークチェックリスト（M5）<span>自動点検のあと UI 確認。M10 への入口。</span></a>
+  </li>
+  <li>
+    <a href="m10-rollback-smoke-checklist.html">M10 ロールバック手動 smoke<span>報告シート・S1〜S7 手順・DevTools 切り分け。</span></a>
+  </li>
+</ul>
+</body>
+</html>

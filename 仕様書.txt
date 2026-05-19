@@ -724,7 +724,7 @@ dmig/
 
 ### 12.10 品質（M5）
 
-- 手動: `docs/testing/smoke-checklist.md`。
+- 手動: `docs/testing/smoke-checklist.html`（一覧: `docs/testing/index.html`）。
 - 自動: `dmig/src/renderer/App.integration.test.tsx`（起動・設定遷移の smoke）。Playwright 実 E2E は見送り（D-006）。
 
 ### 12.11 ログビューア・動的 Footer CTA（M8）

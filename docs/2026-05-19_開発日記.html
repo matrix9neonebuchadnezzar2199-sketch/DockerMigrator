@@ -471,6 +471,18 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1425">詳細</a></td>
       </tr>
+      <tr>
+        <td>15:44</td>
+        <td>Compose 書き出し UX（縦型ウィザード・用語統一）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1544">詳細</a></td>
+      </tr>
+      <tr>
+        <td>16:42</td>
+        <td>テスト資料を HTML 正本へ移行（smoke / M10）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1642">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -1009,6 +1021,60 @@ body.diary > footer {
     <li>Commit: <code>198479c</code> main / <code>ebe1870</code> IPC / <code>83058aa</code> ui / <code>faa18fd</code> inline / <code>b48e9ef</code> docs</li>
   </ul>
 </section>
+
+<section class="entry" id="entry-1544">
+  <h2>Compose 書き出し UX（縦型ウィザード・用語統一）</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 15:44</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>マスター指摘の「エクスポート vs パック書き出し」「縦の動線がわかりづらい」に対し、Compose 書き出しタブを <strong>4 段階の折りたたみウィザード</strong> に再構成。完了手順は ▲ で折りたたみ、要約テキストと（未着手／いまここ／完了）ラベルで状態を色以外にも示す（UD）。フッター誤誘導（compose → export ページ遷移）を廃止。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>FlowStepSection.tsx</code>, <code>FlowStepSection.test.tsx</code></li>
+    <li><span class="op op-mod">~</span> <code>ComposePage.tsx</code>, <code>styles.css</code>, <code>nextSteps.ts</code>, 関連テスト</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>vitest</code> 160 tests（+3 FlowStepSection）— pass</li>
+    <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1642">
+  <h2>テスト資料を HTML 正本へ移行（smoke / M10）</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 16:42</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>マスター方針「運用資料は HTML で統制」に合わせ、<code>docs/testing/*.md</code> を廃止し HTML 正本へ置換。移行元／移行先の説明・報告シート・S1〜S7 をブラウザ向けに再構成（目次アンカー・チェックボックス）。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>docs/testing/index.html</code>, <code>smoke-checklist.html</code>, <code>m10-rollback-smoke-checklist.html</code>, <code>.cursor/templates/doc-template.html</code>, <code>.cursor/rules/19b-docs-html.mdc</code></li>
+    <li><span class="op op-del">-</span> <code>smoke-checklist.md</code>, <code>m10-rollback-smoke-checklist.md</code></li>
+    <li><span class="op op-mod">~</span> <code>run_smoke_check.py</code>, <code>README.md</code>, <code>CHANGELOG.md</code>, <code>仕様書.txt</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>README / CHANGELOG / マイルストーン履歴は Markdown のまま。手順・チェックリストのみ HTML（<code>19b-docs-html.mdc</code> で範囲を明示）。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>run_smoke_check.py --m10-smoke</code> で HTML パス表示を確認</li>
+    <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
 </main>
 
 <footer>
@@ -1016,4 +1082,5 @@ body.diary > footer {
 </footer>
 </body>
 </html>
+
 

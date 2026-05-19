@@ -10,6 +10,7 @@ import { createZstdCompressStream, createZstdDecompressStream } from './compress
 import { wrapError, DmigError } from './errors/DmigError.js';
 import { ErrorCodes } from './errors/codes.js';
 import type { ManifestVolumeEntry, ProgressEvent } from '@shared/types.js';
+import { buildProgressEvent } from '@shared/progress.js';
 
 /**
  * 名前付きボリュームのエクスポート/インポート。
@@ -46,16 +47,20 @@ export class VolumeExporter extends EventEmitter {
 
     let compressedSize = 0;
     const hash = createHash('sha256');
+    const volumeOriginal = await this.getVolumeOriginalSize(volumeName);
 
     const timer = setInterval(() => {
-      this.emit('progress', {
-        taskId: volumeName,
-        phase: 'compress',
-        current: compressedSize,
-        total: 0,
-        percentage: 0,
-        message: `ボリューム ${volumeName} をエクスポート中... (${(compressedSize / 1024 / 1024).toFixed(1)}MB)`,
-      } satisfies ProgressEvent);
+      const totalBytes = Math.max(volumeOriginal, compressedSize, 1);
+      this.emit(
+        'progress',
+        buildProgressEvent({
+          taskId: volumeName,
+          phase: 'compress',
+          current: compressedSize,
+          total: totalBytes,
+          message: `ボリューム ${volumeName} をエクスポート中... ${(compressedSize / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB`,
+        }),
+      );
     }, 500);
 
     try {
@@ -137,5 +142,18 @@ export class VolumeExporter extends EventEmitter {
 
   private safeName(volumeName: string): string {
     return volumeName.replace(/[/:\\]/g, '_');
+  }
+
+  private async getVolumeOriginalSize(volumeName: string): Promise<number> {
+    try {
+      const info = await this.docker.inspectVolume(volumeName);
+      const usage = (info as { UsageData?: { Size?: number } }).UsageData?.Size;
+      if (typeof usage === 'number' && usage > 0) {
+        return usage;
+      }
+    } catch {
+      /* inspect 失敗時はフォールバック */
+    }
+    return 100 * 1024 * 1024;
   }
 }

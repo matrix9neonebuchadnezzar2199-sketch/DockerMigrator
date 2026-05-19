@@ -22,7 +22,9 @@ import type {
   ComposeLifecycleRequest,
   SecretScanResult,
   DmigManifest,
+  ProgressEvent,
 } from '@shared/types.js';
+import { buildProgressEvent } from '@shared/progress.js';
 import type { Snapshot } from '@shared/snapshot-types.js';
 import { SnapshotStore } from '../core/snapshot/SnapshotStore.js';
 import { Snapshotter } from '../core/snapshot/Snapshotter.js';
@@ -212,7 +214,40 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     const composeExporter = new ComposeExporter(docker, exporter, volumeExporter);
 
     const relay = createProgressRelay(event.sender);
-    const progressForwarder = relay.forwarder;
+    let aggregateTotalBytes = 0;
+    let aggregateDoneBytes = 0;
+    let prevCompressTaskId = '';
+    let prevCompressTaskTotal = 0;
+
+    const progressForwarder = (ev: ProgressEvent): void => {
+      let out = ev;
+      if (aggregateTotalBytes > 0 && ev.phase === 'compress' && ev.total > 0) {
+        if (ev.taskId !== prevCompressTaskId) {
+          if (prevCompressTaskId && prevCompressTaskTotal > 0) {
+            aggregateDoneBytes = Math.min(
+              aggregateTotalBytes,
+              aggregateDoneBytes + prevCompressTaskTotal,
+            );
+          }
+          prevCompressTaskId = ev.taskId;
+          prevCompressTaskTotal = 0;
+        }
+        prevCompressTaskTotal = ev.total;
+        const globalCurrent = Math.min(
+          aggregateTotalBytes,
+          aggregateDoneBytes + Math.min(ev.current, ev.total),
+        );
+        out = buildProgressEvent({
+          taskId: 'compose-export',
+          phase: 'compress',
+          current: globalCurrent,
+          total: aggregateTotalBytes,
+          message: ev.message,
+        });
+      }
+      relay.forwarder(out);
+    };
+
     composeExporter.on('progress', progressForwarder);
     exporter.on('progress', progressForwarder);
     volumeExporter.on('progress', progressForwarder);
@@ -309,6 +344,12 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
       const session = await ComposeExportManifestSession.create(packDir, exportReq, targets, docker);
       await session.writeInitial();
 
+      const sizeEst = await new SizeEstimator(docker).estimateForCompose(targets);
+      aggregateTotalBytes = Math.max(1, sizeEst.totalEstimated);
+      aggregateDoneBytes = 0;
+      prevCompressTaskId = '';
+      prevCompressTaskTotal = 0;
+
       await composeExporter.exportProjects(
         exportReq,
         packDir,
@@ -322,6 +363,14 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
       }
 
       await session.finalizeSuccess();
+
+      await relay.emit({
+        taskId: 'compose-export',
+        phase: 'write',
+        current: aggregateTotalBytes,
+        total: aggregateTotalBytes,
+        message: 'パックの書き出しが完了しました。',
+      });
 
       const manifest = session.manifest;
 

@@ -28,6 +28,8 @@ import type {
   ProjectManifestBindMount,
   ProjectManifestEnvFile,
 } from '@shared/types.js';
+import { buildProgressEvent } from '@shared/progress.js';
+import { SizeEstimator } from './SizeEstimator.js';
 import { ComposeExportManifestSession } from './manifest/composeExportManifestSession.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 
@@ -592,15 +594,22 @@ export class ComposeExporter extends EventEmitter {
     }
 
     let written = 0;
+    const estimator = new SizeEstimator(this.docker);
+    const srcBytes = await estimator.measureDirectoryBytes(srcDir);
+    const estimatedOut = Math.max(1, SizeEstimator.estimateCompressedBytes(srcBytes, 'volume'));
+
     const timer = setInterval(() => {
-      this.emit('progress', {
-        taskId: labelForProgress,
-        phase: 'compress',
-        current: written,
-        total: 0,
-        percentage: 0,
-        message: `${labelForProgress}: 圧縮中 (${(written / 1024 / 1024).toFixed(1)}MB)`,
-      } satisfies ProgressEvent);
+      const totalBytes = Math.max(estimatedOut, written, 1);
+      this.emit(
+        'progress',
+        buildProgressEvent({
+          taskId: labelForProgress,
+          phase: 'compress',
+          current: written,
+          total: totalBytes,
+          message: `${labelForProgress}: 圧縮中 (${(written / 1024 / 1024).toFixed(1)} / ${(totalBytes / 1024 / 1024).toFixed(1)} MB)`,
+        }),
+      );
     }, 500);
 
     try {

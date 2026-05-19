@@ -15,6 +15,8 @@
 
 ### Changed
 
+- **docs/testing**: 手動スモーク・M10 チェックリストを Markdown から HTML 正本へ移行（`index.html`, `smoke-checklist.html`, `m10-rollback-smoke-checklist.html`）。`run_smoke_check.py` は `file:///` パスを案内。
+
 ### Fixed
 
 ### Removed

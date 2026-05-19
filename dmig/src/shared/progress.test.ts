@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   applyProgressScope,
   buildProgressEvent,
+  computeProgressPercentage,
   inferProgressScope,
   matchesProgressScope,
   ProgressTaskIds,
+  resolveDisplayPercentage,
 } from './progress.js';
 
 describe('progress helpers', () => {
@@ -28,6 +30,23 @@ describe('progress helpers', () => {
       message: 'test',
     });
     expect(inferProgressScope(ev)).toBe('transfer');
+  });
+
+  it('resolveDisplayPercentage: percentage 0 でも current/total から算出', () => {
+    const ev = buildProgressEvent({
+      taskId: 'img',
+      phase: 'compress',
+      current: 50,
+      total: 100,
+      message: 'test',
+    });
+    const legacy = { ...ev, percentage: 0 };
+    expect(resolveDisplayPercentage(legacy)).toBe(50);
+  });
+
+  it('computeProgressPercentage', () => {
+    expect(computeProgressPercentage(25, 100)).toBe(25);
+    expect(computeProgressPercentage(0, 0)).toBe(0);
   });
 
   it('matchesProgressScope filters by scope', () => {

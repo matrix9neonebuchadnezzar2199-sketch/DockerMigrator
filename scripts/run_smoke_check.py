@@ -5,6 +5,7 @@
   python scripts/run_smoke_check.py
   python scripts/run_smoke_check.py --win
   python scripts/run_smoke_check.py --skip-build --verbose
+  python scripts/run_smoke_check.py --m10-smoke
 """
 
 from __future__ import annotations
@@ -19,7 +20,20 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DMIG_DIR = REPO_ROOT / "dmig"
-CHECKLIST_MD = REPO_ROOT / "docs" / "testing" / "smoke-checklist.md"
+CHECKLIST_HTML = REPO_ROOT / "docs" / "testing" / "smoke-checklist.html"
+M10_SMOKE_HTML = REPO_ROOT / "docs" / "testing" / "m10-rollback-smoke-checklist.html"
+TESTING_INDEX_HTML = REPO_ROOT / "docs" / "testing" / "index.html"
+
+# M10 手動 smoke: 報告行とシナリオ ID の対応（コンソール出力用）
+M10_REPORT_LINES: list[tuple[str, str, str]] = [
+    ("S1", "[移行先] パックを読み込む → 取り込み → ロールバック", "必須"),
+    ("S2", "[移行先相当] プロジェクトを選ぶ［取り込む］→ ロールバック", "必須（directory_not_empty）"),
+    ("S3", "再ロールバック（already_executed）", "必須"),
+    ("S4", "旧 .dmig（rollback.json なし）", "任意（旧パックがあれば）"),
+    ("S5", "書き出し → rollback.json / ロールバック", "必須"),
+    ("S6", "直近の操作を取り消す（インライン）", "必須"),
+    ("S7", "directory 手動削除の運用", "任意"),
+]
 
 
 @dataclass(frozen=True)
@@ -98,16 +112,69 @@ def _read_package_version() -> str:
     return match.group(1) if match else "unknown"
 
 
+def _print_m10_smoke_report() -> None:
+    """M10 ロールバック smoke: 報告シートを先に出し、シナリオと 1 対 1 で対応づける。"""
+    width = 64
+    print("\n" + "=" * width)
+    print("  M10 ロールバック手動 smoke — 報告シート")
+    print("=" * width)
+    print()
+    print("実施後、以下をコピーして結果を記入（OK / NG / スキップ / 所感）:")
+    print()
+    print("【M10 ロールバック smoke 結果】")
+    print("前提: dev 再起動済み / Docker 稼働 / main >= 2a1efa4")
+    print()
+    for sid, title, _req in M10_REPORT_LINES:
+        pad = " " * max(1, 34 - len(title))
+        print(f"  {sid}  {title}{pad}: ")
+    print()
+    print("所要時間: ___ 分")
+    print("気付いた点:")
+    print("  - rollback.json（パックパス）:")
+    print("  - Main ターミナルエラー:")
+    print("  - UX 違和感:")
+    print()
+    print("-" * width)
+    print("  実施前チェック")
+    print("-" * width)
+    for label in (
+        "git pull 済み（2a1efa4 以降の fix 込み）",
+        "npm run dev を停止して Main ごと再起動",
+        "Docker Desktop 稼働",
+        "作業用出力先を用意（例 F:\\Docker_out）",
+    ):
+        print(f"  [ ] {label}")
+    print()
+    print("-" * width)
+    print("  シナリオ一覧（詳細手順は正本 HTML）")
+    print("-" * width)
+    print(f"  {'ID':<4} {'区分':<6} シナリオ")
+    print(f"  {'--':<4} {'----':<6} {'-' * 40}")
+    for sid, title, req in M10_REPORT_LINES:
+        print(f"  {sid:<4} {req:<6} {title}")
+    print()
+    rel = M10_SMOKE_HTML.relative_to(REPO_ROOT)
+    print(f"  正本（手順・合格条件・DevTools）: {rel}")
+    print("  ブラウザで開く: file:///" + str(M10_SMOKE_HTML.resolve()).replace("\\", "/"))
+    print("  開発起動: cd dmig && npm run dev")
+    print("=" * width)
+
+
 def _print_manual_checklist() -> None:
     print("\n" + "=" * 60)
     print("手動スモーク（Electron UI）")
     print("=" * 60)
-    if CHECKLIST_MD.is_file():
-        print(f"正本: {CHECKLIST_MD.relative_to(REPO_ROOT)}")
+    if CHECKLIST_HTML.is_file():
+        rel = CHECKLIST_HTML.relative_to(REPO_ROOT)
+        print(f"正本: {rel}")
+        print(f"一覧: {TESTING_INDEX_HTML.relative_to(REPO_ROOT)}")
         print()
-        print(CHECKLIST_MD.read_text(encoding="utf-8"))
+        print("手順は HTML 正本をブラウザで開いて確認してください。")
+        print("file:///" + str(CHECKLIST_HTML.resolve()).replace("\\", "/"))
+        if M10_SMOKE_HTML.is_file():
+            print("M10: file:///" + str(M10_SMOKE_HTML.resolve()).replace("\\", "/"))
     else:
-        print("チェックリストが見つかりません:", CHECKLIST_MD)
+        print("チェックリストが見つかりません:", CHECKLIST_HTML)
     print("\n開発起動: cd dmig && npm run dev")
     print("=" * 60)
 
@@ -156,6 +223,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="自動点検を行わず手動チェックリストのみ表示",
     )
+    parser.add_argument(
+        "--m10-smoke",
+        action="store_true",
+        help="M10 ロールバック手動 smoke の報告シートとシナリオ一覧のみ表示",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="サブプロセス出力をそのまま表示")
     args = parser.parse_args(argv)
 
@@ -166,6 +238,10 @@ def main(argv: list[str] | None = None) -> int:
     version = _read_package_version()
     print(f"dmig smoke check - version {version}")
     print(f"repo: {REPO_ROOT}")
+
+    if args.m10_smoke:
+        _print_m10_smoke_report()
+        return 0
 
     if args.manual_only:
         _print_manual_checklist()
@@ -208,6 +284,8 @@ def main(argv: list[str] | None = None) -> int:
 
     code = _print_summary(results)
     _print_manual_checklist()
+    print()
+    print("M10 ロールバック手動 smoke の報告テンプレ: python scripts/run_smoke_check.py --m10-smoke")
     return code
 
 

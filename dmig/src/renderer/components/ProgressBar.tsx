@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ProgressEvent } from '../../shared/types.js';
+import { resolveDisplayPercentage } from '../../shared/progress.js';
 
 export type ProgressBarProps = {
   progress: ProgressEvent | null;
@@ -15,8 +16,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, variant = 'c
 
   const speed = progress.bytesPerSec ? formatSpeed(progress.bytesPerSec) : null;
   const eta = progress.etaSeconds ? formatEta(progress.etaSeconds) : null;
-  const fillWidth =
-    progress.percentage > 0 ? progress.percentage : progress.phase === 'discover' ? 8 : 0;
+  const displayPercent = resolveDisplayPercentage(progress);
+  const fillWidth = displayPercent;
 
   const body = (
     <>
@@ -24,7 +25,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ progress, variant = 'c
         <div className="fill" style={{ width: `${fillWidth}%` }} />
       </div>
       <div className="progress-text">
-        {progress.percentage}% — {progress.message}
+        {displayPercent}% — {progress.message}
       </div>
       {(speed || eta) && progress.phase !== 'discover' && (
         <div className="progress-stats">

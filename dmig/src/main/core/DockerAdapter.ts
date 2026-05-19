@@ -114,6 +114,19 @@ export class DockerAdapter {
   }
 
   /**
+   * docker images の Size（レイヤー合算・非圧縮目安）を返す。進捗バーの total に使う。
+   */
+  async getImageOriginalSize(imageRef: string): Promise<number> {
+    try {
+      const images = await this.listImages();
+      const match = images.find((i) => i.repoTags.includes(imageRef));
+      return match?.size ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  /**
    * 1イメージを tar ストリームとして取得 (docker save 相当)。
    */
   async saveImageStream(imageName: string): Promise<Readable> {

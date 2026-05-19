@@ -24,9 +24,9 @@ export const NEXT_STEPS_BY_PAGE: Record<PageKey, NextStepEntry> = {
     ctaTarget: 'compose',
   },
   compose: {
-    description: '選んだプロジェクトをパックに書き出します。',
-    ctaLabel: 'パックを書き出す',
-    ctaTarget: 'export',
+    description:
+      'このページの手順 1 から順に .dmig パックを書き出してください。Docker イメージだけの書き出しはサイドバー「パックを書き出す」を使います。',
+    showFooter: false,
     flowStep: { group: 'source', index: 1 },
   },
   export: {

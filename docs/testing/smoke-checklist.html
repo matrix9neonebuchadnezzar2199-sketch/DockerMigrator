@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>手動スモークチェックリスト（M5）— DockerMigrator</title>
+<style>
+:root {
+  --bg: #0f172a; --card: #1e293b; --text: #e2e8f0; --muted: #94a3b8; --heading: #cbd5e1;
+  --accent: #a78bfa; --border: #334155; --code-bg: #0b1220; --warn: #fbbf24;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body.doc {
+  margin: 0 auto; padding: 40px 20px 80px; max-width: 960px;
+  background: var(--bg); color: var(--text);
+  font-family: system-ui, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 15px; line-height: 1.7;
+}
+header { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+header h1 { margin: 0 0 6px; font-size: 26px; color: var(--accent); font-weight: 600; }
+header .subtitle { margin: 0; color: var(--muted); font-size: 14px; }
+header nav { margin-top: 12px; font-size: 14px; }
+a { color: var(--accent); }
+strong { color: var(--heading); }
+section {
+  margin: 22px 0; padding: 20px 24px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 10px;
+}
+section h2 { margin: 0 0 12px; font-size: 20px; color: var(--accent); }
+section h3 { margin: 16px 0 8px; font-size: 13px; color: var(--heading); text-transform: uppercase; letter-spacing: 0.3px; }
+code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px; font-size: 13px; font-family: ui-monospace, Consolas, monospace; }
+pre {
+  background: var(--code-bg); padding: 12px 14px; border-radius: 10px; border: 1px solid var(--border);
+  overflow-x: auto; font-size: 13px; font-family: ui-monospace, Consolas, monospace;
+}
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14px; }
+th { text-align: left; padding: 8px 10px; color: var(--muted); font-size: 12px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.checklist { list-style: none; padding: 0; margin: 8px 0; }
+.checklist li { margin: 6px 0; }
+.checklist label { display: flex; gap: 8px; cursor: pointer; }
+.checklist input { margin-top: 4px; accent-color: var(--accent); }
+.callout {
+  margin: 12px 0; padding: 12px 14px; border-left: 3px solid var(--warn);
+  background: rgba(251, 191, 36, 0.08); border-radius: 0 8px 8px 0; font-size: 14px;
+}
+</style>
+</head>
+<body class="doc">
+<header>
+  <h1>dmig 手動スモークチェックリスト（M5）</h1>
+  <p class="subtitle">Phase 6 第4回完了後の最小確認。lab 環境・テスト用 Docker のみ。</p>
+  <nav><a href="index.html">← テスト資料一覧</a> · <a href="m10-rollback-smoke-checklist.html">M10 ロールバック smoke（詳細）</a></nav>
+</header>
+
+<section id="auto">
+  <h2>自動点検（Python）</h2>
+  <p>リポジトリルートで:</p>
+  <pre><code>python scripts/run_smoke_check.py</code></pre>
+  <ul>
+    <li>実行内容: <code>typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code>、任意で <code>docker version</code></li>
+    <li>オプション: <code>--win</code>（<code>build:win</code>）、<code>--skip-build</code>、<code>--no-docker</code>、<code>-v</code>、<code>--manual-only</code>、<code>--m10-smoke</code></li>
+    <li>終了コード: 自動ステップがすべて成功なら <code>0</code></li>
+  </ul>
+</section>
+
+<section id="m10">
+  <h2>M10 ロールバック手動 smoke（必須・M10 完了判定）</h2>
+  <p><strong>報告はシナリオ ID（S1〜S7）と 1 対 1。</strong> コンソールにテンプレ表示:</p>
+  <pre><code>python scripts/run_smoke_check.py --m10-smoke</code></pre>
+  <p>詳細手順・合格条件・DevTools 切り分け:</p>
+  <p><a href="m10-rollback-smoke-checklist.html"><strong>m10-rollback-smoke-checklist.html</strong></a>（先頭がコピー用報告シート）</p>
+  <table>
+    <thead><tr><th>ID</th><th>概要（サイドバー表記）</th></tr></thead>
+    <tbody>
+      <tr><td>S1</td><td><strong>[移行先]</strong> <strong>パックを読み込む</strong> → 取り込み → <strong>ロールバック</strong></td></tr>
+      <tr><td>S2</td><td><strong>[移行先相当]</strong> <strong>プロジェクトを選ぶ</strong>［取り込む］→ <strong>ロールバック</strong>（<code>directory_not_empty</code>）</td></tr>
+      <tr><td>S3</td><td>再ロールバック（<code>already_executed</code>）</td></tr>
+      <tr><td>S4</td><td>旧 <code>.dmig</code> 非対応表示</td></tr>
+      <tr><td>S5</td><td><strong>書き出し</strong>（パックを書き出す / プロジェクトを選ぶ）→ <code>rollback.json</code> → ロールバック</td></tr>
+      <tr><td>S6</td><td>各ページ <strong>直近の操作を取り消す</strong>（インライン）</td></tr>
+      <tr><td>S7</td><td>directory 手動削除（任意・所感）</td></tr>
+    </tbody>
+  </table>
+  <div class="callout">
+    <strong>実施前:</strong> <code>npm run dev</code> を完全再起動（Main に <code>2a1efa4</code> 以降が載っていること）。
+  </div>
+</section>
+
+<section id="prereq">
+  <h2>前提</h2>
+  <ul class="checklist">
+    <li><label><input type="checkbox"> <code>cd dmig &amp;&amp; npm run dev</code> で起動</label></li>
+    <li><label><input type="checkbox"> Docker Desktop 稼働</label></li>
+  </ul>
+</section>
+
+<section id="source-flow">
+  <h2>移行元フロー</h2>
+  <ul class="checklist">
+    <li><label><input type="checkbox"> 起動時 <strong>移行元の概要</strong> が表示される</label></li>
+    <li><label><input type="checkbox"> StepIndicator（上）と NextStepFooter（下）が表示される</label></li>
+    <li><label><input type="checkbox"> 概要カードから「プロジェクトを選ぶ」で Compose へ</label></li>
+    <li><label><input type="checkbox"> ヘルプ / 用語集 → 用語フィルタ → <code>#partial-state</code> 深リンク</label></li>
+    <li><label><input type="checkbox"> 設定 → 「前回ページを復元」を ON → 再起動で直前ページに戻る</label></li>
+  </ul>
+</section>
+
+<section id="docker-off">
+  <h2>Docker 未接続（任意）</h2>
+  <ul class="checklist">
+    <li><label><input type="checkbox"> Docker 停止時、Footer に起動案内（CTA なし）</label></li>
+  </ul>
+</section>
+
+<section id="target-flow">
+  <h2>移行先</h2>
+  <ul class="checklist">
+    <li><label><input type="checkbox"> 移行先概要 → パックを読み込む → Import</label></li>
+    <li><label><input type="checkbox"> StepIndicator が 2 段で step 2 がハイライト（Import 時）</label></li>
+  </ul>
+</section>
+
+<section id="build">
+  <h2>ビルド（任意）</h2>
+  <ul class="checklist">
+    <li><label><input type="checkbox"> <code>npm run build</code> 成功</label></li>
+    <li><label><input type="checkbox"> <code>npm run build:win</code>（Windows のみ）</label></li>
+  </ul>
+</section>
+</body>
+</html>
