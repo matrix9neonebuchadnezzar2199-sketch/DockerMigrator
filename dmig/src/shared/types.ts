@@ -265,6 +265,14 @@ export interface ImportRequest extends Cancellable {
   selectedImages: string[];
 }
 
+/** アプリ設定（userData/dmig-settings.json）。フィールドは段階的に拡張する。 */
+export interface DmigSettings {
+  /** ウェルカムウィザードを完了したか（true で自動表示しない） */
+  welcomeWizardCompleted?: boolean;
+  /** 最後にウィザードを完了またはスキップした日時（ISO8601） */
+  welcomeWizardLastShownAt?: string;
+}
+
 export interface DmigErrorPayload {
   code: string;
   message: string;
