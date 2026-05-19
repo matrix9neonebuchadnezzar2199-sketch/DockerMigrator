@@ -43,6 +43,8 @@ function makeDmigMock(overrides: Partial<DmigAPI> = {}): DmigAPI {
     computeDiff: vi.fn(),
     composeLifecycle: vi.fn(),
     pruneDanglingImages: vi.fn(),
+    getSettings: vi.fn().mockResolvedValue({ ok: true, data: { welcomeWizardCompleted: true } }),
+    updateSettings: vi.fn(),
     ...overrides,
   } as DmigAPI;
 }
