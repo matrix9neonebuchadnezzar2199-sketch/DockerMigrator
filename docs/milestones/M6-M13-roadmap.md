@@ -86,7 +86,7 @@ flowchart TB
 | — | Phase 7 | 中断・再開のテスト厚め | fixture + main テスト拡充 | R3 | **完了** |
 | — | 第4回 UI | 地図・辞書・コンパス・現在地 | Overview / Help / Footer / Indicator | A | **完了** |
 | — | M1–M5 | PoC 仕上げ | 設定最小・Lucide・smoke・`v0.3.0-poc` | 第4回 UI | **完了** |
-| **M6** | 配布・リリース整備 | PoC を触れる形で固定 | Release、`build:win`、smoke、**§9.1 対応表** | M1–M5 | **着手次** |
+| **M6** | 配布・リリース整備 | PoC を触れる形で固定 | Release notes、`build:win`、smoke、§9.1 確認 | M1–M5 | **完了**（2026-05-19、`v0.3.0-poc` タグは M1 時点） |
 | **M8** | UX v3（横断） | M4 見送り・第4回仕上げ | D-004 / D-005、Lucide 拡張 | M6 | 未着手 |
 | **M7** | 設定 v2 | 機能連動の設定束ね | 閾値・保持期間等 + `defaultExportDir` 配線。theme/i18n は M11 寄り | M10 | 未着手 |
 | **M9** | ドライラン UI（A） | 仕様 S4 を GUI 統合 | Validator / preflight 横断 UI | コア一部あり | **部分** |
@@ -98,14 +98,15 @@ flowchart TB
 
 ---
 
-## M6 — 配布・リリース整備（次着手）
+## M6 — 配布・リリース整備（完了 2026-05-19）
 
 | 項目 | 内容 |
 |------|------|
 | スコープ | GitHub Release 本文（バイナリなし可）、`build:win` 手動/CI、smoke 定着、**仕様書 §9.1 Phase↔M 対応表**（案 B） |
 | 既存 | `scripts/run_smoke_check.py`、タグ `v0.3.0-poc`、`docs/testing/smoke-checklist.md` |
 | 判断 | [D-002](./M1-M5-implementation-log.md) Release、[D-010](./M6-M13-roadmap.md) 対応表、[D-011](./M6-M13-roadmap.md) M6 スコープ |
-| コード | 最小（build スクリプト微調整程度）。指示書は `docs/instructions/phase6-m6-distribution-instructions.md` 予定 |
+| 成果物 | `docs/releases/v0.3.0-poc.md`、`docs/instructions/m6-release-prep-instructions.md` |
+| タグ | `v0.3.0-poc` は M1–M5 時点で付与済み（M6 では付け替えなし） |
 
 ---
 
@@ -179,3 +180,4 @@ flowchart TB
 |------|------|
 | 2026-05-19 | 初版（チャットで合意した全体設計を文書化） |
 | 2026-05-19 | 確定方針 D-009〜D-012、着手順 M6→M8→…、案 B（§9.1）を M6 に内包 |
+| 2026-05-19 | M6 完了: Release 本文リポジトリ保存、build:win / smoke 検証（コミットは日記参照） |
