@@ -59,7 +59,7 @@ Phase 6 第4回の実施順序（Step B 撤回後）: **A → F → C → E → 
 | F | ヘルプ/用語集（18 語・hash 深リンク）、SVG アイコン | **完了**（アイコンは stretch、未実施） |
 | C | SourceOverview / TargetOverview、初期 PageKey `source-overview` | **完了** |
 | E | NextStepFooter（静的・G1・F3 配置） | **完了** |
-| D | ステップインジケータ | 未着手 |
+| D | StepIndicator（`flowSteps` + 静的表示） | **完了** |
 
 ### Step B 撤回（2026-05-19）
 

@@ -7,6 +7,7 @@
 
 ### Added
 
+- Phase 6 第4回 Step D: 作業ページ上部の StepIndicator（移行元 3 段 / 移行先 1 段、`flowSteps.ts` + `nextSteps.flowStep` 連携）。
 - Phase 6 第4回 Step E: 全ページ横断の「次にやること」フッター（`NextStepFooter` / `nextSteps.ts`）、`App.tsx` の `.main-body` + sticky フッター構成。Help ページでは非表示。
 - Phase 6 第4回 Step C: 移行元・移行先の概要ページ（`SourceOverviewPage` / `TargetOverviewPage`）、サイドバー各グループ先頭「概要」、起動時初期表示を `source-overview` に変更。
 - Phase 6 第4回 Step F: サイドバー共通に「ヘルプ / 用語集」、`HelpPage`（使い方ガイド + 用語集 18 語・フィルタ・`#hash` 深リンク）、`glossary.ts` データ。

@@ -679,4 +679,11 @@ dmig/
 - CTA あり: `source-overview`→compose、`compose`→export、`target-overview`→import。CTA なし: export / resume / import（ページ内操作に任せる）。
 - `flowStep` フィールドは Step D（StepIndicator）向けに定義済み。Docker 接続表示・非表示トグルは含めない。
 
+### 12.7 StepIndicator（Step D）
+
+- `App.tsx` の `.main-body` 先頭に配置。`flowStep` がある作業ページのみ表示（compose / export / resume / import）。
+- データ: `flowSteps.ts`（パイプラインラベル）+ `nextSteps.ts` の `flowStep`（現在地 index）。完全静的。
+- 移行元: ① プロジェクトを選ぶ → ② パックを書き出す → ③ 中断パックを再開。移行先: ① パックを読み込む。
+- 概要・Help では非表示。クリック遷移なし（表示専用）。NextStepFooter と役割分担（現在地 / 次アクション）。
+
 ---
