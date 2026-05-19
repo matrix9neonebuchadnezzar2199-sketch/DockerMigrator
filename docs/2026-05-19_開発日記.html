@@ -411,6 +411,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1120">詳細</a></td>
       </tr>
+      <tr>
+        <td>11:33</td>
+        <td>Phase 6 第4回 Step C: 概要ページ（移行元・移行先、初期 source-overview）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1133">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -622,6 +628,40 @@ body.diary > footer {
     <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code></li>
     <li>テスト: <strong>67 passed</strong>, 1 skipped（Step B 撤回後 60 から +7）</li>
     <li>Commit: <code>67f4b85</code> 指示書 / <code>2d55db8</code> feat / <code>2e34d90</code> test / <code>d2fdb53</code> docs（<code>main</code> push 済み）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1133">
+  <h2>Phase 6 第4回 Step C: 概要ページ（Source / Target Overview）</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 11:33</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>移行元・移行先それぞれに<strong>概要ページ</strong>（<code>source-overview</code> / <code>target-overview</code>）を追加。3 セクション（できること / 作業の流れ / 作業ページカード）とカードからの 1 クリック遷移。起動時初期 <code>PageKey</code> を <code>compose</code> から <code>source-overview</code> に変更。動的情報・Docker 接続表示は入れず静的のみ（Step E に譲る）。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>Help = 用語・詳細、Overview = グループ単位の地図、作業ページ = 本番の三層を維持。</li>
+    <li>移行元第一カードを <code>.overview-card-primary</code> で主 CTA 化（リピーターは 1 クリックで compose へ）。</li>
+    <li>事前調査: <code>PageKey</code> は <code>App.tsx</code> のみ（<code>types.ts</code> には未定義）。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>SourceOverviewPage.tsx</code>, <code>TargetOverviewPage.tsx</code>、各 test</li>
+    <li><span class="op op-mod">~</span> <code>App.tsx</code>, <code>Sidebar.tsx</code>, <code>styles.css</code>, <code>HelpPage.tsx</code>（PageKey ラベル）</li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code> §12.5, UI メモ, CHANGELOG</li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code></li>
+    <li>テスト: <strong>75 passed</strong>, 1 skipped（Step F 後 67 から +8）</li>
+    <li>Commit: PENDING（push 後 SHA 追記）</li>
   </ul>
 </section>
 </main>

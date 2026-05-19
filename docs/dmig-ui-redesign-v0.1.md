@@ -7,11 +7,13 @@
 
 ```
 移行元での作業 (📤)
+  - 概要（Step C 完了、`source-overview`・起動時初期ページ）
   - プロジェクトを選ぶ   ← 旧 Compose まるごと
   - パックを書き出す       ← 旧 イメージ エクスポート
   - 中断したパックを再開   ← 新規（Resume ページ）
 
 移行先での作業 (📥)
+  - 概要（Step C 完了、`target-overview`）
   - パックを読み込む         ← 旧 イメージ インポート
 
 共通 (⚙)
@@ -55,7 +57,7 @@ Phase 6 第4回の実施順序（Step B 撤回後）: **A → F → C → E → 
 | A | サイドバー 3 グループ、`ResumePage`、`listResumablePackages` | 完了 |
 | B | 初回起動ウィザード（`WelcomeWizard` / Settings JSON） | **撤回**（2026-05-19） |
 | F | ヘルプ/用語集（18 語・hash 深リンク）、SVG アイコン | **完了**（アイコンは stretch、未実施） |
-| C | SourceOverview / TargetOverview、取り込み状況 | 未着手 |
+| C | SourceOverview / TargetOverview、初期 PageKey `source-overview` | **完了** |
 | E | 「次にやること」フッター | 未着手 |
 | D | ステップインジケータ | 未着手 |
 

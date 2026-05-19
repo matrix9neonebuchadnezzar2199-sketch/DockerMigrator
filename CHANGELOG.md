@@ -7,6 +7,7 @@
 
 ### Added
 
+- Phase 6 第4回 Step C: 移行元・移行先の概要ページ（`SourceOverviewPage` / `TargetOverviewPage`）、サイドバー各グループ先頭「概要」、起動時初期表示を `source-overview` に変更。
 - Phase 6 第4回 Step F: サイドバー共通に「ヘルプ / 用語集」、`HelpPage`（使い方ガイド + 用語集 18 語・フィルタ・`#hash` 深リンク）、`glossary.ts` データ。
 - Phase 6 第4回 Step A: サイドバーを移行元/移行先/共通の3グループに再構成、`ResumePage`（中断パック検索・再開）、`dmig:listResumablePackages` IPC と `ResumableScanner`（浅い走査 + `ok_partial` のみ列挙）。
 - Phase 7 test coverage: importImages 新シグネチャ、ComposeImporter 経路、Exporter 中断・再開シナリオ、`dmig:resumeExport` IPC integration、`validatePartialState` 境界、`DockerAdapter` の `DOCKER_HOST` 分岐の単体・統合テストを追加（19 → 44 件、+25 件）。
