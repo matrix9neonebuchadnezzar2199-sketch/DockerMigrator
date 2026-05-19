@@ -617,6 +617,108 @@ input[type='text'] {
   gap: 8px;
   justify-content: flex-end;
 }
+
+/* ウェルカムウィザード（Step B） */
+.welcome-wizard-overlay {
+  z-index: 1100;
+}
+.welcome-wizard-panel {
+  min-width: min(600px, 92vw);
+  padding: 0;
+}
+.welcome-wizard-title {
+  margin: 0;
+  padding: 20px 20px 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #cdd6f4;
+  outline: none;
+}
+.welcome-wizard-intro {
+  margin: 12px 20px 0;
+}
+.welcome-wizard-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+.welcome-wizard-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  width: 100%;
+  padding: 16px 18px;
+  text-align: left;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  color: #cdd6f4;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.welcome-wizard-choice:hover {
+  background: #45475a;
+  border-color: #89b4fa;
+}
+.welcome-wizard-choice:focus-visible {
+  outline: 2px solid #89b4fa;
+  outline-offset: 2px;
+}
+.welcome-wizard-choice-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.welcome-wizard-choice-label {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.welcome-wizard-choice-desc {
+  font-size: 0.9rem;
+  color: #a6adc8;
+  line-height: 1.5;
+}
+.welcome-wizard-footer {
+  padding: 0 20px 20px;
+  text-align: center;
+}
+.welcome-wizard-skip {
+  background: none;
+  border: none;
+  color: #89b4fa;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.welcome-wizard-skip:hover {
+  color: #b4befe;
+}
+.sidebar--nav-disabled .sidebar-nav {
+  pointer-events: none;
+  opacity: 0.45;
+}
+.sidebar-welcome-replay {
+  display: block;
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  color: #cdd6f4;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.sidebar-welcome-replay:hover:not(:disabled) {
+  border-color: #89b4fa;
+}
+.sidebar-welcome-replay:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn-primary {
   background: #89b4fa;
   color: #1e1e2e;
