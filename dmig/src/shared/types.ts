@@ -619,6 +619,86 @@ export interface DryRunResult {
   warnings: string[];
 }
 
+// ─────────────────────────────────────────────────────────────────
+// M10: ロールバック（rollback.json）
+// ─────────────────────────────────────────────────────────────────
+
+export type RollbackKind = 'import' | 'export';
+
+export type RollbackEntryType =
+  | 'docker-image'
+  | 'docker-volume'
+  | 'docker-network'
+  | 'file'
+  | 'directory';
+
+export interface RollbackEntry {
+  id: string;
+  type: RollbackEntryType;
+  target: string;
+  hint?: string;
+}
+
+export interface RollbackRecord {
+  schemaVersion: 1;
+  kind: RollbackKind;
+  createdAt: string;
+  executedAt?: string;
+  packageDir: string;
+  entries: RollbackEntry[];
+}
+
+export interface RollbackSummary {
+  packageDir: string;
+  kind: RollbackKind;
+  createdAt: string;
+  executedAt?: string;
+  entryCount: number;
+  /** false = manifest はあるが rollback.json なし（M10 以前） */
+  supported: boolean;
+}
+
+export interface ListRollbacksRequest {
+  rootDir: string;
+  maxDepth?: number;
+}
+
+export interface ListRollbacksResult {
+  records: RollbackSummary[];
+  /**
+   * 予約警告コード:
+   * - `truncated_at_50` — 件数上限
+   * - `root_not_found` — ルート不在
+   */
+  warnings: string[];
+}
+
+export interface RunRollbackRequest {
+  packageDir: string;
+  entryIds?: string[];
+}
+
+/** イメージエクスポート IPC の成功ペイロード */
+export interface ExportImagesResult {
+  manifest: DmigManifest;
+  packDir: string;
+}
+
+export interface RunRollbackResult {
+  succeeded: string[];
+  skipped: string[];
+  failed: { id: string; error: string }[];
+  /**
+   * 予約警告コード:
+   * - `already_executed` — 既にロールバック済み
+   * - `image_id_unresolved` — 記録時に image ID 未取得
+   * - `target_not_found` — 対象が既に無い（skipped にも入る場合あり）
+   * - `directory_not_empty` — ディレクトリが空でないため削除スキップ
+   * - `docker_unreachable` — Docker API 失敗
+   */
+  warnings: string[];
+}
+
 /**
  * エラーレポート ZIP 生成リクエスト。
  */
