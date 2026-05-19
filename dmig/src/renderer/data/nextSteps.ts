@@ -63,6 +63,10 @@ export const NEXT_STEPS_BY_PAGE: Record<PageKey, NextStepEntry> = {
     description: '',
     showFooter: false,
   },
+  rollback: {
+    description: 'フォルダを選び、取り消し可能なパックからロールバックを実行できます。',
+    showFooter: false,
+  },
 };
 
 /** フッター表示用エントリ。非表示ページは null。 */

@@ -10,6 +10,7 @@ import {
   Settings,
   Upload,
   FlaskConical,
+  Undo2,
 } from 'lucide-react';
 import type { PageKey } from '../App.js';
 
@@ -125,6 +126,13 @@ export const Sidebar: React.FC<{
           current={page}
           label="ドライラン"
           icon={<FlaskConical size={ICON_SIZE} />}
+          onChange={onChange}
+        />
+        <NavItem
+          page="rollback"
+          current={page}
+          label="ロールバック"
+          icon={<Undo2 size={ICON_SIZE} />}
           onChange={onChange}
         />
         <NavItem

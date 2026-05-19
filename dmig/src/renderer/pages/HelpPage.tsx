@@ -15,6 +15,7 @@ const RELATED_PAGE_LABELS: Record<PageKey, string> = {
   settings: '設定',
   logs: 'ログ',
   dryrun: 'ドライラン',
+  rollback: 'ロールバック',
 };
 
 function applyHashToTab(

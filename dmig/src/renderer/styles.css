@@ -1674,3 +1674,93 @@ input[type='text'] {
   font-size: 0.9rem;
   color: #a6adc8;
 }
+
+/* M10: Rollback UI */
+.rollback-page .page-lead {
+  color: #a6adc8;
+  margin-bottom: 1rem;
+}
+
+.rollback-scan-root {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #a6adc8;
+}
+
+.rollback-empty {
+  color: #a6adc8;
+}
+
+.rollback-package-card {
+  margin-top: 0.75rem;
+}
+
+.rollback-package-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rollback-package-path {
+  font-size: 0.85rem;
+  color: #a6adc8;
+  word-break: break-all;
+  margin-top: 0.35rem;
+}
+
+.rollback-kind-badge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  background: #45475a;
+  color: #cdd6f4;
+}
+
+.rollback-kind-import {
+  background: #89b4fa;
+  color: #1e1e2e;
+}
+
+.rollback-kind-export {
+  background: #f9e2af;
+  color: #1e1e2e;
+}
+
+.rollback-unsupported,
+.rollback-warn {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.rollback-warn,
+.rollback-directory-warn {
+  color: #f9e2af;
+}
+
+.rollback-error {
+  color: #f38ba8;
+}
+
+.rollback-entry-breakdown {
+  margin: 0.5rem 0 0 1.25rem;
+  padding: 0;
+}
+
+.rollback-entry-breakdown-warn {
+  color: #f38ba8;
+  font-weight: 600;
+}
+
+.rollback-result-summary {
+  margin-top: 1rem;
+}
+
+.rollback-failed-list {
+  margin: 0.5rem 0 0 1.25rem;
+  color: #f38ba8;
+}
+
+.rollback-inline-section h3 {
+  margin-top: 0;
+}

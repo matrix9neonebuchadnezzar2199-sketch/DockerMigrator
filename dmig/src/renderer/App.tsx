@@ -13,6 +13,7 @@ import { TargetOverviewPage } from './pages/TargetOverviewPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
 import { LogsPage } from './pages/LogsPage.js';
 import { DryRunPage } from './pages/DryRunPage.js';
+import { RollbackPage } from './pages/RollbackPage.js';
 import { DynamicCtaProvider } from './context/DynamicCtaContext.js';
 import { LogBufferProvider } from './hooks/useLogBuffer.js';
 
@@ -26,7 +27,8 @@ export type PageKey =
   | 'help'
   | 'settings'
   | 'logs'
-  | 'dryrun';
+  | 'dryrun'
+  | 'rollback';
 
 const VALID_PAGES: PageKey[] = [
   'source-overview',
@@ -39,6 +41,7 @@ const VALID_PAGES: PageKey[] = [
   'settings',
   'logs',
   'dryrun',
+  'rollback',
 ];
 
 function isPageKey(value: string): value is PageKey {
@@ -115,6 +118,7 @@ export const App: React.FC = () => {
           {page === 'settings' && <SettingsPage />}
               {page === 'logs' && <LogsPage />}
               {page === 'dryrun' && <DryRunPage />}
+              {page === 'rollback' && <RollbackPage />}
             </div>
             <NextStepFooter page={page} onNavigate={setPage} dockerConnected={dockerConnected} />
           </div>
