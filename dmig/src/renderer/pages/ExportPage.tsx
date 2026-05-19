@@ -9,6 +9,7 @@ import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
+import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
 
 const IMAGE_LIST_PROGRESS_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.IMAGE_LIST,
@@ -30,6 +31,7 @@ export const ExportPage: React.FC = () => {
   const [listing, setListing] = useState(true);
   const [done, setDone] = useState<string | null>(null);
   const [resumeHint, setResumeHint] = useState<string | null>(null);
+  const [dryRunHasErrors, setDryRunHasErrors] = useState(false);
 
   const discoverProgress = useDmigProgress('discover');
   const transferProgress = useDmigProgress('transfer');
@@ -147,7 +149,27 @@ export const ExportPage: React.FC = () => {
         <div>
           上記をパックに含めて書き出します。実行中は進捗バーが更新されます。
         </div>
-        <button onClick={() => void start()} disabled={running || listing || selected.size === 0} style={{ marginTop: 8 }}>
+        <DryRunInlineSection
+          buildRequest={() =>
+            outputDir && selected.size > 0
+              ? {
+                  mode: 'export-pack',
+                  outputDir,
+                  imageNames: Array.from(selected),
+                }
+              : null
+          }
+          onHasErrorFindings={setDryRunHasErrors}
+        />
+
+        <button
+          onClick={() => void start()}
+          disabled={running || listing || selected.size === 0}
+          style={{ marginTop: 8 }}
+          title={
+            dryRunHasErrors ? 'ドライランでエラー検出。確認してください' : undefined
+          }
+        >
           {running ? '実行中...' : '▶ エクスポート開始'}
         </button>
       </div>

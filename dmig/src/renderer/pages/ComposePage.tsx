@@ -36,6 +36,7 @@ import {
   transferSecondsAtUsbAssumption,
   USB_ASSUMED_BYTES_PER_SEC,
 } from '../utils/formatTransfer.js';
+import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
 
 type Phase = 'browse' | 'bindDlg' | 'secretDlg' | 'running' | 'done';
 
@@ -97,6 +98,7 @@ export const ComposePage: React.FC = () => {
   /** compose stop/pull 実行中のプロジェクト名（ボタン連打防止） */
   const [composeLifecycleBusy, setComposeLifecycleBusy] = useState<string | null>(null);
   const preflightDebounceGen = useRef(0);
+  const [dryRunHasErrors, setDryRunHasErrors] = useState(false);
 
   const refreshProjects = useCallback(async () => {
     setLoading(true);
@@ -791,11 +793,29 @@ export const ComposePage: React.FC = () => {
                 )}
               </div>
             )}
+            <DryRunInlineSection
+              buildRequest={() =>
+                outputDir && selected.size > 0
+                  ? {
+                      mode: 'compose-project',
+                      outputDir,
+                      projectNames: Array.from(selected),
+                    }
+                  : null
+              }
+              onHasErrorFindings={setDryRunHasErrors}
+            />
+
             <button
               type="button"
               onClick={() => void startExport()}
               disabled={phase === 'running' || selected.size === 0}
               style={{ marginTop: 8 }}
+              title={
+                dryRunHasErrors
+                  ? 'ドライランでエラー検出。確認してください'
+                  : undefined
+              }
             >
               {phase === 'running' ? '実行中...' : '▶ エクスポート開始'}
             </button>
