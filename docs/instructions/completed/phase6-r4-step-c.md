@@ -1,3 +1,7 @@
+> **アーカイブ済み (2026-05-19)**: Step C 完了。リリース `v0.3.0-poc`。再実行用ではなく履歴参照用。
+
+---
+
 # Phase 6 第4回 Step C 指示書: 概要ページ（SourceOverview / TargetOverview）
 
 ## 0. 前提と目的

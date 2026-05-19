@@ -683,7 +683,27 @@ dmig/
 
 - `App.tsx` の `.main-body` 先頭に配置。`flowStep` がある作業ページのみ表示（compose / export / resume / import）。
 - データ: `flowSteps.ts`（パイプラインラベル）+ `nextSteps.ts` の `flowStep`（現在地 index）。完全静的。
-- 移行元: ① プロジェクトを選ぶ → ② パックを書き出す → ③ 中断パックを再開。移行先: ① パックを読み込む。
-- 概要・Help では非表示。クリック遷移なし（表示専用）。NextStepFooter と役割分担（現在地 / 次アクション）。
+- 移行元: ① プロジェクトを選ぶ → ② パックを書き出す → ③ 中断パックを再開。移行先: ① 概要でパック確認 → ② パックを読み込む（M4）。
+- `source-overview` / Help / settings では非表示。`target-overview` では移行先 step 1 を表示（M4）。
+- ステップラベルはボタン化し、`onNavigate` で対応 `PageKey` へ遷移可能（M4）。NextStepFooter と役割分担（現在地 / 次アクション）。
+
+### 12.8 設定ページ（M3）
+
+- `page === 'settings'`。サイドバー共通グループ「設定」から遷移。
+- 永続化: `app.getPath('userData')/dmig-settings.json`（`DmigSettingsStore`）。
+- IPC: `dmig:getSettings` / `dmig:updateSettings`（Step B 撤回時の API 名は再利用、フィールドは再設計）。
+- フィールド: `defaultExportDir?`, `restoreLastPage`（既定 false）, `lastPage?`。`restoreLastPage` が true のとき起動時に `lastPage` を復元、さもなければ `source-overview`。
+- theme / 言語は未実装（判断 D-003）。ログビューアは見送り（D-005）。
+
+### 12.9 横断 UX v2（M4）
+
+- **NextStepFooter**: `dockerConnected === false` のとき Docker 起動案内のみ（CTA 非表示）。Compose 選択に応じた動的 CTA は見送り（D-004）。
+- **useResumeFlow**: Import / Resume で中断パック再開ダイアログを共有。
+- **用語集**: `partial-state` / `pending-chunks` / `interrupted-pack` / `resume-export` の関連ページは `source-overview`（M2）。
+
+### 12.10 品質（M5）
+
+- 手動: `docs/testing/smoke-checklist.md`。
+- 自動: `dmig/src/renderer/App.integration.test.tsx`（起動・設定遷移の smoke）。Playwright 実 E2E は見送り（D-006）。
 
 ---

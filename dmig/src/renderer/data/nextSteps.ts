@@ -41,12 +41,17 @@ export const NEXT_STEPS_BY_PAGE: Record<PageKey, NextStepEntry> = {
     description: '持ち込んだ .dmig パックを選んで内容を確認しましょう。',
     ctaLabel: 'パックを読み込む',
     ctaTarget: 'import',
+    flowStep: { group: 'target', index: 1 },
   },
   import: {
     description: '内容を確認したら、ページ内の取り込みを実行してください。',
-    flowStep: { group: 'target', index: 1 },
+    flowStep: { group: 'target', index: 2 },
   },
   help: {
+    description: '',
+    showFooter: false,
+  },
+  settings: {
     description: '',
     showFooter: false,
   },

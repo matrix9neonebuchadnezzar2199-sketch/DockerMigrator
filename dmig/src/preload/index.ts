@@ -26,6 +26,7 @@ import type {
   ListResumablePackagesRequest,
   ListResumablePackagesResult,
 } from '../shared/types.js';
+import type { DmigSettings } from '../shared/settings.js';
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: DmigErrorPayload };
 
@@ -85,6 +86,9 @@ export interface DmigAPI {
   composeLifecycle(req: ComposeLifecycleRequest): Promise<Result<void>>;
   /** dangling イメージの prune（確認ダイアログあり） */
   pruneDanglingImages(): Promise<Result<{ skipped: true } | { skipped: false; stdout: string }>>;
+
+  getSettings(): Promise<Result<DmigSettings>>;
+  updateSettings(patch: Partial<DmigSettings>): Promise<Result<DmigSettings>>;
 }
 
 const api: DmigAPI = {
@@ -124,6 +128,9 @@ const api: DmigAPI = {
 
   composeLifecycle: (req) => ipcRenderer.invoke('dmig:composeLifecycle', req),
   pruneDanglingImages: () => ipcRenderer.invoke('dmig:pruneDanglingImages'),
+
+  getSettings: () => ipcRenderer.invoke('dmig:getSettings'),
+  updateSettings: (patch) => ipcRenderer.invoke('dmig:updateSettings', patch),
 };
 
 contextBridge.exposeInMainWorld('dmig', api);

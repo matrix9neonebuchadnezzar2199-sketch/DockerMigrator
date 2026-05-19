@@ -12,6 +12,7 @@ const RELATED_PAGE_LABELS: Record<PageKey, string> = {
   'target-overview': '移行先での作業 — 概要',
   import: 'パックを読み込む',
   help: 'ヘルプ / 用語集',
+  settings: '設定',
 };
 
 function applyHashToTab(
@@ -143,6 +144,19 @@ export const HelpPage: React.FC<{ onNavigate?: (page: PageKey) => void }> = ({ o
                 </dl>
               </section>
 
+              {onNavigate ? (
+                <p className="help-overview-link-wrap">
+                  <button
+                    type="button"
+                    className="help-overview-link"
+                    onClick={() => onNavigate('source-overview')}
+                  >
+                    移行元の概要ページを開く
+                  </button>
+                  {' '}
+                  — 全体の流れと作業カードへの入口です。
+                </p>
+              ) : null}
               <p className="help-static-guides-note">
                 各作業ページの右上にも、その画面に合わせた詳しい説明（解説パネル）があります。用語の意味は「用語集」タブまたは下の一覧で確認できます。
               </p>

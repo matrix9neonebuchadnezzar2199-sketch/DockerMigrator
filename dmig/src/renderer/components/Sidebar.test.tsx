@@ -41,6 +41,15 @@ describe('Sidebar', () => {
     expect(onChange).toHaveBeenCalledWith('target-overview');
   });
 
+  it('設定をクリックすると onChange(settings) が呼ばれる', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Sidebar page="compose" onChange={onChange} dockerVersion="24.0" />);
+    const nav = screen.getByRole('navigation', { name: 'メインメニュー' });
+    await user.click(within(nav).getByRole('button', { name: '設定' }));
+    expect(onChange).toHaveBeenCalledWith('settings');
+  });
+
   it('ヘルプ / 用語集をクリックすると onChange(help) が呼ばれる', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

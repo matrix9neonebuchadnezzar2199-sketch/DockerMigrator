@@ -30,9 +30,23 @@
 
 本リポジトリの本体アプリは **`dmig/`** 以下の **Electron + React + TypeScript** アプリケーションです。Docker Engine API（[dockerode](https://github.com/apocas/dockerode)）を用いてローカルの Docker Desktop と通信し、USB 等への退避や別マシンへの持ち込みを想定したワークフローを提供します。
 
-現行バージョン（`dmig/package.json` の `version`）: **`0.2.0-poc`**（概念実証。本番運用前提の保証はありません）。
+現行バージョン（`dmig/package.json` の `version`）: **`0.3.0-poc`**（概念実証。本番運用前提の保証はありません）。
 
-Git リモートには **`v0.1.0-poc`** の [annotated tag](https://github.com/matrix9neonebuchadnezzar2199-sketch/DockerMigrator/releases/tag/v0.1.0-poc) を付与済みです（GitHub の「Releases」に説明文やバイナリを載せるのは任意です。タグだけでも `git checkout` や比較の基点になります）。
+Git タグ: **`v0.3.0-poc`**（Phase 6 第3回 manifest 1.1 + 第4回 UI 改革）、**`v0.2.0-poc`**、**`v0.1.0-poc`**。詳細は [CHANGELOG.md](./CHANGELOG.md) と [GitHub Releases](https://github.com/matrix9neonebuchadnezzar2199-sketch/DockerMigrator/releases) を参照。
+
+### UI の入口（Phase 6 第4回）
+
+サイドバーは **移行元 / 移行先 / 共通** の 3 グループ。起動時は **移行元の概要**（`source-overview`）が開きます。
+
+| 層 | 役割 |
+|----|------|
+| **概要ページ** | グループ単位の「地図」（できること・作業カード） |
+| **ヘルプ / 用語集** | 用語と詳細フロー（`#hash` 深リンク） |
+| **StepIndicator** | 作業ページ上部の現在地（移行元 3 段 / 移行先 2 段、クリックでジャンプ可） |
+| **NextStepFooter** | 画面下端の「次にやること」案内（Docker 未接続時は起動案内のみ） |
+| **設定** | 既定エクスポート先・前回ページ復元（`dmig-settings.json`） |
+
+設計メモ: [docs/dmig-ui-redesign-v0.1.md](./docs/dmig-ui-redesign-v0.1.md)、仕様書 §12。
 
 ---
 

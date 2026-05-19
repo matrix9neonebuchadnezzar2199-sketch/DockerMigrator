@@ -10,6 +10,7 @@ import { ResumePage } from './pages/ResumePage.js';
 import { HelpPage } from './pages/HelpPage.js';
 import { SourceOverviewPage } from './pages/SourceOverviewPage.js';
 import { TargetOverviewPage } from './pages/TargetOverviewPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
 
 export type PageKey =
   | 'source-overview'
@@ -18,20 +19,57 @@ export type PageKey =
   | 'resume'
   | 'target-overview'
   | 'import'
-  | 'help';
+  | 'help'
+  | 'settings';
+
+const VALID_PAGES: PageKey[] = [
+  'source-overview',
+  'compose',
+  'export',
+  'resume',
+  'target-overview',
+  'import',
+  'help',
+  'settings',
+];
+
+function isPageKey(value: string): value is PageKey {
+  return (VALID_PAGES as string[]).includes(value);
+}
 
 export const App: React.FC = () => {
   const [page, setPage] = useState<PageKey>('source-overview');
+  const [appReady, setAppReady] = useState(false);
   const [dockerVersion, setDockerVersion] = useState<string>('未接続');
-  /** 一度でも開いたページはアンマウントせず状態を保持する */
-  const [composeVisited, setComposeVisited] = useState(page === 'compose');
+  const [dockerConnected, setDockerConnected] = useState(false);
+  const [composeVisited, setComposeVisited] = useState(false);
 
   useEffect(() => {
     void window.dmig.ping().then((r) => {
-      if (r.ok) setDockerVersion(r.data.version);
-      else setDockerVersion(`エラー: ${r.error.code}`);
+      if (r.ok) {
+        setDockerVersion(r.data.version);
+        setDockerConnected(true);
+      } else {
+        setDockerVersion(`エラー: ${r.error.code}`);
+        setDockerConnected(false);
+      }
     });
   }, []);
+
+  useEffect(() => {
+    void window.dmig.getSettings().then((r) => {
+      if (r.ok && r.data.restoreLastPage && r.data.lastPage && isPageKey(r.data.lastPage)) {
+        setPage(r.data.lastPage);
+        if (r.data.lastPage === 'compose') setComposeVisited(true);
+      }
+      setAppReady(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!appReady) return;
+    void window.dmig.updateSettings({ lastPage: page });
+  }, [page, appReady]);
 
   useEffect(() => {
     if (page === 'compose') {
@@ -39,12 +77,20 @@ export const App: React.FC = () => {
     }
   }, [page]);
 
+  if (!appReady) {
+    return (
+      <div className="main app-loading">
+        <p>読み込み中…</p>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
       <div className="main">
         <div className="main-body">
-          <StepIndicator page={page} />
+          <StepIndicator page={page} onNavigate={setPage} />
           {page === 'source-overview' && <SourceOverviewPage onNavigate={setPage} />}
           {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
           {page === 'export' && <ExportPage />}
@@ -56,8 +102,9 @@ export const App: React.FC = () => {
           )}
           {page === 'resume' && <ResumePage />}
           {page === 'help' && <HelpPage onNavigate={setPage} />}
+          {page === 'settings' && <SettingsPage />}
         </div>
-        <NextStepFooter page={page} onNavigate={setPage} />
+        <NextStepFooter page={page} onNavigate={setPage} dockerConnected={dockerConnected} />
       </div>
     </ErrorBoundary>
   );

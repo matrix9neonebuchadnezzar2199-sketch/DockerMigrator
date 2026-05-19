@@ -33,7 +33,7 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     reading: 'ちゅうだんじょうたい',
     body:
       'エクスポートが途中で止まったときに manifest に記録される情報です。「どのチャンクまで書き終わったか」が分かるので、同じ PC 上でエクスポートを再開できます。',
-    relatedPage: 'resume',
+    relatedPage: 'source-overview',
   },
   {
     id: 'pending-chunks',
@@ -41,7 +41,7 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     reading: 'みかんりょうちゃんく',
     body:
       'まだ書き出しが終わっていないデータのかたまりです。中断パックを再開するとき、残っているチャンクだけを続きから処理します。',
-    relatedPage: 'resume',
+    relatedPage: 'source-overview',
   },
   {
     id: 'interrupted-pack',
@@ -49,7 +49,7 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     reading: 'ちゅうだんぱっく',
     body:
       'エクスポートが完了していない .dmig パッケージのことです。サイドバーの「中断したパックを再開」からフォルダを選んで続きから書き出せます。Import 画面から開いた場合も再開できます。',
-    relatedPage: 'resume',
+    relatedPage: 'source-overview',
   },
   {
     id: 'compose-project',
@@ -129,7 +129,7 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
     reading: 'えくすぽーとさいかい',
     body:
       '中断したパッケージの書き出しを続きから行う機能です。同じ出力先フォルダに対して、未完了チャンクだけを追加します。',
-    relatedPage: 'resume',
+    relatedPage: 'source-overview',
   },
   {
     id: 'schema-version',

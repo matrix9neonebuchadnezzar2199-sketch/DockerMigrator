@@ -429,6 +429,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1145">詳細</a></td>
       </tr>
+      <tr>
+        <td>12:01</td>
+        <td>M1–M5 マイルストーン（リリース整備・設定・UX v2・品質）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1201">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -740,6 +746,50 @@ body.diary > footer {
     <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code></li>
     <li>テスト: <strong>95 passed</strong>, 1 skipped（Step E 後 85 から +10）</li>
     <li>Commit: <code>7060cc2</code> 指示書 / <code>23899a0</code> feat / <code>5706b9f</code> test / <code>8a3dab8</code> docs</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1201">
+  <h2>M1–M5 マイルストーン一括実装</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 12:01</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>第4回 UI 完了後の M1（リリース整備）〜 M5（品質）を設計→記録→実装。曖昧点は <code>docs/milestones/M1-M5-implementation-log.md</code> の判断 ID（D-001〜D-008）で推奨選択を記録し、マスター差し替え可能にした。</p>
+
+  <h3>設計判断（要約）</h3>
+  <ul>
+    <li><strong>D-001/002</strong>: <code>0.3.0-poc</code> / タグ <code>v0.3.0-poc</code>（Release 本文のみ）</li>
+    <li><strong>D-003</strong>: Step B 復活せず新規 <code>DmigSettings</code>（theme/i18n 未実装）</li>
+    <li><strong>D-004/005</strong>: Footer 動的 CTA・ログビューアは見送り</li>
+    <li><strong>D-006</strong>: Playwright ではなく App 統合テスト + 手動 smoke チェックリスト</li>
+    <li><strong>D-007</strong>: Lucide は Sidebar のみ</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> M1: CHANGELOG <code>0.3.0-poc</code>, README, 手順書 completed 移動, UI メモ注記</li>
+    <li><span class="op op-add">+</span> M2: <code>lucide-react</code>, 用語集導線, Help 概要ボタン</li>
+    <li><span class="op op-add">+</span> M3: <code>settings.ts</code>, <code>DmigSettingsStore</code>, IPC, <code>SettingsPage</code></li>
+    <li><span class="op op-mod">~</span> M4: <code>useResumeFlow</code>, Footer Docker 案内, StepIndicator クリック, 移行先 2 段</li>
+    <li><span class="op op-add">+</span> M5: <code>smoke-checklist.md</code>, <code>App.integration.test.tsx</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li><code>npm run typecheck</code> / <code>test</code> / <code>build</code> — 101 passed, 1 skipped</li>
+    <li>Commit: （push 後追記）</li>
+  </ul>
+
+  <h3>残課題</h3>
+  <ul>
+    <li>タグ <code>v0.3.0-poc</code> と GitHub Release（バイナリなし）— マスター確認後でも可</li>
+    <li><code>build:win</code> 手動確認</li>
+    <li>D-004 Footer 動的 CTA、D-005 ログビューア、D-006 Playwright は将来差し替え可</li>
   </ul>
 </section>
 </main>

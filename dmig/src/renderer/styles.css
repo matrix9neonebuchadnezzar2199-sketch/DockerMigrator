@@ -52,10 +52,31 @@ body {
   color: #89b4fa;
 }
 .sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 16px;
   cursor: pointer;
   font-size: 14px;
   border-left: 3px solid transparent;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 16px 16px;
+  font-size: 16px;
+  color: #89b4fa;
+}
+.sidebar-group-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-item-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  opacity: 0.9;
 }
 .sidebar .nav-item:hover {
   background: #313244;
@@ -215,6 +236,69 @@ body {
 }
 .step-indicator-item--complete .step-indicator-connector {
   background: #a6e3a1;
+}
+.step-indicator-step-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.step-indicator-step-btn:hover .step-indicator-label {
+  text-decoration: underline;
+}
+.settings-page .settings-section {
+  margin-bottom: 24px;
+}
+.settings-page .settings-section h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #f5e0dc;
+}
+.settings-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  color: #cdd6f4;
+  cursor: pointer;
+}
+.settings-hint {
+  margin: 8px 0;
+  font-size: 13px;
+  color: #a6adc8;
+}
+.settings-path {
+  margin: 8px 0 12px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  color: #cdd6f4;
+  word-break: break-all;
+}
+.settings-saved {
+  color: #a6e3a1;
+  font-size: 13px;
+}
+.help-overview-link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: #89b4fa;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: inherit;
+}
+.app-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  color: #a6adc8;
 }
 @media (max-width: 720px) {
   .step-indicator-label {

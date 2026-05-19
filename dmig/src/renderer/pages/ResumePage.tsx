@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import type { DmigErrorPayload, ProbeSummary } from '../../shared/types.js';
-import { ErrorCodes } from '@shared/codes.js';
 import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { OperationProgress } from '../components/OperationProgress.js';
 import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { labelInterruptionReason, warningLabel } from '../lib/i18n/resume.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
+import { useResumeFlow } from '../hooks/useResumeFlow.js';
 
 const RESUMABLE_SCAN_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.RESUMABLE_SCAN,
@@ -32,14 +32,26 @@ export const ResumePage: React.FC = () => {
   const [scanned, setScanned] = useState(false);
   const [error, setError] = useState<DmigErrorPayload | null>(null);
 
-  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
-  const [resumeSummary, setResumeSummary] = useState<ProbeSummary | null>(null);
-  const [resumeRunning, setResumeRunning] = useState(false);
-  const [resumeJobToken, setResumeJobToken] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
   const scanProgress = useDmigProgress('scan');
-  const transferProgress = useDmigProgress('transfer');
+  const {
+    resumeSummary,
+    resumeDialogOpen,
+    resumeRunning,
+    resumeJobToken,
+    transferProgress,
+    openResumeDialog,
+    onConfirmResume,
+    onCancelResumeJob,
+    closeResumeDialog,
+  } = useResumeFlow(
+    (msg) => setDone(msg),
+    setError,
+    () => {
+      if (rootDir) void runScan(rootDir);
+    },
+  );
 
   const pickFolderAndScan = async () => {
     setError(null);
@@ -77,48 +89,9 @@ export const ResumePage: React.FC = () => {
     if (r.data.warnings.length > 0) setWarningsOpen(true);
   };
 
-  const openResumeDialog = (summary: ProbeSummary) => {
-    setResumeSummary(summary);
-    setResumeDialogOpen(true);
+  const openResumeFromCard = (summary: ProbeSummary) => {
     transferProgress.clear();
-  };
-
-  const onConfirmResume = async () => {
-    if (!resumeSummary) return;
-    const jobToken = crypto.randomUUID();
-    setResumeJobToken(jobToken);
-    transferProgress.clear();
-    setResumeRunning(true);
-    const r = await window.dmig.resumeExport({
-      packageDir: resumeSummary.packageDir,
-      jobToken,
-      compressionLevel: 3,
-    });
-    setResumeRunning(false);
-    setResumeJobToken(null);
-    transferProgress.clear();
-    if (r.ok) {
-      setResumeDialogOpen(false);
-      setResumeSummary(null);
-      setDone('エクスポートの再開が完了しました。');
-      if (rootDir) void runScan(rootDir);
-    } else if (r.error.code === ErrorCodes.JOB_CANCELLED) {
-      setResumeDialogOpen(false);
-      setResumeSummary(null);
-      setDone('再開ジョブを中止しました。');
-    } else {
-      setError(r.error);
-    }
-  };
-
-  const onCancelResumeJob = () => {
-    if (resumeJobToken) void window.dmig.cancel(resumeJobToken);
-  };
-
-  const closeResumeDialog = () => {
-    if (resumeRunning) return;
-    setResumeDialogOpen(false);
-    setResumeSummary(null);
+    openResumeDialog(summary);
   };
 
   return (
@@ -201,7 +174,7 @@ export const ResumePage: React.FC = () => {
               type="button"
               className="btn-primary"
               style={{ marginTop: 12 }}
-              onClick={() => openResumeDialog(pkg)}
+              onClick={() => openResumeFromCard(pkg)}
               disabled={resumeRunning}
             >
               再開する

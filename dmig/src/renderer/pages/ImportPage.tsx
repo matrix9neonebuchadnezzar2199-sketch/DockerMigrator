@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import type { DmigManifest, DmigErrorPayload, ProbeSummary } from '../../shared/types.js';
-import { ErrorCodes } from '@shared/codes.js';
 import { gateImportAfterProbe } from '@shared/importProbeUi.js';
 import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
 import { OperationProgress } from '../components/OperationProgress.js';
@@ -10,6 +9,7 @@ import { ImportPageGuideBody } from '../components/StaticPageGuides.js';
 import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
+import { useResumeFlow } from '../hooks/useResumeFlow.js';
 
 const PROBE_PROGRESS_INITIAL = buildProgressEvent({
   taskId: ProgressTaskIds.PROBE_PACKAGE,
@@ -30,13 +30,28 @@ export const ImportPage: React.FC = () => {
   const [done, setDone] = useState<string | null>(null);
 
   const [probeErrorSummary, setProbeErrorSummary] = useState<ProbeSummary | null>(null);
-  const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
-  const [resumeSummary, setResumeSummary] = useState<ProbeSummary | null>(null);
-  const [resumeRunning, setResumeRunning] = useState(false);
-  const [resumeJobToken, setResumeJobToken] = useState<string | null>(null);
 
   const scanProgress = useDmigProgress('scan');
-  const transferProgress = useDmigProgress('transfer');
+  const {
+    resumeSummary,
+    resumeDialogOpen,
+    resumeRunning,
+    resumeJobToken,
+    transferProgress,
+    openResumeDialog,
+    onConfirmResume,
+    onCancelResumeJob,
+    closeResumeDialog,
+  } = useResumeFlow(
+    (msg) => {
+      if (msg === 'エクスポートの再開が完了しました。') {
+        setDone('エクスポートの再開が完了しました。「読み込み」でマニフェストを更新してください。');
+      } else {
+        setDone(msg);
+      }
+    },
+    setError,
+  );
 
   const loadManifestOnly = async (dir: string) => {
     const r = await window.dmig.readManifest(dir);
@@ -53,8 +68,6 @@ export const ImportPage: React.FC = () => {
     setDone(null);
     setManifest(null);
     setProbeErrorSummary(null);
-    setResumeDialogOpen(false);
-    setResumeSummary(null);
     setProbing(true);
     scanProgress.setProgress(PROBE_PROGRESS_INITIAL);
 
@@ -72,8 +85,7 @@ export const ImportPage: React.FC = () => {
         await loadManifestOnly(packDir);
         break;
       case 'resume_dialog':
-        setResumeSummary(gate.summary);
-        setResumeDialogOpen(true);
+        openResumeDialog(gate.summary);
         break;
       case 'show_probe_error':
         setProbeErrorSummary(gate.summary);
@@ -104,43 +116,6 @@ export const ImportPage: React.FC = () => {
     transferProgress.clear();
     if (r.ok) setDone('インポートが完了しました。');
     else setError(r.error);
-  };
-
-  const onConfirmResume = async () => {
-    if (!resumeSummary) return;
-    const jobToken = crypto.randomUUID();
-    setResumeJobToken(jobToken);
-    transferProgress.clear();
-    setResumeRunning(true);
-    const r = await window.dmig.resumeExport({
-      packageDir: resumeSummary.packageDir,
-      jobToken,
-      compressionLevel: 3,
-    });
-    setResumeRunning(false);
-    setResumeJobToken(null);
-    transferProgress.clear();
-    if (r.ok) {
-      setResumeDialogOpen(false);
-      setResumeSummary(null);
-      setDone('エクスポートの再開が完了しました。「読み込み」でマニフェストを更新してください。');
-    } else if (r.error.code === ErrorCodes.JOB_CANCELLED) {
-      setResumeDialogOpen(false);
-      setResumeSummary(null);
-      setDone('再開ジョブを中止しました。');
-    } else {
-      setError(r.error);
-    }
-  };
-
-  const onCancelResumeJob = () => {
-    if (resumeJobToken) void window.dmig.cancel(resumeJobToken);
-  };
-
-  const closeResumeDialog = () => {
-    if (resumeRunning) return;
-    setResumeDialogOpen(false);
-    setResumeSummary(null);
   };
 
   return (

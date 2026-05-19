@@ -1,5 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { StepIndicator } from './StepIndicator.js';
 
@@ -30,10 +31,20 @@ describe('StepIndicator', () => {
     expect(items[2]).toHaveAttribute('aria-current', 'step');
   });
 
-  it('import: 移行先 1 ステップが current', () => {
+  it('import: 移行先 2 ステップで 2 が current', () => {
     render(<StepIndicator page="import" />);
     const nav = screen.getByRole('navigation', { name: '移行先の作業フロー' });
-    expect(within(nav).getByRole('listitem')).toHaveAttribute('aria-current', 'step');
+    const items = within(nav).getAllByRole('listitem');
+    expect(items).toHaveLength(2);
+    expect(items[1]).toHaveAttribute('aria-current', 'step');
+  });
+
+  it('ステップクリックで onNavigate', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+    render(<StepIndicator page="export" onNavigate={onNavigate} />);
+    await user.click(screen.getByRole('button', { name: /プロジェクトを選ぶ/ }));
+    expect(onNavigate).toHaveBeenCalledWith('compose');
   });
 
   it('source-overview / help: 非表示', () => {
@@ -43,8 +54,9 @@ describe('StepIndicator', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
-  it('target-overview: 非表示', () => {
+  it('target-overview: 移行先 step 1 が current', () => {
     render(<StepIndicator page="target-overview" />);
-    expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: '移行先の作業フロー' });
+    expect(within(nav).getAllByRole('listitem')[0]).toHaveAttribute('aria-current', 'step');
   });
 });
