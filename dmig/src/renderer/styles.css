@@ -1136,3 +1136,91 @@ input[type='text'] {
 .help-rail-hint p:last-child {
   margin-bottom: 0;
 }
+
+/* Overview pages（Step C） */
+.overview-page .overview-section {
+  margin-bottom: 28px;
+}
+.overview-page .overview-section h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  color: #f5e0dc;
+}
+.overview-page .overview-section p {
+  margin: 0;
+  line-height: 1.6;
+  color: #cdd6f4;
+}
+.overview-flow-list {
+  margin: 0;
+  padding-left: 1.4em;
+  color: #cdd6f4;
+  line-height: 1.6;
+}
+.overview-flow-list li + li {
+  margin-top: 8px;
+}
+.overview-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.overview-card {
+  padding: 16px 18px;
+  background: #181825;
+  border: 1px solid #45475a;
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+.overview-card:hover {
+  border-color: #585b70;
+}
+.overview-card-primary {
+  border-color: #cba6f7;
+  box-shadow: 0 0 0 1px rgba(203, 166, 247, 0.25);
+}
+.overview-card-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #f5e0dc;
+}
+.overview-card-desc {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #a6adc8;
+}
+.overview-card-open {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #cdd6f4;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.overview-card-open:hover {
+  background: #45475a;
+}
+.overview-card-open-primary {
+  color: #1e1e2e;
+  background: #cba6f7;
+  border-color: #cba6f7;
+}
+.overview-card-open-primary:hover {
+  background: #b4befe;
+  border-color: #b4befe;
+}
+.overview-help-note {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #a6adc8;
+  line-height: 1.5;
+}
+.overview-rail-hint p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #cdd6f4;
+}

@@ -5,10 +5,12 @@ import { filterGlossaryEntries, GLOSSARY_ENTRIES } from '../data/glossary.js';
 export type HelpTab = 'guide' | 'glossary';
 
 const RELATED_PAGE_LABELS: Record<PageKey, string> = {
+  'source-overview': '移行元での作業 — 概要',
   compose: 'プロジェクトを選ぶ',
   export: 'パックを書き出す',
-  import: 'パックを読み込む',
   resume: '中断したパックを再開',
+  'target-overview': '移行先での作業 — 概要',
+  import: 'パックを読み込む',
   help: 'ヘルプ / 用語集',
 };
 

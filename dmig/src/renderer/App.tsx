@@ -6,11 +6,20 @@ import { ImportPage } from './pages/ImportPage.js';
 import { ComposePage } from './pages/ComposePage.js';
 import { ResumePage } from './pages/ResumePage.js';
 import { HelpPage } from './pages/HelpPage.js';
+import { SourceOverviewPage } from './pages/SourceOverviewPage.js';
+import { TargetOverviewPage } from './pages/TargetOverviewPage.js';
 
-export type PageKey = 'export' | 'import' | 'compose' | 'resume' | 'help';
+export type PageKey =
+  | 'source-overview'
+  | 'compose'
+  | 'export'
+  | 'resume'
+  | 'target-overview'
+  | 'import'
+  | 'help';
 
 export const App: React.FC = () => {
-  const [page, setPage] = useState<PageKey>('compose');
+  const [page, setPage] = useState<PageKey>('source-overview');
   const [dockerVersion, setDockerVersion] = useState<string>('未接続');
   /** 一度でも開いたページはアンマウントせず状態を保持する */
   const [composeVisited, setComposeVisited] = useState(page === 'compose');
@@ -32,6 +41,8 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
       <div className="main">
+        {page === 'source-overview' && <SourceOverviewPage onNavigate={setPage} />}
+        {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
         {page === 'export' && <ExportPage />}
         {page === 'import' && <ImportPage />}
         {composeVisited && (

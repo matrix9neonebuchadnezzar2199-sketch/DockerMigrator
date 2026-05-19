@@ -38,6 +38,7 @@ export const Sidebar: React.FC<{
         <h2 id="sidebar-group-source" className="sidebar-group-title">
           <span aria-hidden="true">📤</span> 移行元での作業
         </h2>
+        <NavItem page="source-overview" current={page} label="概要" onChange={onChange} />
         <NavItem page="compose" current={page} label="プロジェクトを選ぶ" onChange={onChange} />
         <NavItem page="export" current={page} label="パックを書き出す" onChange={onChange} />
         <NavItem page="resume" current={page} label="中断したパックを再開" onChange={onChange} />
@@ -47,6 +48,7 @@ export const Sidebar: React.FC<{
         <h2 id="sidebar-group-target" className="sidebar-group-title">
           <span aria-hidden="true">📥</span> 移行先での作業
         </h2>
+        <NavItem page="target-overview" current={page} label="概要" onChange={onChange} />
         <NavItem page="import" current={page} label="パックを読み込む" onChange={onChange} />
       </section>
 
