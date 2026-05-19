@@ -41,6 +41,15 @@ describe('Sidebar', () => {
     expect(onChange).toHaveBeenCalledWith('target-overview');
   });
 
+  it('ドライランをクリックすると onChange(dryrun) が呼ばれる', async () => {
+    const user = userEvent.setup();
+    const onChange = vi.fn();
+    render(<Sidebar page="compose" onChange={onChange} dockerVersion="24.0" />);
+    const nav = screen.getByRole('navigation', { name: 'メインメニュー' });
+    await user.click(within(nav).getByRole('button', { name: 'ドライラン' }));
+    expect(onChange).toHaveBeenCalledWith('dryrun');
+  });
+
   it('ログをクリックすると onChange(logs) が呼ばれる', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();

@@ -59,6 +59,10 @@ export const NEXT_STEPS_BY_PAGE: Record<PageKey, NextStepEntry> = {
     description: '',
     showFooter: false,
   },
+  dryrun: {
+    description: '',
+    showFooter: false,
+  },
 };
 
 /** フッター表示用エントリ。非表示ページは null。 */

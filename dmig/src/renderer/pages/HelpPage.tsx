@@ -14,6 +14,7 @@ const RELATED_PAGE_LABELS: Record<PageKey, string> = {
   help: 'ヘルプ / 用語集',
   settings: '設定',
   logs: 'ログ',
+  dryrun: 'ドライラン',
 };
 
 function applyHashToTab(

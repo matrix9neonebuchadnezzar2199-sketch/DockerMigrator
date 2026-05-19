@@ -153,6 +153,14 @@ export const GLOSSARY_ENTRIES: GlossaryEntry[] = [
       '書き出し前に USB の空き容量やおおよそのサイズを確認する処理です。容量不足を早めに知るために使います。',
     relatedPage: 'compose',
   },
+  {
+    id: 'dry-run',
+    term: 'ドライラン',
+    reading: 'どらいらん',
+    body:
+      '本番の書き出しを行わず、容量・シークレット・bind mount・パッケージ状態などを検査する機能です。問題を検出するのみで、自動修正や実行のブロックはしません。',
+    relatedPage: 'dryrun',
+  },
 ];
 
 /** 用語名・本文・よみの部分一致フィルタ。 */

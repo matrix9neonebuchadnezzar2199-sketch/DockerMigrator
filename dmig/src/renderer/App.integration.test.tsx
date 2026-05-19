@@ -27,6 +27,7 @@ function makeDmigMock(): DmigAPI {
     selectDirectory: vi.fn(),
     cancel: vi.fn(),
     preflight: vi.fn(),
+    runDryRun: vi.fn(),
     saveErrorReport: vi.fn(),
     listSnapshots: vi.fn(),
     deleteSnapshot: vi.fn(),

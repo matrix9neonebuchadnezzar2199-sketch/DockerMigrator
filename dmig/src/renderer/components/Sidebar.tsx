@@ -9,6 +9,7 @@ import {
   ScrollText,
   Settings,
   Upload,
+  FlaskConical,
 } from 'lucide-react';
 import type { PageKey } from '../App.js';
 
@@ -117,6 +118,13 @@ export const Sidebar: React.FC<{
           current={page}
           label="ログ"
           icon={<ScrollText size={ICON_SIZE} />}
+          onChange={onChange}
+        />
+        <NavItem
+          page="dryrun"
+          current={page}
+          label="ドライラン"
+          icon={<FlaskConical size={ICON_SIZE} />}
           onChange={onChange}
         />
         <NavItem
