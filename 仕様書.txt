@@ -658,11 +658,4 @@ dmig/
 - フォルダ選択（既存 `dmig:selectDirectory`）→ `listResumablePackages` → カード一覧 → 既存 `ResumeConfirmDialog` → `dmig:resumeExport`。
 - Import ページの `ok_partial` 分岐は残置（両経路から再開可能）。
 
-### 12.4 ウェルカムウィザード（Phase 6 第4回 Step B）
-
-- **表示**: 初回起動時のみ自動（`userData/dmig-settings.json` の `welcomeWizardCompleted !== true`）。モーダルオーバーレイ。Escape・背景クリックでは閉じない。
-- **選択**: 「移行元」→ `PageKey: compose`、「移行先」→ `import`、「あとで決める」→ ページ変更なし。いずれも完了扱いで `welcomeWizardCompleted: true` を保存。
-- **再表示**: サイドバー共通グループの「ウェルカム画面を再表示」（Settings ページは Step F まで未実装）。
-- **IPC**: `dmig:getSettings` / `dmig:updateSettings`、型 `DmigSettings`（`@shared/types`）。
-
 ---

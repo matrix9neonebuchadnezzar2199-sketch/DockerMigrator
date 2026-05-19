@@ -47,23 +47,23 @@ Step A では「概要」「ヘルプ/用語集」を **メニューに出さな
 
 ## 6. 後続 Step との境界
 
-| Step | 内容 |
-|------|------|
-| B | 初回起動ウィザード（**実装済み**: モーダル、`WelcomeWizard`、Settings JSON） |
-| C | SourceOverview / TargetOverview、取り込み状況 |
-| D | ステップインジケータ |
-| E | 「次にやること」フッター |
-| F | ヘルプ/用語集、SVG アイコン |
+Phase 6 第4回の実施順序（Step B 撤回後）: **A → F → C → E → D**。
+
+| Step | 内容 | 状態 |
+|------|------|------|
+| A | サイドバー 3 グループ、`ResumePage`、`listResumablePackages` | 完了 |
+| B | 初回起動ウィザード（`WelcomeWizard` / Settings JSON） | **撤回**（2026-05-19） |
+| F | ヘルプ/用語集、SVG アイコン | 未着手 |
+| C | SourceOverview / TargetOverview、取り込み状況 | 未着手 |
+| E | 「次にやること」フッター | 未着手 |
+| D | ステップインジケータ | 未着手 |
+
+### Step B 撤回（2026-05-19）
+
+Step A のサイドバー 3 グループ（移行元 / 移行先 / 共通）で入口が既に分かれており、ウィザードは UX 二重化になった。実機での動作不具合もあり、初回起動ウィザードと Step B 専用の Settings 永続化（`dmig-settings.json` / `getSettings` IPC）を削除した。将来の「設定」機能（テーマ、デフォルト出力先、言語、最後のページ復元等）は要件確定後に独立タスクで新規設計する。
 
 ## 7. 判断メモ（§9 回答）
 
 - **R1**: `/resume` 相当 → `PageKey: 'resume'` を採用。
 - **H2**: `useResumeFlow` 抽出は Step C 以降に延期（ResumePage と Import の重複は Step A では許容）。
 - Import の `ok_partial` → `ResumeConfirmDialog` 経路は **残置**。
-
-### Step B 確定事項（2026-05-19）
-
-- モーダルオーバーレイ（専用 `PageKey` なし）。ウィザード中はサイドバー `pointer-events: none`。
-- Escape / 背景クリックは無効。「あとで決める」も `welcomeWizardCompleted: true` で永続スキップ。
-- 永続化: `userData/dmig-settings.json`（案 S2、既存 Settings IPC なしのため新設）。
-- 再表示: サイドバー共通「ウェルカム画面を再表示」（`SettingsPage` は未実装のため）。

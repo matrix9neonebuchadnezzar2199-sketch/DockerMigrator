@@ -396,8 +396,14 @@ body.diary > footer {
       <tr>
         <td>09:26</td>
         <td>Phase 6 第4回 Step B: ウェルカムウィザード（Settings S2 / モーダル）</td>
-        <td><span class="tag tag-ok">OK</span></td>
+        <td><span class="tag tag-warn">撤回</span></td>
         <td><a href="#entry-0926">詳細</a></td>
+      </tr>
+      <tr>
+        <td>11:01</td>
+        <td>Phase 6 第4回 Step B 撤回（WelcomeWizard / Settings 層削除）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1101">詳細</a></td>
       </tr>
     </tbody>
   </table>
@@ -513,12 +519,12 @@ body.diary > footer {
 </section>
 
 <section class="entry" id="entry-0926">
-  <h2>Phase 6 第4回 Step B: 初回起動ウェルカムウィザード</h2>
+  <h2>Phase 6 第4回 Step B: 初回起動ウェルカムウィザード（後日撤回）</h2>
   <div class="meta">
     <span class="date">2026-05-19 09:26</span>
     <span class="tag tag-type">dev</span>
     <span class="tag tag-scope">tool</span>
-    <span class="tag tag-ok">OK</span>
+    <span class="tag tag-warn">撤回</span>
   </div>
 
   <h3>概要</h3>
@@ -541,7 +547,41 @@ body.diary > footer {
   <h3>検証</h3>
   <ul>
     <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（81 passed, 1 skipped）/ <code>build</code></li>
-    <li>Commit: <code>1587fa3</code> Settings / <code>a11d5ba</code> wizard / <code>3e8f967</code> App / <code>07a4f35</code> Compose h2 / <code>1151325</code> docs（<code>main</code> push 済み）</li>
+    <li>Commit: <code>1587fa3</code> Settings / <code>a11d5ba</code> wizard / <code>3e8f967</code> App / <code>07a4f35</code> Compose h2 / <code>1151325</code> docs（<code>main</code> push 済み、<code>#entry-1101</code> で撤回）</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-1101">
+  <h2>Phase 6 第4回 Step B 撤回</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 11:01</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>Step A のサイドバー 3 グループで移行元/移行先の入口が既に分かれており、初回ウィザードは<strong>UX 二重化</strong>と判断。実機でモーダルが閉じない不具合もあり、<code>WelcomeWizard</code>・<code>useWelcomeWizard</code>・Settings 層（<code>Settings.ts</code> / <code>ipc/settings.ts</code> / <code>DmigSettings</code>）を削除。Phase 6 第4回の順序を <strong>A → F → C → E → D</strong> に更新。</p>
+
+  <h3>設計判断</h3>
+  <ul>
+    <li>Settings 永続化は Step B 専用だったため一括削除。将来の設定 UI は独立タスクで再設計。</li>
+    <li>指示書は <code>docs/instructions/completed/phase6-r4-step-b-withdrawn.md</code> へ移動（撤回注記付き）。</li>
+    <li><code>07a4f35</code> の Compose 見出し「プロジェクトを選ぶ」は維持。</li>
+  </ul>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-del">−</span> WelcomeWizard / useWelcomeWizard / Settings 関連（git rm）</li>
+    <li><span class="op op-mod">~</span> <code>App.tsx</code>, <code>Sidebar.tsx</code>, <code>preload</code>, <code>types.ts</code>, <code>ipc.ts</code>, <code>styles.css</code></li>
+    <li><span class="op op-mod">~</span> <code>仕様書.txt</code>, <code>dmig-ui-redesign-v0.1.md</code>, <code>CHANGELOG.md</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li>grep: WelcomeWizard / DmigSettings / welcomeWizard ヒット 0（撤回ドキュメント・日記除く）</li>
+    <li><code>npm run typecheck</code> / <code>lint</code> / <code>test</code> / <code>build</code></li>
+    <li>Commit: <code>f07e293</code>（実装撤回）/ <code>d6b0acc</code>（docs、<code>main</code> push 済み）</li>
   </ul>
 </section>
 </main>
