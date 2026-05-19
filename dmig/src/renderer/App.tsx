@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Sidebar } from './components/Sidebar.js';
+import { NextStepFooter } from './components/NextStepFooter.js';
 import { ExportPage } from './pages/ExportPage.js';
 import { ImportPage } from './pages/ImportPage.js';
 import { ComposePage } from './pages/ComposePage.js';
@@ -41,17 +42,20 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
       <div className="main">
-        {page === 'source-overview' && <SourceOverviewPage onNavigate={setPage} />}
-        {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
-        {page === 'export' && <ExportPage />}
-        {page === 'import' && <ImportPage />}
-        {composeVisited && (
-          <div className="main-page-panel" hidden={page !== 'compose'} aria-hidden={page !== 'compose'}>
-            <ComposePage />
-          </div>
-        )}
-        {page === 'resume' && <ResumePage />}
-        {page === 'help' && <HelpPage onNavigate={setPage} />}
+        <div className="main-body">
+          {page === 'source-overview' && <SourceOverviewPage onNavigate={setPage} />}
+          {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
+          {page === 'export' && <ExportPage />}
+          {page === 'import' && <ImportPage />}
+          {composeVisited && (
+            <div className="main-page-panel" hidden={page !== 'compose'} aria-hidden={page !== 'compose'}>
+              <ComposePage />
+            </div>
+          )}
+          {page === 'resume' && <ResumePage />}
+          {page === 'help' && <HelpPage onNavigate={setPage} />}
+        </div>
+        <NextStepFooter page={page} onNavigate={setPage} />
       </div>
     </ErrorBoundary>
   );
