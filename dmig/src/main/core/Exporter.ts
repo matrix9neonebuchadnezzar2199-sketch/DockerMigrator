@@ -293,6 +293,12 @@ export class Exporter extends EventEmitter {
       percentage: 100,
       message: '再エクスポートが完了しました。',
     });
+
+    const rollbackManager = new RollbackManager(this.docker);
+    await rollbackManager.saveRecord(
+      packDir,
+      createRollbackRecord(packDir, 'export', [buildExportPackDirectoryEntry(packDir)]),
+    );
   }
 
   /**

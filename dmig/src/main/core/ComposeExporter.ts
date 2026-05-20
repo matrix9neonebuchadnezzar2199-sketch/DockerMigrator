@@ -32,6 +32,8 @@ import { buildProgressEvent } from '@shared/progress.js';
 import { SizeEstimator } from './SizeEstimator.js';
 import { ComposeExportManifestSession } from './manifest/composeExportManifestSession.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
+import { RollbackManager } from './RollbackManager.js';
+import { buildExportPackDirectoryEntry, createRollbackRecord } from './rollbackRecordBuilder.js';
 
 /**
  * Compose プロジェクトをまるごとパッケージ化する（Phase 5）。
@@ -257,6 +259,14 @@ export class ComposeExporter extends EventEmitter {
         percentage: 100,
         message: 'Compose 再エクスポートが完了しました。',
       });
+
+      const rollbackManager = new RollbackManager(this.docker);
+      await rollbackManager.saveRecord(
+        opened.packageDir,
+        createRollbackRecord(opened.packageDir, 'export', [
+          buildExportPackDirectoryEntry(opened.packageDir),
+        ]),
+      );
     } catch (e) {
       const isAbort =
         this.signal?.aborted ||

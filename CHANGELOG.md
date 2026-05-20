@@ -19,6 +19,8 @@
 
 ### Fixed
 
+- **M10**: Resume Export 完了時（`resumeImagePack` / `resumeComposePack`）に `rollback.json` が生成されない問題を修正。
+
 ### Removed
 
 ## [0.3.0-poc] - 2026-05-19
