@@ -489,6 +489,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-0941">詳細</a></td>
       </tr>
+      <tr>
+        <td>09:53</td>
+        <td>M10 smoke S5 を S5-A/B/C に分割（P2）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0953">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -1117,6 +1123,30 @@ body.diary > footer {
   <ul>
     <li>smoke HTML の S5 分岐（新規 Export / Resume 完了）— P2</li>
     <li><code>already_executed</code> バナー強調 — M11/M12</li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0953">
+  <h2>M10 smoke S5 を S5-A/B/C に分割（P2）</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 09:53</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">docs</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p><code>m10-rollback-smoke-checklist.html</code> の S5 を <strong>S5-A</strong>（新規 Image Export）/ <strong>S5-B</strong>（Compose）/ <strong>S5-C</strong>（Resume 回帰）に分割。各節に <code>--scan-rollback-json</code> 観測点を追加。<code>run_smoke_check.py</code> 報告行も同期。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>m10-rollback-smoke-checklist.html</code>, <code>smoke-checklist.html</code>, <code>run_smoke_check.py</code>, <code>CHANGELOG.md</code></li>
+  </ul>
+
+  <h3>検証</h3>
+  <ul>
+    <li>目次アンカー <code>#s5a</code> / <code>#s5b</code> / <code>#s5c</code> を HTML 上で定義済み</li>
+    <li>Commit: <code>7c806af</code>（push 済み）</li>
   </ul>
 </section>
 </main>
