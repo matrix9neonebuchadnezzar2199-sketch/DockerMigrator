@@ -6,11 +6,14 @@
   python scripts/run_smoke_check.py --win
   python scripts/run_smoke_check.py --skip-build --verbose
   python scripts/run_smoke_check.py --m10-smoke
+  python scripts/run_smoke_check.py --m10-static-check
+  python scripts/run_smoke_check.py --scan-rollback-json F:\\Docker_out
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import shutil
 import subprocess
@@ -33,6 +36,40 @@ M10_REPORT_LINES: list[tuple[str, str, str]] = [
     ("S5", "書き出し → rollback.json / ロールバック", "必須"),
     ("S6", "直近の操作を取り消す（インライン）", "必須"),
     ("S7", "directory 手動削除の運用", "任意"),
+]
+
+# --m10-static-check: core / IPC の両方を grep（ipc 単体の誤検知を避ける）
+M10_STATIC_TARGETS: list[tuple[str, tuple[str, ...], str]] = [
+    (
+        "dmig/src/main/core/Exporter.ts",
+        ("rollbackManager.saveRecord", "createRollbackRecord"),
+        "Image Export 正常完了時に rollback.json を save",
+    ),
+    (
+        "dmig/src/main/core/Exporter.ts",
+        ("resumeImagePack", "rollbackManager.saveRecord"),
+        "Image Resume Export 完了時にも rollback.json を save",
+    ),
+    (
+        "dmig/src/main/core/ComposeExporter.ts",
+        ("resumeComposePack", "rollbackManager.saveRecord"),
+        "Compose Resume Export 完了時にも rollback.json を save",
+    ),
+    (
+        "dmig/src/main/ipc/compose.ts",
+        ("rollbackManager.saveRecord", "createRollbackRecord"),
+        "Compose Export IPC が rollback.json を save",
+    ),
+    (
+        "dmig/src/main/core/Importer.ts",
+        (".saveRecord", "createRollbackRecord"),
+        "Image Import 正常完了時に rollback.json を save",
+    ),
+    (
+        "dmig/src/main/core/ComposeImporter.ts",
+        (".saveRecord", "createRollbackRecord"),
+        "Compose Import 正常完了時に rollback.json を save",
+    ),
 ]
 
 
@@ -200,6 +237,83 @@ def _print_summary(results: list[StepResult]) -> int:
     return 0
 
 
+def _static_check_m10() -> int:
+    """各経路に rollback.json save 呼び出しがあるか静的に検査する。"""
+    width = 64
+    print("\n" + "=" * width)
+    print("  M10 静的チェック — rollback.json save 呼び出しの存在")
+    print("=" * width)
+
+    failed = 0
+    skipped = 0
+    for rel_path, required_symbols, description in M10_STATIC_TARGETS:
+        target = REPO_ROOT / rel_path
+        if not target.is_file():
+            print(f"  [SKIP] {rel_path}: ファイルなし")
+            skipped += 1
+            continue
+        try:
+            text = target.read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"  [NG]   {rel_path}: 読み込み失敗: {exc}")
+            failed += 1
+            continue
+
+        missing = [sym for sym in required_symbols if sym not in text]
+        if missing:
+            print(f"  [NG]   {rel_path}")
+            print(f"         期待: {description}")
+            print(f"         欠落: {', '.join(missing)}")
+            failed += 1
+        else:
+            print(f"  [OK]   {rel_path}  ({description})")
+
+    print("=" * width)
+    if failed:
+        print(f"M10 静的チェック: {failed} 件失敗 / {skipped} 件スキップ")
+        return 1
+    print(f"M10 静的チェック: すべて成功（{skipped} 件スキップ）")
+    return 0
+
+
+def _scan_rollback_json(root: Path) -> int:
+    """指定ディレクトリ配下の .dmig パックの rollback.json 有無を一覧表示する。"""
+    width = 72
+    print("\n" + "=" * width)
+    print(f"  rollback.json スキャン: {root}")
+    print("=" * width)
+
+    if not root.is_dir():
+        print(f"  error: ディレクトリがありません: {root}")
+        return 2
+
+    found = 0
+    missing = 0
+    print(f"  {'rollback.json':<15} {'kind':<10} {'entries':<8} pack")
+    print(f"  {'-' * 15} {'-' * 10} {'-' * 8} {'-' * 40}")
+    for child in sorted(root.iterdir()):
+        if not child.is_dir() or not child.name.endswith(".dmig"):
+            continue
+        rb = child / "rollback.json"
+        if not rb.is_file():
+            print(f"  {'NONE':<15} {'-':<10} {'-':<8} {child.name}")
+            missing += 1
+            continue
+        try:
+            data = json.loads(rb.read_text(encoding="utf-8"))
+            kind = data.get("kind", "?")
+            entries = len(data.get("entries", []))
+            print(f"  {'OK':<15} {kind!s:<10} {entries:<8} {child.name}")
+            found += 1
+        except (OSError, json.JSONDecodeError, TypeError) as exc:
+            print(f"  {'INVALID':<15} {'?':<10} {'?':<8} {child.name}  ({exc})")
+            missing += 1
+
+    print("=" * width)
+    print(f"  検出: {found} 件 / 欠落・不正: {missing} 件")
+    return 0 if missing == 0 else 1
+
+
 def _configure_stdio() -> None:
     """Windows コンソール (cp932) でもサブプロセスログを落とさない。"""
     for stream in (sys.stdout, sys.stderr):
@@ -228,6 +342,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="M10 ロールバック手動 smoke の報告シートとシナリオ一覧のみ表示",
     )
+    parser.add_argument(
+        "--m10-static-check",
+        action="store_true",
+        help="rollback.json save 呼び出しが core/IPC 各経路に存在するか静的に検査",
+    )
+    parser.add_argument(
+        "--scan-rollback-json",
+        metavar="DIR",
+        help="指定ディレクトリ配下の .dmig パックを走査し rollback.json 有無を一覧表示",
+    )
     parser.add_argument("-v", "--verbose", action="store_true", help="サブプロセス出力をそのまま表示")
     args = parser.parse_args(argv)
 
@@ -242,6 +366,12 @@ def main(argv: list[str] | None = None) -> int:
     if args.m10_smoke:
         _print_m10_smoke_report()
         return 0
+
+    if args.m10_static_check:
+        return _static_check_m10()
+
+    if args.scan_rollback_json:
+        return _scan_rollback_json(Path(args.scan_rollback_json).resolve())
 
     if args.manual_only:
         _print_manual_checklist()
