@@ -9,6 +9,7 @@ import { ErrorCodes } from '@shared/codes.js';
 import type { DockerAdapter } from './DockerAdapter.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 import { Exporter } from './Exporter.js';
+import { ROLLBACK_FILENAME } from './RollbackManager.js';
 
 const ZERO_SHA = '0'.repeat(64);
 const HASH_A = 'a'.repeat(64);
@@ -181,6 +182,13 @@ describe('Exporter partialState (段階 A)', () => {
     const parsed = JSON.parse(raw) as DmigManifest;
     expect(parsed.partialState).toBeUndefined();
     expect(parsed.contents.images.find((i) => i.name === 'imgB')?.sha256).toBe(HASH_B);
+
+    const rb = JSON.parse(await readFile(join(pkgDir, ROLLBACK_FILENAME), 'utf-8')) as {
+      kind: string;
+      entries: { type: string }[];
+    };
+    expect(rb.kind).toBe('export');
+    expect(rb.entries.some((e) => e.type === 'directory')).toBe(true);
   });
 
   it('例外時は interruptionReason が error', async () => {

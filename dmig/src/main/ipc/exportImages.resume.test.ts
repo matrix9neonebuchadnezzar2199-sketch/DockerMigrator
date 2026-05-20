@@ -13,6 +13,7 @@ import {
   makeTempDirManager,
 } from '../core/__test-fixtures__/index.js';
 import { setupImageExportIpcHarness, type IpcInvokeHandler } from '../test-utils/ipcHarness.js';
+import { ROLLBACK_FILENAME } from '../core/RollbackManager.js';
 
 type ResumeResult =
   | { ok: true; data: unknown }
@@ -123,6 +124,11 @@ describe('dmig:resumeExport IPC', () => {
     const raw = await readFile(join(pkgDir, 'manifest.json'), 'utf-8');
     const parsed = JSON.parse(raw) as DmigManifest;
     expect(parsed.partialState).toBeUndefined();
+
+    const rb = JSON.parse(await readFile(join(pkgDir, ROLLBACK_FILENAME), 'utf-8')) as {
+      kind: string;
+    };
+    expect(rb.kind).toBe('export');
   });
 
   it('異常: 完了パッケージ (partialState 無し) → E2071 NOT_A_PARTIAL_PACKAGE', async () => {
