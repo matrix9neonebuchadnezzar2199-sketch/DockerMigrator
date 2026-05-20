@@ -483,6 +483,12 @@ body.diary > footer {
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-1642">詳細</a></td>
       </tr>
+      <tr>
+        <td>09:41</td>
+        <td>Resume Export の rollback.json 生成 + M10 静的チェック</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0941">詳細</a></td>
+      </tr>
     </tbody>
   </table>
 </section>
@@ -1073,6 +1079,44 @@ body.diary > footer {
   <ul>
     <li><code>run_smoke_check.py --m10-smoke</code> で HTML パス表示を確認</li>
     <li>Commit: <code>pending</code></li>
+  </ul>
+</section>
+
+<section class="entry" id="entry-0941">
+  <h2>Resume Export の rollback.json 生成 + M10 静的チェック</h2>
+  <div class="meta">
+    <span class="date">2026-05-19 09:41</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+
+  <h3>概要</h3>
+  <p>品質チェックで確定した <strong>Resume Export 経路の rollback.json 欠落</strong>を修正。<code>resumeImagePack</code> / <code>resumeComposePack</code> 末尾で <code>exportImages</code> と同型の <code>saveRecord</code> を追加。あわせて <code>run_smoke_check.py</code> に <code>--m10-static-check</code> と <code>--scan-rollback-json</code> を実装（Import 側は <code>manager.saveRecord</code> 表記に合わせ grep パターン調整）。</p>
+
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">~</span> <code>Exporter.ts</code>, <code>ComposeExporter.ts</code></li>
+    <li><span class="op op-add">+</span> <code>ComposeExporter.resume-rollback.test.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>Exporter.partialState.test.ts</code>, <code>exportImages.resume.test.ts</code></li>
+    <li><span class="op op-mod">~</span> <code>run_smoke_check.py</code>, <code>CHANGELOG.md</code></li>
+  </ul>
+
+  <h3>設計判断</h3>
+  <p>save 位置は <strong>関数末尾分散</strong>（IPC 集約ではなく）。Image Export の save は従来どおり <code>Exporter.exportImages</code> にあり、静的チェックは core / IPC をセットで見る。</p>
+
+  <h3>検証</h3>
+  <ul>
+    <li>vitest 11 passed（resume 関連 3 ファイル）</li>
+    <li><code>python scripts/run_smoke_check.py --m10-static-check</code> — 6 件 OK</li>
+    <li>Commit: <code>7d4f6b0</code> fix, <code>f983eae</code> test, <code>91c9cff</code> chore（push 済み）</li>
+    <li><code>--m10-static-check</code>（push 後）: 6 経路すべて OK</li>
+  </ul>
+
+  <h3>残課題</h3>
+  <ul>
+    <li>smoke HTML の S5 分岐（新規 Export / Resume 完了）— P2</li>
+    <li><code>already_executed</code> バナー強調 — M11/M12</li>
   </ul>
 </section>
 </main>
