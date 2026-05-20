@@ -16,6 +16,7 @@
 ### Changed
 
 - **docs/testing**: 手動スモーク・M10 チェックリストを Markdown から HTML 正本へ移行（`index.html`, `smoke-checklist.html`, `m10-rollback-smoke-checklist.html`）。`run_smoke_check.py` は `file:///` パスを案内。
+- **docs/testing**: M10 smoke の S5 を S5-A / S5-B / S5-C に分割（Resume 回帰観測・`--scan-rollback-json` 観測点）。
 
 ### Fixed
 

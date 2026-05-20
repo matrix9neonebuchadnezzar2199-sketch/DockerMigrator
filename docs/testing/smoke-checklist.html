@@ -79,7 +79,9 @@ tr:last-child td { border-bottom: none; }
       <tr><td>S2</td><td><strong>[移行先相当]</strong> <strong>プロジェクトを選ぶ</strong>［取り込む］→ <strong>ロールバック</strong>（<code>directory_not_empty</code>）</td></tr>
       <tr><td>S3</td><td>再ロールバック（<code>already_executed</code>）</td></tr>
       <tr><td>S4</td><td>旧 <code>.dmig</code> 非対応表示</td></tr>
-      <tr><td>S5</td><td><strong>書き出し</strong>（パックを書き出す / プロジェクトを選ぶ）→ <code>rollback.json</code> → ロールバック</td></tr>
+      <tr><td>S5-A</td><td><strong>新規 Image Export</strong> → <code>rollback.json</code> → ロールバック</td></tr>
+      <tr><td>S5-B</td><td><strong>新規 Compose Export</strong> → <code>rollback.json</code> → ロールバック</td></tr>
+      <tr><td>S5-C</td><td><strong>Resume Export 完了</strong> → <code>rollback.json</code>（回帰、<code>--scan-rollback-json</code> 可）</td></tr>
       <tr><td>S6</td><td>各ページ <strong>直近の操作を取り消す</strong>（インライン）</td></tr>
       <tr><td>S7</td><td>directory 手動削除（任意・所感）</td></tr>
     </tbody>

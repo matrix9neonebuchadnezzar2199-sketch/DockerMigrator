@@ -33,7 +33,9 @@ M10_REPORT_LINES: list[tuple[str, str, str]] = [
     ("S2", "[移行先相当] プロジェクトを選ぶ［取り込む］→ ロールバック", "必須（directory_not_empty）"),
     ("S3", "再ロールバック（already_executed）", "必須"),
     ("S4", "旧 .dmig（rollback.json なし）", "任意（旧パックがあれば）"),
-    ("S5", "書き出し → rollback.json / ロールバック", "必須"),
+    ("S5-A", "新規 Image Export → rollback.json / ロールバック", "必須"),
+    ("S5-B", "新規 Compose Export → rollback.json / ロールバック", "必須"),
+    ("S5-C", "Resume Export 完了 → rollback.json（回帰）", "任意（中断パックなしでスキップ可）"),
     ("S6", "直近の操作を取り消す（インライン）", "必須"),
     ("S7", "directory 手動削除の運用", "任意"),
 ]
