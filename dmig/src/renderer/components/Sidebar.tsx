@@ -11,6 +11,7 @@ import {
   Upload,
   FlaskConical,
   Undo2,
+  RefreshCw,
 } from 'lucide-react';
 import type { PageKey } from '../App.js';
 
@@ -50,7 +51,9 @@ export const Sidebar: React.FC<{
   page: PageKey;
   onChange: (p: PageKey) => void;
   dockerVersion: string;
-}> = ({ page, onChange, dockerVersion }) => (
+  dockerPinging?: boolean;
+  onRetryDocker?: () => void;
+}> = ({ page, onChange, dockerVersion, dockerPinging = false, onRetryDocker }) => (
   <aside className="sidebar">
     <h1 className="sidebar-brand">
       <Package size={18} aria-hidden="true" /> dmig
@@ -151,6 +154,20 @@ export const Sidebar: React.FC<{
         />
       </section>
     </nav>
-    <div className="sidebar-docker-version">Docker: {dockerVersion}</div>
+    <div className="sidebar-docker-version">
+      Docker: {dockerVersion}
+      {onRetryDocker ? (
+        <button
+          type="button"
+          className="sidebar-docker-retry"
+          onClick={onRetryDocker}
+          disabled={dockerPinging}
+          aria-label="Docker 接続を再確認"
+          title="Docker 接続を再確認"
+        >
+          <RefreshCw size={14} />
+        </button>
+      ) : null}
+    </div>
   </aside>
 );

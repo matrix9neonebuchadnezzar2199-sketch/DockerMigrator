@@ -110,6 +110,9 @@ export const ComposePage: React.FC = () => {
   const [exportFlowUnlocked, setExportFlowUnlocked] = useState(1);
   const [exportFlowExpanded, setExportFlowExpanded] = useState(1);
 
+  const isModalOpen = phase === 'bindDlg' || phase === 'secretDlg';
+  const isBusy = phase === 'running' || isModalOpen;
+
   const refreshProjects = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -144,6 +147,15 @@ export const ComposePage: React.FC = () => {
     }
     // 初回マウント時のみ自動取得（再訪問時はキャッシュを維持、再読込ボタンで更新）
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refreshProjects は安定、projects/loading は初回判定のみ
+  }, []);
+
+  useEffect(() => {
+    void window.dmig.getSettings().then((r) => {
+      if (!r.ok) return;
+      const dir = r.data.defaultExportDir;
+      if (!dir) return;
+      setOutputDir((prev) => (prev === '' ? dir : prev));
+    });
   }, []);
 
   useEffect(() => {
@@ -226,7 +238,7 @@ export const ComposePage: React.FC = () => {
 
   const runLifecycleForProject = useCallback(
     async (projectName: string, action: ComposeLifecycleAction) => {
-      if (phase === 'running') return;
+      if (isBusy) return;
       setComposeLifecycleBusy(projectName);
       setError(null);
       try {
@@ -240,19 +252,19 @@ export const ComposePage: React.FC = () => {
         setComposeLifecycleBusy(null);
       }
     },
-    [phase, refreshProjects],
+    [isBusy, refreshProjects],
   );
 
   const selectRunningOnly = useCallback(() => {
-    if (phase === 'running') return;
+    if (isBusy) return;
     const next = new Set(
       projects.filter((p) => p.services.some((s) => s.state === 'running')).map((p) => p.name),
     );
     setSelected(next);
-  }, [projects, phase]);
+  }, [projects, isBusy]);
 
   const stopAllSelected = useCallback(async () => {
-    if (selected.size === 0 || phase === 'running') return;
+    if (selected.size === 0 || isBusy) return;
     if (!window.confirm('選択中の各プロジェクトで docker compose stop を順に実行します。よろしいですか？')) {
       return;
     }
@@ -267,10 +279,10 @@ export const ComposePage: React.FC = () => {
       }
     }
     await refreshProjects();
-  }, [selected, phase, refreshProjects]);
+  }, [selected, isBusy, refreshProjects]);
 
   const pullAllSelected = useCallback(async () => {
-    if (selected.size === 0 || phase === 'running') return;
+    if (selected.size === 0 || isBusy) return;
     if (
       !window.confirm(
         '選択中の各プロジェクトで docker compose pull を順に実行します。イメージの再取得に時間・ディスク・ネットワークを消費します。続行しますか？',
@@ -289,10 +301,10 @@ export const ComposePage: React.FC = () => {
       }
     }
     await refreshProjects();
-  }, [selected, phase, refreshProjects]);
+  }, [selected, isBusy, refreshProjects]);
 
   const runPruneDangling = useCallback(async () => {
-    if (phase === 'running') return;
+    if (isBusy) return;
     setError(null);
     const r = await window.dmig.pruneDanglingImages();
     if (!r.ok) {
@@ -303,7 +315,7 @@ export const ComposePage: React.FC = () => {
       setDone('dangling イメージの prune が完了しました。');
     }
     await refreshProjects();
-  }, [phase, refreshProjects]);
+  }, [isBusy, refreshProjects]);
 
   const exportTargets = (): string[] => exportProjectNamesRef.current;
 
@@ -646,6 +658,17 @@ export const ComposePage: React.FC = () => {
     }
   }, [phase]);
 
+  const resetExportFlow = useCallback(() => {
+    setDone(null);
+    setLastExportPackDir('');
+    setPhase('browse');
+    setExportFlowUnlocked(1);
+    setExportFlowExpanded(1);
+    setPreflight(null);
+    exportProjectNamesRef.current = [];
+    composeDeltaRef.current = null;
+  }, []);
+
   return (
     <div className="page-shell">
       <div className="page-two-col">
@@ -705,13 +728,13 @@ export const ComposePage: React.FC = () => {
               value={outputDir}
               onChange={(e) => setOutputDir(e.target.value)}
               placeholder="E:\\backup"
-              disabled={phase === 'running'}
+              disabled={isBusy}
               style={{ width: '100%', maxWidth: 480 }}
             />
             <button
               type="button"
               onClick={() => void browseOutputDir()}
-              disabled={phase === 'running'}
+              disabled={isBusy}
               style={{ marginTop: 8 }}
             >
               📂 フォルダを選ぶ…
@@ -720,7 +743,7 @@ export const ComposePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => advanceExportFlow(1)}
-                disabled={!outputDir.trim() || phase === 'running'}
+                disabled={!outputDir.trim() || isBusy}
               >
                 次へ — 差分オプションへ
               </button>
@@ -744,7 +767,7 @@ export const ComposePage: React.FC = () => {
                   type="checkbox"
                   checked={diffMode}
                   onChange={(e) => setDiffMode(e.target.checked)}
-                  disabled={phase === 'running'}
+                  disabled={isBusy}
                 />
                 差分書き出しを使う
               </label>
@@ -755,7 +778,7 @@ export const ComposePage: React.FC = () => {
                       type="checkbox"
                       checked={strictVolume}
                       onChange={(e) => setStrictVolume(e.target.checked)}
-                      disabled={phase === 'running'}
+                      disabled={isBusy}
                     />
                     厳密ボリューム判定（低速・正確）
                   </label>
@@ -764,7 +787,7 @@ export const ComposePage: React.FC = () => {
                     <select
                       value={selectedSnapshotId}
                       onChange={(e) => setSelectedSnapshotId(e.target.value)}
-                      disabled={phase === 'running'}
+                      disabled={isBusy}
                     >
                       {snapshots.length === 0 && <option value="">（無し）</option>}
                       {snapshots.map((s) => (
@@ -778,7 +801,7 @@ export const ComposePage: React.FC = () => {
               )}
             </div>
             <div className="flow-step-actions">
-              <button type="button" onClick={() => advanceExportFlow(2)} disabled={phase === 'running'}>
+              <button type="button" onClick={() => advanceExportFlow(2)} disabled={isBusy}>
                 次へ — プロジェクトを選ぶ
               </button>
             </div>
@@ -796,13 +819,13 @@ export const ComposePage: React.FC = () => {
               <strong style={{ flex: '1 1 200px' }}>
                 検出: {loading ? '読み込み中…' : `${projects.length} 件`}
               </strong>
-              <button type="button" onClick={selectAll} disabled={phase === 'running'}>
+              <button type="button" onClick={selectAll} disabled={isBusy}>
                 すべて選択
               </button>
-              <button type="button" onClick={clearAll} disabled={phase === 'running'}>
+              <button type="button" onClick={clearAll} disabled={isBusy}>
                 選択解除
               </button>
-              <button type="button" onClick={() => void refreshProjects()} disabled={loading || phase === 'running'}>
+              <button type="button" onClick={() => void refreshProjects()} disabled={loading || isBusy}>
                 🔄 再読込
               </button>
             </div>
@@ -814,7 +837,7 @@ export const ComposePage: React.FC = () => {
                   type="button"
                   className="btn-compact"
                   onClick={selectRunningOnly}
-                  disabled={loading || phase === 'running' || composeLifecycleBusy !== null}
+                  disabled={loading || isBusy || composeLifecycleBusy !== null}
                 >
                   🎯 稼働中のみ選択
                 </button>
@@ -823,7 +846,7 @@ export const ComposePage: React.FC = () => {
                   className="btn-compact"
                   onClick={() => void stopAllSelected()}
                   disabled={
-                    loading || phase === 'running' || selected.size === 0 || composeLifecycleBusy !== null
+                    loading || isBusy || selected.size === 0 || composeLifecycleBusy !== null
                   }
                 >
                   ⏹ 選択をすべて停止
@@ -833,7 +856,7 @@ export const ComposePage: React.FC = () => {
                   className="btn-compact"
                   onClick={() => void pullAllSelected()}
                   disabled={
-                    loading || phase === 'running' || selected.size === 0 || composeLifecycleBusy !== null
+                    loading || isBusy || selected.size === 0 || composeLifecycleBusy !== null
                   }
                 >
                   ⬇ 選択のイメージ取得
@@ -842,7 +865,7 @@ export const ComposePage: React.FC = () => {
                   type="button"
                   className="btn-compact"
                   onClick={() => void runPruneDangling()}
-                  disabled={loading || phase === 'running' || composeLifecycleBusy !== null}
+                  disabled={loading || isBusy || composeLifecycleBusy !== null}
                 >
                   🧹 dangling イメージ整理
                 </button>
@@ -868,7 +891,7 @@ export const ComposePage: React.FC = () => {
                 project={p}
                 selected={selected.has(p.name)}
                 onToggle={() => toggle(p.name)}
-                disabled={phase === 'running'}
+                disabled={isBusy}
                 onComposeLifecycle={(action) => void runLifecycleForProject(p.name, action)}
                 composeLifecycleBusy={composeLifecycleBusy === p.name}
                 composeOpsLocked={composeLifecycleBusy !== null}
@@ -879,7 +902,7 @@ export const ComposePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => advanceExportFlow(3)}
-                disabled={selected.size === 0 || phase === 'running'}
+                disabled={selected.size === 0 || isBusy}
               >
                 次へ — 確認して書き出す
               </button>
@@ -944,7 +967,7 @@ export const ComposePage: React.FC = () => {
                 type="button"
                 onClick={() => void startExport()}
                 disabled={
-                  phase === 'running' ||
+                  isBusy ||
                   selected.size === 0 ||
                   !outputDir.trim() ||
                   exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
@@ -981,6 +1004,9 @@ export const ComposePage: React.FC = () => {
                 }}
               >
                 {done}
+                <button type="button" onClick={resetExportFlow} style={{ marginTop: 8 }}>
+                  新しい書き出しを開始
+                </button>
               </div>
             ) : null}
             {phase === 'done' && lastExportPackDir ? (
@@ -999,10 +1025,10 @@ export const ComposePage: React.FC = () => {
               value={importPackDir}
               onChange={(e) => setImportPackDir(e.target.value)}
               placeholder="E:\\backup\\dmig-xxxx.dmig"
-              disabled={phase === 'running'}
+              disabled={isBusy}
               style={{ width: 360 }}
             />
-            <button type="button" onClick={browseImportDir} disabled={phase === 'running'} style={{ marginLeft: 8 }}>
+            <button type="button" onClick={browseImportDir} disabled={isBusy} style={{ marginLeft: 8 }}>
               📂 選択...
             </button>
           </div>
@@ -1031,7 +1057,7 @@ export const ComposePage: React.FC = () => {
                         return next;
                       });
                     }}
-                    disabled={phase === 'running'}
+                    disabled={isBusy}
                   />
                   <div style={{ flex: 1 }}>
                     <div>
@@ -1049,7 +1075,7 @@ export const ComposePage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => browseDestDir(p.name)}
-                        disabled={phase === 'running'}
+                        disabled={isBusy}
                         style={{ marginLeft: 8 }}
                       >
                         📂
@@ -1064,7 +1090,7 @@ export const ComposePage: React.FC = () => {
               <button
                 type="button"
                 onClick={runImport}
-                disabled={phase === 'running' || importSelected.size === 0}
+                disabled={isBusy || importSelected.size === 0}
                 style={{ marginTop: 12 }}
               >
                 {phase === 'running' ? 'インポート中...' : '▶ インポート開始'}

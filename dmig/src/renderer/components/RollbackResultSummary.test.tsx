@@ -6,6 +6,16 @@ import { RollbackResultSummary } from './RollbackResultSummary.js';
 describe('RollbackResultSummary', () => {
   afterEach(() => cleanup());
 
+  it('wasAlreadyExecuted でメッセージを表示', () => {
+    render(
+      <RollbackResultSummary
+        result={{ succeeded: [], skipped: [], failed: [], warnings: [] }}
+        wasAlreadyExecuted
+      />,
+    );
+    expect(screen.getByText(/既にロールバック済みです/)).toBeInTheDocument();
+  });
+
   it('directory_not_empty 件数を表示', () => {
     render(
       <RollbackResultSummary

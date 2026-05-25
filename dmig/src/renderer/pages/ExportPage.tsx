@@ -24,9 +24,11 @@ const IMAGE_LIST_PROGRESS_INITIAL = buildProgressEvent({
 export const ExportPage: React.FC = () => {
   const [images, setImages] = useState<ImageInfo[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [outputDir, setOutputDir] = useState<string>(
-    typeof navigator !== 'undefined' && navigator.platform.includes('Win') ? 'E:\\' : '/media/usb',
-  );
+  const HARDCODED_DEFAULT =
+    typeof navigator !== 'undefined' && navigator.platform.includes('Win') ? 'E:\\' : '/media/usb';
+
+  const [outputDir, setOutputDir] = useState<string>(HARDCODED_DEFAULT);
+  const [outputDirInitialized, setOutputDirInitialized] = useState(false);
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [running, setRunning] = useState(false);
   const [listing, setListing] = useState(true);
@@ -41,6 +43,16 @@ export const ExportPage: React.FC = () => {
   usePageDynamicCta(
     done && !error ? { label: 'インポートへ進む', targetPage: 'import' } : null,
   );
+
+  useEffect(() => {
+    void window.dmig.getSettings().then((r) => {
+      if (r.ok && r.data.defaultExportDir && !outputDirInitialized) {
+        setOutputDir(r.data.defaultExportDir);
+      }
+      setOutputDirInitialized(true);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     discoverProgress.setProgress(IMAGE_LIST_PROGRESS_INITIAL);

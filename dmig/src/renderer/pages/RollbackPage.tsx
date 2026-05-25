@@ -22,8 +22,17 @@ export const RollbackPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [ipcError, setIpcError] = useState<DmigErrorPayload | null>(null);
 
-  const { status, records, listWarnings, lastResult, error, listRecords, runRollback, reset } =
-    useRollback();
+  const {
+    status,
+    records,
+    listWarnings,
+    lastResult,
+    error,
+    wasAlreadyExecuted,
+    listRecords,
+    runRollback,
+    reset,
+  } = useRollback();
 
   const scanning = status === 'loading';
   const running = status === 'running';
@@ -73,7 +82,10 @@ export const RollbackPage: React.FC = () => {
     if (!selectedRecord) {
       return;
     }
-    await runRollback(selectedRecord.packageDir);
+    const r = await runRollback(selectedRecord.packageDir);
+    if (!r.ok) {
+      return;
+    }
     setDialogOpen(false);
     if (rootDir) {
       await listRecords({ rootDir, maxDepth: 2 });
@@ -170,7 +182,9 @@ export const RollbackPage: React.FC = () => {
       ))}
 
       <ErrorBox error={ipcError ?? (error ? { code: 'ROLLBACK', message: error } : null)} />
-      {lastResult ? <RollbackResultSummary result={lastResult} /> : null}
+      {lastResult ? (
+        <RollbackResultSummary result={lastResult} wasAlreadyExecuted={wasAlreadyExecuted} />
+      ) : null}
 
       {dialogOpen && selectedRecord ? (
         <RollbackConfirmDialog
@@ -179,6 +193,7 @@ export const RollbackPage: React.FC = () => {
           createdAt={selectedRecord.createdAt}
           entries={selectedRecord.entries}
           busy={running}
+          errorMessage={error}
           onConfirm={() => void onConfirmRollback()}
           onClose={() => setDialogOpen(false)}
         />

@@ -24,6 +24,15 @@ describe('StepIndicator', () => {
     expect(items[0]).not.toHaveAttribute('aria-current');
   });
 
+  it('current ステップはボタンではない', () => {
+    const onNavigate = vi.fn();
+    render(<StepIndicator page="export" onNavigate={onNavigate} />);
+    const nav = screen.getByRole('navigation', { name: '移行元の作業フロー' });
+    const items = within(nav).getAllByRole('listitem');
+    expect(within(items[1]!).queryByRole('button')).not.toBeInTheDocument();
+    expect(within(items[0]!).getByRole('button')).toBeInTheDocument();
+  });
+
   it('resume: ステップ 3 が current', () => {
     render(<StepIndicator page="resume" />);
     const nav = screen.getByRole('navigation', { name: '移行元の作業フロー' });

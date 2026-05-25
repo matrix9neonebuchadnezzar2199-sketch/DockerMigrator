@@ -10,6 +10,7 @@ export function useResumeFlow(
   onSuccessMessage: (msg: string) => void,
   setError: (e: DmigErrorPayload | null) => void,
   onAfterSuccess?: () => void | Promise<void>,
+  onCancelMessage?: (msg: string) => void,
 ) {
   const [resumeSummary, setResumeSummary] = useState<ProbeSummary | null>(null);
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
@@ -50,7 +51,7 @@ export function useResumeFlow(
     } else if (r.error.code === ErrorCodes.JOB_CANCELLED) {
       setResumeDialogOpen(false);
       setResumeSummary(null);
-      onSuccessMessage('再開ジョブを中止しました。');
+      (onCancelMessage ?? onSuccessMessage)('再開ジョブを中止しました。');
     } else {
       setError(r.error);
     }

@@ -2,6 +2,7 @@ import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ErrorCodes } from '@shared/codes.js';
 import type { DmigAPI } from '../../preload/index.js';
 import type { ProbeSummary } from '../../shared/types.js';
 import { renderWithProviders } from '../test-utils/renderWithProviders.js';
@@ -146,6 +147,31 @@ describe('ResumePage', () => {
         compressionLevel: 3,
       });
     });
+  });
+
+  it('再開ジョブ中止後は CTA「インポートへ進む」が表示されない', async () => {
+    mountWithDmig({
+      selectDirectory: vi.fn().mockResolvedValue({ ok: true, data: 'C:\\scan' }),
+      listResumablePackages: vi
+        .fn()
+        .mockResolvedValue({ ok: true, data: { packages: [partialSummary()], warnings: [] } }),
+      resumeExport: vi.fn().mockResolvedValue({
+        ok: false,
+        error: { code: ErrorCodes.JOB_CANCELLED, message: 'cancelled' },
+      }),
+    });
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'フォルダを選んで探す' }));
+    await waitFor(() => screen.getAllByRole('button', { name: '再開する' }).length >= 1);
+    await user.click(screen.getAllByRole('button', { name: '再開する' })[0]!);
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: '再開する' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('再開ジョブを中止しました。')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('インポートへ進む')).not.toBeInTheDocument();
   });
 
   it('truncated_at_50 警告の翻訳', async () => {

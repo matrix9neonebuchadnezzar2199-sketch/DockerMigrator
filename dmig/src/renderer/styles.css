@@ -123,6 +123,21 @@ body {
   color: #6c7086;
 }
 
+.sidebar-docker-retry {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  margin-left: 6px;
+  vertical-align: middle;
+  color: #89b4fa;
+  padding: 0;
+}
+
+.sidebar-docker-retry:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .page-lead {
   margin: -8px 0 16px;
   font-size: 14px;
@@ -282,6 +297,11 @@ body {
 }
 .settings-saved {
   color: #a6e3a1;
+  font-size: 13px;
+}
+
+.settings-error {
+  color: #f38ba8;
   font-size: 13px;
 }
 .help-overview-link {

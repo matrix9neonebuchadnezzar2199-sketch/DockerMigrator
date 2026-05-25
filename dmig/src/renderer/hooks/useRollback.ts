@@ -20,11 +20,13 @@ export function useRollback() {
   const [listWarnings, setListWarnings] = useState<string[]>([]);
   const [lastResult, setLastResult] = useState<RunRollbackResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wasAlreadyExecuted, setWasAlreadyExecuted] = useState(false);
 
   const reset = useCallback(() => {
     setStatus('idle');
     setLastResult(null);
     setError(null);
+    setWasAlreadyExecuted(false);
   }, []);
 
   const listRecords = useCallback(async (req: ListRollbacksRequest) => {
@@ -50,12 +52,13 @@ export function useRollback() {
     setStatus('running');
     setError(null);
     setLastResult(null);
+    setWasAlreadyExecuted(false);
     const r = await window.dmig.runRollback({ packageDir, entryIds });
     if (r.ok) {
       setLastResult(r.data);
       setStatus('done');
       if (r.data.warnings.includes('already_executed')) {
-        setError(null);
+        setWasAlreadyExecuted(true);
       }
     } else {
       setError(r.error.message);
@@ -70,6 +73,7 @@ export function useRollback() {
     listWarnings,
     lastResult,
     error,
+    wasAlreadyExecuted,
     listRecords,
     runRollback,
     reset,

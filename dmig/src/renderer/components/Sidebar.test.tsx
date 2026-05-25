@@ -77,6 +77,21 @@ describe('Sidebar', () => {
     expect(onChange).toHaveBeenCalledWith('help');
   });
 
+  it('Docker 再確認ボタンで onRetryDocker が呼ばれる', async () => {
+    const user = userEvent.setup();
+    const onRetryDocker = vi.fn();
+    render(
+      <Sidebar
+        page="compose"
+        onChange={vi.fn()}
+        dockerVersion="24.0"
+        onRetryDocker={onRetryDocker}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Docker 接続を再確認' }));
+    expect(onRetryDocker).toHaveBeenCalledTimes(1);
+  });
+
   it('旧ラベルがなく新ラベルが表示される', () => {
     render(<Sidebar page="export" onChange={vi.fn()} dockerVersion="24.0" />);
     const nav = screen.getByRole('navigation', { name: 'メインメニュー' });

@@ -10,7 +10,7 @@ export interface RollbackInlineSectionProps {
 }
 
 export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mode, packageDir }) => {
-  const { status, lastResult, error, runRollback, reset } = useRollback();
+  const { status, lastResult, error, wasAlreadyExecuted, runRollback, reset } = useRollback();
   const [record, setRecord] = useState<RollbackRecord | null | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -29,7 +29,8 @@ export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mo
   }, [packageDir]);
 
   const supported = record != null && record.kind === mode && !record.executedAt;
-  const unsupported = packageDir.trim() && record === null;
+  const kindMismatch = record != null && record.kind !== mode && !record.executedAt;
+  const unsupported = packageDir.trim().length > 0 && record === null;
 
   const openDialog = () => {
     reset();
@@ -54,6 +55,12 @@ export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mo
       {unsupported ? (
         <p className="rollback-unsupported">このパッケージはロールバックに対応していません（M10 以前）。</p>
       ) : null}
+      {kindMismatch && record ? (
+        <p className="rollback-warn">
+          このパッケージは {record.kind === 'import' ? 'Import' : 'Export'}{' '}
+          向けのロールバック記録です。ここからは適用できません。
+        </p>
+      ) : null}
       {record?.executedAt ? (
         <p className="rollback-warn">ロールバックは既に実行済みです（{record.executedAt}）。</p>
       ) : null}
@@ -69,7 +76,9 @@ export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mo
           {error}
         </p>
       ) : null}
-      {lastResult ? <RollbackResultSummary result={lastResult} /> : null}
+      {lastResult ? (
+        <RollbackResultSummary result={lastResult} wasAlreadyExecuted={wasAlreadyExecuted} />
+      ) : null}
       {dialogOpen && record ? (
         <RollbackConfirmDialog
           packageDir={record.packageDir}

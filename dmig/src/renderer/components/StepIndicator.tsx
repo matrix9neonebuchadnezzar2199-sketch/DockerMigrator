@@ -23,8 +23,9 @@ export const StepIndicator: React.FC<{
       <ol className="step-indicator-list">
         {flow.steps.map((step, i) => {
           const state = stepState(step.index, flow.currentIndex);
+          const isCurrent = state === 'current';
           const targetPage = onNavigate ? getPageForFlowStep(flow.group, step.index) : null;
-          const canNavigate = Boolean(targetPage && onNavigate);
+          const canNavigate = Boolean(targetPage && onNavigate) && !isCurrent;
 
           return (
             <li

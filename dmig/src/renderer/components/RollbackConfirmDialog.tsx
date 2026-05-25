@@ -23,9 +23,10 @@ export const RollbackConfirmDialog: React.FC<{
   createdAt: string;
   entries: RollbackEntry[];
   busy: boolean;
+  errorMessage?: string | null;
   onConfirm: () => void;
   onClose: () => void;
-}> = ({ packageDir, kind, createdAt, entries, busy, onConfirm, onClose }) => {
+}> = ({ packageDir, kind, createdAt, entries, busy, errorMessage, onConfirm, onClose }) => {
   const byType = useMemo(() => countByType(entries), [entries]);
   const dirCount = byType.directory ?? 0;
 
@@ -74,6 +75,11 @@ export const RollbackConfirmDialog: React.FC<{
               </p>
             ) : null}
           </div>
+          {errorMessage ? (
+            <p className="rollback-error" role="alert">
+              {errorMessage}
+            </p>
+          ) : null}
         </div>
         <div className="dialog-footer" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button type="button" className="btn-danger" onClick={onConfirm} disabled={busy}>

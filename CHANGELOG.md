@@ -5,6 +5,32 @@
 
 ## [Unreleased]
 
+## [0.3.1-poc] - UPDATE-01
+
+### Fixed
+
+- Resume の中止後に「インポートへ進む」CTA が誤って表示されていた問題を修正 (B-08)
+- ImportPage の完了判定が脆い文字列リテラル比較に依存していた問題を修正、CTA 遷移先を移行先概要に変更 (B-06)
+- SettingsPage で保存した `defaultExportDir` が ExportPage / ComposePage に反映されていなかった問題を修正 (B-01)
+- Docker Desktop を後から起動した場合に再接続できる「再確認」ボタンを Sidebar に追加 (B-13)
+- ComposePage で書き出し完了/エラー後にフローをリセットする「新しい書き出しを開始」ボタンを追加 (B-25)
+- ImportPage で packDir 編集時にマニフェスト・選択状態を破棄するように修正 (B-17)
+- ComposePage で bind/secret ダイアログ表示中に一括操作ボタンが押せてしまう問題を修正 (B-16)
+- RollbackInlineSection で kind 不一致時のメッセージを追加 (B-19)
+- RollbackInlineSection の unsupported 判定を明示的な boolean 化 (B-12)
+- `already_executed` ロールバックの結果表示を分かりやすく改善 (B-32)
+- RollbackPage でロールバック失敗時にダイアログを閉じずエラーを表示するように変更 (B-30)
+- ResumePage の scan で連続実行時の競合を防ぐ世代番号を追加 (B-09)
+- ResumePage の完了 CTA を見直し（移行先操作への直接遷移を廃止） (B-07)
+- StepIndicator の現在ステップをボタンから span に変更 (B-14)
+- SettingsPage で設定保存失敗時のエラー表示を追加 (B-35)
+- usePageDynamicCta の依存配列を参照比較からプリミティブ比較に変更 (B-21)
+
+### Notes
+
+- 未読領域 (Exporter / ComposeExporter / Snapshotter / DockerAdapter / ipc/preflight / ipc/dryRun / ipc/snapshot) は次フェーズで監査する。
+- B-02/B-10/B-11/B-20/B-23/B-27/B-31/B-36 は次フェーズで対応予定。
+
 ### Added
 
 - **M8**: 共通ログビューア（`PageKey: logs`、最大 1000 件 FIFO、フィルタ・検索・TSV コピー）。

@@ -33,8 +33,11 @@ export function useDynamicCta(): DynamicCtaContextValue {
 /** 作業ページ完了時に Footer 動的 CTA を登録し、アンマウントでクリアする。 */
 export function usePageDynamicCta(cta: DynamicCta | null): void {
   const { setDynamicCta } = useDynamicCta();
+  const label = cta?.label ?? null;
+  const targetPage = cta?.targetPage ?? null;
+
   React.useEffect(() => {
-    setDynamicCta(cta);
+    setDynamicCta(label != null && targetPage != null ? { label, targetPage } : null);
     return () => setDynamicCta(null);
-  }, [cta, setDynamicCta]);
+  }, [label, targetPage, setDynamicCta]);
 }

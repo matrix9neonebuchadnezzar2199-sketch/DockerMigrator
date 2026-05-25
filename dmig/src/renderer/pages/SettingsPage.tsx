@@ -3,6 +3,7 @@ import type { DmigSettings } from '../../shared/settings.js';
 export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<DmigSettings | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -13,11 +14,15 @@ export const SettingsPage: React.FC = () => {
   }, []);
 
   const persist = async (patch: Partial<DmigSettings>) => {
+    setSaveError(null);
     const r = await window.dmig.updateSettings(patch);
     if (r.ok) {
       setSettings(r.data);
       setSaved('設定を保存しました。');
       window.setTimeout(() => setSaved(null), 2500);
+    } else {
+      setSaveError(`設定の保存に失敗しました: ${r.error.code}`);
+      window.setTimeout(() => setSaveError(null), 4000);
     }
   };
 
@@ -68,6 +73,11 @@ export const SettingsPage: React.FC = () => {
       </section>
 
       {saved ? <p className="settings-saved">{saved}</p> : null}
+      {saveError ? (
+        <p className="settings-error" role="alert">
+          {saveError}
+        </p>
+      ) : null}
     </div>
   );
 };

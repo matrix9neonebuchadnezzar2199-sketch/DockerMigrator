@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import type { DmigErrorPayload, ProbeSummary } from '../../shared/types.js';
 import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
@@ -34,6 +34,8 @@ export const ResumePage: React.FC = () => {
   const [error, setError] = useState<DmigErrorPayload | null>(null);
 
   const [done, setDone] = useState<string | null>(null);
+  const [cancelled, setCancelled] = useState<string | null>(null);
+  const scanGenRef = useRef(0);
 
   const scanProgress = useDmigProgress('scan');
   const {
@@ -47,18 +49,28 @@ export const ResumePage: React.FC = () => {
     onCancelResumeJob,
     closeResumeDialog,
   } = useResumeFlow(
-    (msg) => setDone(msg),
+    () => {
+      setDone(
+        'エクスポートの再開が完了しました。USB 等にコピーして移行先で取り込んでください。',
+      );
+      setCancelled(null);
+    },
     setError,
     () => {
       if (rootDir) void runScan(rootDir);
     },
+    (msg) => {
+      setCancelled(msg);
+      setDone(null);
+    },
   );
 
-  usePageDynamicCta(done && !error ? { label: 'インポートへ進む', targetPage: 'import' } : null);
+  usePageDynamicCta(null);
 
   const pickFolderAndScan = async () => {
     setError(null);
     setDone(null);
+    setCancelled(null);
     const picked = await window.dmig.selectDirectory({
       title: '中断パックを探すフォルダを選択',
       defaultPath: rootDir || undefined,
@@ -74,12 +86,14 @@ export const ResumePage: React.FC = () => {
   };
 
   const runScan = async (dir: string) => {
+    const gen = ++scanGenRef.current;
     setScanning(true);
     setScanned(false);
     setPackages([]);
     setWarnings([]);
     scanProgress.setProgress(RESUMABLE_SCAN_INITIAL);
     const r = await window.dmig.listResumablePackages({ rootDir: dir, maxDepth: 2 });
+    if (gen !== scanGenRef.current) return;
     setScanning(false);
     scanProgress.clear();
     setScanned(true);
@@ -191,6 +205,7 @@ export const ResumePage: React.FC = () => {
             ✅ {done}
           </div>
         )}
+        {cancelled && <div className="card">{cancelled}</div>}
       </div>
 
       {resumeDialogOpen && resumeSummary && (

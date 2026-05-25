@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { Sidebar } from './components/Sidebar.js';
 import { NextStepFooter } from './components/NextStepFooter.js';
@@ -53,19 +53,25 @@ export const App: React.FC = () => {
   const [appReady, setAppReady] = useState(false);
   const [dockerVersion, setDockerVersion] = useState<string>('未接続');
   const [dockerConnected, setDockerConnected] = useState(false);
+  const [dockerPinging, setDockerPinging] = useState(false);
   const [composeVisited, setComposeVisited] = useState(false);
 
-  useEffect(() => {
-    void window.dmig.ping().then((r) => {
-      if (r.ok) {
-        setDockerVersion(r.data.version);
-        setDockerConnected(true);
-      } else {
-        setDockerVersion(`エラー: ${r.error.code}`);
-        setDockerConnected(false);
-      }
-    });
+  const pingDocker = useCallback(async () => {
+    setDockerPinging(true);
+    const r = await window.dmig.ping();
+    setDockerPinging(false);
+    if (r.ok) {
+      setDockerVersion(r.data.version);
+      setDockerConnected(true);
+    } else {
+      setDockerVersion(`エラー: ${r.error.code}`);
+      setDockerConnected(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void pingDocker();
+  }, [pingDocker]);
 
   useEffect(() => {
     void window.dmig.getSettings().then((r) => {
@@ -100,7 +106,13 @@ export const App: React.FC = () => {
     <ErrorBoundary>
       <LogBufferProvider>
         <DynamicCtaProvider>
-          <Sidebar page={page} onChange={setPage} dockerVersion={dockerVersion} />
+          <Sidebar
+            page={page}
+            onChange={setPage}
+            dockerVersion={dockerPinging ? '接続確認中…' : dockerVersion}
+            dockerPinging={dockerPinging}
+            onRetryDocker={() => void pingDocker()}
+          />
           <div className="main">
             <div className="main-body">
           <StepIndicator page={page} onNavigate={setPage} />

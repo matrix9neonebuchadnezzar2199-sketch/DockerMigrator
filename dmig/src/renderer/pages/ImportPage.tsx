@@ -30,6 +30,8 @@ export const ImportPage: React.FC = () => {
   const [running, setRunning] = useState(false);
   const [probing, setProbing] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [imported, setImported] = useState(false);
+  const [cancelled, setCancelled] = useState<string | null>(null);
 
   const [probeErrorSummary, setProbeErrorSummary] = useState<ProbeSummary | null>(null);
 
@@ -51,15 +53,29 @@ export const ImportPage: React.FC = () => {
       } else {
         setDone(msg);
       }
+      setCancelled(null);
     },
     setError,
+    undefined,
+    (msg) => {
+      setCancelled(msg);
+      setDone(null);
+    },
   );
 
   usePageDynamicCta(
-    done === 'インポートが完了しました。' && !error
-      ? { label: 'ホームへ戻る', targetPage: 'source-overview' }
+    imported && !error && !cancelled
+      ? { label: '移行先の概要へ戻る', targetPage: 'target-overview' }
       : null,
   );
+
+  const onChangePackDir = (next: string) => {
+    setPackDir(next);
+    setManifest(null);
+    setSelected(new Set());
+    setProbeErrorSummary(null);
+    setImported(false);
+  };
 
   const loadManifestOnly = async (dir: string) => {
     const r = await window.dmig.readManifest(dir);
@@ -74,6 +90,7 @@ export const ImportPage: React.FC = () => {
   const loadPackage = async () => {
     setError(null);
     setDone(null);
+    setImported(false);
     setManifest(null);
     setProbeErrorSummary(null);
     setProbing(true);
@@ -113,6 +130,7 @@ export const ImportPage: React.FC = () => {
   const start = async () => {
     setError(null);
     setDone(null);
+    setImported(false);
     setRunning(true);
     transferProgress.clear();
     const r = await window.dmig.importImages({
@@ -122,8 +140,10 @@ export const ImportPage: React.FC = () => {
     });
     setRunning(false);
     transferProgress.clear();
-    if (r.ok) setDone('インポートが完了しました。');
-    else setError(r.error);
+    if (r.ok) {
+      setDone('インポートが完了しました。');
+      setImported(true);
+    } else setError(r.error);
   };
 
   return (
@@ -142,7 +162,7 @@ export const ImportPage: React.FC = () => {
             <input
               type="text"
               value={packDir}
-              onChange={(e) => setPackDir(e.target.value)}
+              onChange={(e) => onChangePackDir(e.target.value)}
               placeholder="E:\\dmig-20260514.dmig"
               disabled={running || resumeRunning}
             />
@@ -203,9 +223,7 @@ export const ImportPage: React.FC = () => {
           )}
 
           <ErrorBox error={error} />
-          {done === 'インポートが完了しました。' && packDir ? (
-            <RollbackInlineSection mode="import" packageDir={packDir} />
-          ) : null}
+          {imported && packDir ? <RollbackInlineSection mode="import" packageDir={packDir} /> : null}
           {done && (
             <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
               ✅ {done}
