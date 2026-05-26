@@ -4,7 +4,10 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { registerIpcHandlers } from './ipc.js';
 import { SnapshotStore } from './core/snapshot/SnapshotStore.js';
+import { installContentSecurityPolicy } from './security/csp.js';
 import './phase-core-entry.js';
+
+installContentSecurityPolicy(app.isPackaged);
 
 const mainDir = dirname(fileURLToPath(import.meta.url));
 
