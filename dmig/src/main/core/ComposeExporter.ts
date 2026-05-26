@@ -5,6 +5,8 @@ import { randomUUID } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { spawn } from 'node:child_process';
 
+import { assertComposeConfigFileWithinLimit } from './io/composeConfigGuard.js';
+import { writeChecksumsSha256 } from './io/checksumsWriter.js';
 import { DockerAdapter } from './DockerAdapter.js';
 import { Exporter } from './Exporter.js';
 import { VolumeExporter } from './VolumeExporter.js';
@@ -255,7 +257,7 @@ export class ComposeExporter extends EventEmitter {
       for (const vol of session.manifest.contents.volumes ?? []) {
         checksumLines.push(`${vol.sha256}  ${vol.filename}`);
       }
-      await fsp.writeFile(join(opened.packageDir, 'checksums.sha256'), `${checksumLines.join('\n')}\n`, 'utf-8');
+      await writeChecksumsSha256(opened.packageDir, checksumLines);
 
       this.emitProgress({
         taskId: 'done',
@@ -336,6 +338,7 @@ export class ComposeExporter extends EventEmitter {
     const configFilesPacked: string[] = [];
     for (const cfgPath of info.configFiles) {
       try {
+        await assertComposeConfigFileWithinLimit(cfgPath);
         const fileName = basename(cfgPath);
         const destPath = join(projectDir, fileName);
         await fsp.copyFile(cfgPath, destPath);

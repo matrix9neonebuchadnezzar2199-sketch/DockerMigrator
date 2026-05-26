@@ -9,6 +9,7 @@ import { createZstdCompressStream } from './compression/zstdStreams.js';
 import { DockerAdapter } from './DockerAdapter.js';
 import { DmigError, wrapError } from './errors/DmigError.js';
 import { ErrorCodes } from './errors/codes.js';
+import { writeChecksumsSha256 } from './io/checksumsWriter.js';
 import { ManifestWriter } from './manifest/ManifestWriter.js';
 import {
   createStageAChunkRef,
@@ -169,8 +170,8 @@ export class Exporter extends EventEmitter {
       throw e;
     }
 
-    const checksumLines = entries.map((e) => `${e.sha256}  images/${e.filename}`).join('\n');
-    await fsp.writeFile(join(packDir, 'checksums.sha256'), `${checksumLines}\n`, 'utf-8');
+    const checksumLines = entries.map((e) => `${e.sha256}  images/${e.filename}`);
+    await writeChecksumsSha256(packDir, checksumLines);
 
     this.emitProgress({
       taskId: 'done',
@@ -284,10 +285,10 @@ export class Exporter extends EventEmitter {
       throw e;
     }
 
-    const checksumLines = manifest.contents.images
-      .map((e) => `${e.sha256}  images/${e.filename}`)
-      .join('\n');
-    await fsp.writeFile(join(packDir, 'checksums.sha256'), `${checksumLines}\n`, 'utf-8');
+    const checksumLines = manifest.contents.images.map(
+      (e) => `${e.sha256}  images/${e.filename}`,
+    );
+    await writeChecksumsSha256(packDir, checksumLines);
 
     this.emitProgress({
       taskId: 'done',

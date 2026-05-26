@@ -3,6 +3,7 @@ import type { Readable } from 'node:stream';
 import { finished } from 'node:stream/promises';
 import { join } from 'node:path';
 import { PassThrough } from 'node:stream';
+import { ALPINE_VOLUME_HELPER_IMAGE } from '@shared/dockerImages.js';
 import type { ImageInfo, VolumeInfo, ComposeProjectInfo, ComposeServiceInfo, BindMountInfo, EnvFileInfo } from '@shared/types.js';
 import { DmigError, wrapError } from './errors/DmigError.js';
 import { ErrorCodes } from './errors/codes.js';
@@ -203,10 +204,10 @@ export class DockerAdapter {
     }
 
     try {
-      await this.ensureImage('alpine:3.19');
+      await this.ensureImage(ALPINE_VOLUME_HELPER_IMAGE);
 
       const container = await this.docker.createContainer({
-        Image: 'alpine:3.19',
+        Image: ALPINE_VOLUME_HELPER_IMAGE,
         Cmd: ['tar', '-C', '/vol', '-cf', '-', '.'],
         AttachStdout: true,
         AttachStderr: true,
@@ -277,10 +278,10 @@ export class DockerAdapter {
     }
 
     try {
-      await this.ensureImage('alpine:3.19');
+      await this.ensureImage(ALPINE_VOLUME_HELPER_IMAGE);
 
       const container = await this.docker.createContainer({
-        Image: 'alpine:3.19',
+        Image: ALPINE_VOLUME_HELPER_IMAGE,
         Cmd: ['sleep', '86400'],
         HostConfig: {
           AutoRemove: false,
