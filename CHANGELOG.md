@@ -5,6 +5,29 @@
 
 ## [Unreleased]
 
+## [0.5.1-poc] - UPDATE-04
+
+### Added
+
+- Import 系エラーの `ErrorBox` にコード別文言マップ（E2075 / E2071 / E8001）
+- `dmig/src/renderer/lib/i18n/errorMessages.ts` で文言を集中管理
+- `ErrorBox` 単体テスト 4 ケース
+
+### Changed
+
+- `StaticPageGuides` を `React.lazy` + `Suspense` に切り替え、初期バンドルからガイド本文を分離 (B-23)
+- 本番ビルドで `StaticPageGuides` チャンク約 21 KB を遅延読み込み
+
+### Docs
+
+- 通読ノート §14（UPDATE-03 手動スモーク: パターン C）
+- UPDATE-04 開発日記
+
+### Notes
+
+- 手動 Docker スモーク（0.5.0 / 0.5.1）はマスター環境で実施待ち（パターン C → フェーズ3 前に要記録）
+- Reserved smoke-fix 枠: 未使用
+
 ## [0.5.0-poc] - UPDATE-03
 
 ### Changed

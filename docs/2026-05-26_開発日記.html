@@ -359,7 +359,7 @@ body.diary > footer {
 <body class="diary">
 <header>
   <h1>2026-05-26 開発日記</h1>
-  <p class="subtitle">DockerMigrator — UPDATE-01 ユーザー操作フロー確証バグ修正</p>
+  <p class="subtitle">DockerMigrator — UPDATE-01 / UPDATE-04（0.5.1-poc）</p>
 </header>
 
 <section class="diary-toc">
@@ -369,6 +369,12 @@ body.diary > footer {
       <tr><th>時刻</th><th>概要</th><th>ステータス</th><th>詳細</th></tr>
     </thead>
     <tbody>
+      <tr>
+        <td>11:04</td>
+        <td>UPDATE-04: ErrorBox コード別文言 + B-23 lazy guides（0.5.1-poc）</td>
+        <td><span class="tag tag-warn">WARN</span></td>
+        <td><a href="#entry-1104">詳細</a></td>
+      </tr>
       <tr>
         <td>08:18</td>
         <td>UPDATE-01: Renderer 層バグ修正（B-01〜B-35 確証分）</td>
@@ -380,6 +386,38 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1104">
+  <h2>UPDATE-04: 0.5.1-poc（Import ErrorBox + B-23）</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 11:04</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-warn">WARN</span>
+  </div>
+  <h3>概要</h3>
+  <p>A+ 案で <strong>0.5.1-poc</strong> をリリース体裁に整備。フェーズ1で <code>errorMessages.ts</code> と <code>ErrorBox</code> のコード別文言（E2075 / E2071 / E8001）。フェーズ2で <code>StaticPageGuides</code> を <code>React.lazy</code> 分離（B-23）。Reserved smoke-fix は未使用。</p>
+  <h3>フェーズ0</h3>
+  <p><strong>パターン C</strong>（UPDATE-03 手動 Docker スモーク未実施）。通読ノート §14 に記録。フェーズ3 完了前にマスター実施が必要（正本 <code>docs/testing/smoke-checklist.html</code>）。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/lib/i18n/errorMessages.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/lazyStaticPageGuides.tsx</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/components/ErrorBox.test.tsx</code></li>
+    <li><span class="op op-mod">M</span> <code>ErrorBox.tsx</code>, <code>ImportPage.tsx</code>, <code>ExportPage.tsx</code>, <code>ComposePage.tsx</code>, <code>styles.css</code></li>
+    <li><span class="op op-mod">M</span> <code>CHANGELOG.md</code>, <code>package.json</code> 0.5.1-poc, <code>M6-M13-roadmap.md</code>, readnote §14</li>
+  </ul>
+  <h3>設計判断</h3>
+  <p>Importer UI は <code>ProbeErrorPanel</code> ではなく <code>ErrorBox</code> のみ。E2075/E2071 に加え <code>Importer.verifyChecksum</code> 確認済みの E8001 も有効化。B-23 は <code>lazyStaticPageGuides.tsx</code> に lazy ラッパを集約。</p>
+  <h3>検証</h3>
+  <p><code>typecheck</code> / <code>lint</code> / <code>test</code> 181 pass (2 skipped) / <code>build</code> / <code>run_smoke_check.py</code> 成功。本番ビルドでメインバンドル約 435 KB、<code>StaticPageGuides</code> チャンク約 21 KB に分離。Commit: <code>pending</code></p>
+  <h3>残課題 / UPDATE-05 申し送り</h3>
+  <ol>
+    <li>手動 Docker スモーク（パターン C 解消）— 最優先</li>
+    <li>Main IPC cancel 横展開（<code>listImages</code> 等）— 要件整理後 UPDATE-05</li>
+    <li>Importer UI 拡張（E5002 等・ProbeErrorPanel 統一）</li>
+    <li>M7 キックオフ（設定 v2）— 別計画</li>
+  </ol>
+</section>
 <section class="entry" id="entry-0818">
   <h2>UPDATE-01: ユーザー操作フロー確証バグ修正</h2>
   <div class="meta">
