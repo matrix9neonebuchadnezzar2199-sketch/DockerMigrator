@@ -147,10 +147,96 @@ Renderer: `useDmigProgress(scope)` が `matchesProgressScope` でフィルタ。
 
 - **P0 確定なし**（`ok: true` かつ `partialState` がキャンセル扱い、または `ok: false` かつ完了 progress、の矛盾は観測されず）。
 - **P1 確定（シナリオ3）**: 最後の pending チャンクについて `exportSingleImagePublic` 完了**後**に `AbortSignal` を立てても、`resumeImagePack` はループ内の manifest 更新・checksum・完了 progress・`ok: true` まで進む。ユーザーが「中止」した直後に UI が成功完了になるギャップ。
-- **対応方針**: フェーズ1（Progress 集約）に進む。B-20 の P1 修正はフェーズ2-1（manifest 書き込み直前の `signal.aborted` チェック統一）で実施。
+- **対応方針**: フェーズ1（Progress 集約）に進む。B-20 P1 の UX 修正方針は **§12**（機械的な abort 3 点統一は採用しない）。
 
 ### シナリオ3 の再現手順（テスト内）
 
 1. partial パック（pending は imgB のみ）。
 2. `exportSingleImagePublic` モック内でエントリ返却直前に `jobRegistry.cancel(jobToken)`。
 3. IPC は `ok: true`、`partialState` 消去、完了 progress 発火。
+
+---
+
+## 10. Progress 集約設計（UPDATE-03 フェーズ1）
+
+**目的**: `window.dmig.onProgress` の Renderer 購読を 1 箇所に集約し、B-27 の構造解決を完了する（UPDATE-02 のページアンマウントは前提改善済み）。
+
+### 現状の購読箇所（変更前）
+
+| 箇所 | 購読方法 | scope |
+|------|----------|-------|
+| `useDmigProgress` | `onProgress` 直接 + `flushSync` | 引数 scope でフィルタ |
+| `LogBufferProvider` | `onProgress` 直接 | 全件 |
+| 呼び出し元 | Export / Import / Compose / Resume / `useResumeFlow` / `useDiffPreview` | 各 hook インスタンス |
+
+Main: `createProgressRelay` → `webContents.send('dmig:progress')` → preload `ipcRenderer.on` → 各 Renderer listener（N 本）。
+
+### 変更後
+
+| 層 | 責務 |
+|----|------|
+| `ProgressBusProvider` | `onProgress` を **1 回だけ**購読。`applyProgressScope` 後に購読者へ fan-out。`flushSync` は **ここだけ**。 |
+| `useProgressBus().subscribe(scope?, listener)` | scope フィルタ付き登録。unsubscribe は返却関数。 |
+| `useDmigProgress` | Bus 経由。API 不変。hook 内 `flushSync` 削除。 |
+| `LogBufferProvider` | Bus 経由（scope 未指定 = 全件）。 |
+
+### Provider 階層（App.tsx）
+
+```
+ErrorBoundary
+  ProgressBusProvider          ← 新規（最外 Renderer 状態）
+    LogBufferProvider          ← Bus 購読（全 scope）
+      JobLockProvider
+        RollbackJobProvider
+          ComposePageStateProvider
+            DynamicCtaProvider
+              …pages…
+```
+
+理由: LogBuffer は全 progress を記録するため Bus の子でよい。JobLock 等は progress に非依存。
+
+### 移行手順（フェーズ1）
+
+1. `shared/types.ts` で `ProgressPhase` / `ProgressScope` / `ProgressEvent` を整理（§12 案B の optional を型に先行追加）。
+2. `ProgressBusContext` 実装 + 単体テスト。
+3. `useDmigProgress` を Bus 経由に差し替え（呼び出し側無変更）。
+4. `LogBufferProvider` を Bus 経由に差し替え。
+5. `App.tsx` に Provider 追加。`npm test` / 手動スモーク。
+
+### 破壊範囲見積もり
+
+- **変更**: `useDmigProgress.ts`, `useLogBuffer.tsx`, `App.tsx`, `types.ts`, 新規 Context + test。
+- **不変**: 各 Page、`OperationProgress`、Main `createProgressRelay` / Exporter emit。
+- **テスト**: `ProgressBusContext.test.tsx` 追加。既存 Renderer/Main テストは mock `onProgress` のまま動作。
+
+---
+
+## 12. B-20 P1 修正方針（フェーズ2-1 用・フェーズ1-2 で型先行）
+
+### 問題の整理
+
+シナリオ3: 最終チャンク I/O 完了**後**の cancel では、実体は成功（manifest/checksum 整合）だが UI は「中止したのに完了」に見える。
+
+**採用しない**: manifest 直前で無条件 `abort` → `ok: false`（実体成功と IPC 失敗の乖離、resume 時の pending 判断が困難）。
+
+### Progress 完了イベントの表現案
+
+| 案 | 内容 | フェーズ1-2 型 | フェーズ2-1 Main |
+|----|------|----------------|------------------|
+| **A** | キャンセル要求後は完了 progress を出さない | 単純だがシナリオ3で「無音完了」 | emit 抑制 |
+| **B** | 完了 progress に `cancelRequested?: boolean` | **採用**（optional、既存互換） | `taskId=done` 時にフラグ付与 |
+| **C** | `taskId: 'done' \| 'done-after-cancel'` | union 拡張が大きい | taskId 分岐 |
+
+**決定: 案B**
+
+- フェーズ1-2: `ProgressEvent` に `cancelRequested?: boolean` を追加（Main はフェーズ2-1 まで未送信でよい）。
+- フェーズ2-1: `resumeImagePack` / `resumeComposePack` の完了 emit 直前に `signal.aborted` を読み、true なら `cancelRequested: true` を付与。IPC は現状どおり `ok: true`（データ層は成功のまま）。
+- Renderer: `OperationProgress` または Resume/Export 完了カードで、フラグあり時は「処理は完了しましたが、中止操作が行われました」等の文言（フェーズ2-1 で実装）。
+
+案A はユーザーに「止まったか成功したか」が分かりにくい。案C は `taskId` が動的（イメージ名）と混在し型が複雑化する。
+
+### フェーズ2-1 の受け入れ条件（予定）
+
+- シナリオ3 再実行時: `ok: true` のまま、最終 progress に `cancelRequested: true`。
+- シナリオ1/2/4: 完了 progress なし、または `cancelRequested` 未設定。
+- シナリオ5: 通常完了、`cancelRequested` なし。
