@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>14:39</td>
+        <td>B-37 / B-38 hotfix-2 クローズ（§14 パターン A）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1439">詳細</a></td>
+      </tr>
+      <tr>
         <td>14:01</td>
         <td>hotfix-2 (0.5.2.2-poc): 実ラウンドトリップテスト・appVersion 一元化</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -539,6 +545,28 @@ body.diary > footer {
   <p><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（165 pass）/ <code>build</code> すべて成功。Commit: <code>cd6cdab</code></p>
   <h3>残課題</h3>
   <p>B-02/B-27（composeVisited 常時マウントと progress listener 重複）、B-10/B-11/B-31（Rollback 状態の Context 化）、B-20/B-23 等は Exporter 監査フェーズで対応。</p>
+</section>
+
+<section class="entry" id="entry-1439">
+  <h2>B-37 / B-38 hotfix-2 クローズ</h2>
+  <p class="meta">
+    <span class="date">2026-05-26</span>
+    <span class="tag tag-scope">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </p>
+  <h3>概要</h3>
+  <p>UPDATE-05（B-37）→ B-38 hotfix（0.5.2.1-poc）→ 偽陽性 NG（旧パック・ステイル main）→ hotfix-2（0.5.2.2-poc）→ 実機で新規 Export（<code>dmig-2026-05-26T05-27-24.dmig</code>）→ Import 成立。<strong>§14 パターン A</strong> に移行。</p>
+  <h3>変更ファイル</h3>
+  <ul>
+    <li><code>docs/notes/2026-05-27_update02-readnote.md</code> §14 / §20</li>
+    <li><code>docs/milestones/M6-M13-roadmap.md</code></li>
+    <li><code>docs/instructions/update-06-instructions.md</code>（ドラフト）</li>
+  </ul>
+  <h3>設計判断</h3>
+  <p>B-38 の再発ではなく診断問題。定数化 + 実 I/O ラウンドトリップ + <code>source.appVersion</code> + 設定画面バージョン表示が再発防止の鍵（§20）。</p>
+  <h3>検証</h3>
+  <p>実機: B-37 OK、B-38 新規パック Import OK（E5002 なし）。次: UPDATE-06（0.6.0-poc 想定）。</p>
 </section>
 
 <section class="entry" id="entry-1401">
