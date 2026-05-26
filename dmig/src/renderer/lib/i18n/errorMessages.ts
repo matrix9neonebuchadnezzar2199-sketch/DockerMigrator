@@ -34,6 +34,12 @@ export const ERROR_MESSAGES: Record<string, ErrorMessageEntry> = {
     suggestion:
       'パッケージを作成した側のアプリケーションを最新版に揃えてから再度書き出してください。',
   },
+  E5010: {
+    title: 'パッケージ内のパスが不正です',
+    description:
+      'manifest やアーカイブに含まれるファイルパスが、パッケージの安全な範囲を超えています。',
+    suggestion: '信頼できるソースから再エクスポートしたパッケージを使用してください。',
+  },
 };
 
 /**

@@ -75,6 +75,8 @@ export const ErrorCodes = {
 
   PACK_FORMAT_INVALID: 'E5001',
   PACK_VERSION_INCOMPATIBLE: 'E5002',
+  /** manifest / tar 由来パスがパッケージルート外へ脱出しようとした */
+  PATH_TRAVERSAL_DETECTED: 'E5010',
   IMAGE_LOAD_FAILED: 'E5003',
   VOLUME_IMPORT_FAILED: 'E5020',
   VOLUME_ALREADY_EXISTS: 'E5021',
@@ -158,6 +160,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
 
   E5001: 'パッケージ形式が不正です。manifest.json が見つかりません。',
   E5002: 'このパッケージのバージョンには対応していません。',
+  E5010: 'パッケージ内のファイルパスが不正です（パス走査の疑い）。信頼できるパッケージのみ取り込んでください。',
   E5003: 'イメージのロード (docker load) に失敗しました。',
   E5020: 'ボリュームのインポートに失敗しました。',
   E5021: '同名のボリュームが既に存在します。',
