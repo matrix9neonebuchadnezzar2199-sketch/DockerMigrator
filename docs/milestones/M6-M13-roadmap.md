@@ -215,7 +215,7 @@ flowchart TB
 
 | 日付 | 内容 |
 |------|------|
-| 2026-05-26 | UPDATE-06 リリース（0.6.0-poc、U6-01/02/05 + dev CSP。自動ゲート 214 tests OK） |
+| 2026-05-26 | UPDATE-06 クローズ（0.6.0-poc、§14 パターン A 実機スモーク OK） |
 | 2026-05-26 | hotfix-3 リリース（0.5.2.3-poc、U6-03 CSP/navigation/sandbox、§14 C1〜C4 スモーク OK） |
 | 2026-05-26 | hotfix-2 クローズ（0.5.2.2-poc、§14 パターン A、B-38 実機解決、UPDATE-06 ドラフト） |
 | 2026-05-27 | UPDATE-03 完了印（B-27/B-20/rollback cancel）、Importer UI を UPDATE-04 候補に |

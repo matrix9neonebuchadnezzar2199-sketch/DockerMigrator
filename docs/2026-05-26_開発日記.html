@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>16:40</td>
+        <td>UPDATE-06 実機スモーク OK（0.6.0-poc / §14 パターン A）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1640">詳細</a></td>
+      </tr>
+      <tr>
         <td>16:25</td>
         <td>UPDATE-06 リリース（0.6.0-poc / Phase 5）</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -462,9 +468,27 @@ body.diary > footer {
     <li><span class="op op-mod">M</span> <code>docs/milestones/M6-M13-roadmap.md</code>、<code>update-06-instructions.md</code>、readnote §14</li>
   </ul>
   <h3>検証</h3>
-  <p><code>run_smoke_check.py</code> 自動点検 OK（214 tests）。Commit: <code>849e1de</code>。手動スモークは §14 UPDATE-06 節（マスター確認待ち）。</p>
+  <p><code>run_smoke_check.py</code> 自動点検 OK（214 tests）。Commit: <code>849e1de</code>。実機スモーク OK は <a href="#entry-1640">#entry-1640</a>。</p>
   <h3>残課題</h3>
   <p>UPDATE-07（U6-04/06、Delta RT、tar 直接テスト）。M7 は 0.6.0 完了後キックオフ。</p>
+</section>
+<section class="entry" id="entry-1640">
+  <h2>UPDATE-06 実機スモーク: パターン A</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 16:40</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>マスター実機で <code>0.6.0-poc</code> の手動スモーク完了。Export → Import、Compose Import、dev CSP、旧パック E5002 すべて想定どおり。§14 をパターン A に更新。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">M</span> <code>docs/notes/2026-05-27_update02-readnote.md</code> §14</li>
+    <li><span class="op op-mod">M</span> <code>docs/milestones/M6-M13-roadmap.md</code>、<code>update-06-instructions.md</code></li>
+  </ul>
+  <h3>検証</h3>
+  <p>マスター判定: OK（NG なし）。UPDATE-06 クローズ。</p>
 </section>
 <section class="entry" id="entry-1622">
   <h2>UPDATE-06 品質ゲート再確認</h2>

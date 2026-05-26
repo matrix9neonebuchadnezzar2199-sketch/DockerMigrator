@@ -302,16 +302,17 @@ ErrorBoundary
 
 2026-05-26 hotfix-3（`0.5.2.3-poc`）適用後の実機スモークで **C1〜C4 全項目 OK**。`window.dmig` API、Image Export、Import probe、ファイル選択ダイアログ、ガイド遅延読み込みすべて **sandbox 下で正常動作**を確認。dev CSP のヘッダ注入・検証手順は **UPDATE-06（0.6.0-poc）** で整備（`docs/testing/dev-csp-verification.md`、`[::1]` / `ELECTRON_RENDERER_URL` 対応）。
 
-### UPDATE-06（0.6.0-poc）リリース（2026-05-26）
+### UPDATE-06（0.6.0-poc）実機スモーク（2026-05-26）
 
-- **リリース内容**: U6-01 `importCompose` → `openAsBase`、U6-02 path traversal（`safeJoinUnder`）、U6-05 Compose/Resume ラウンドトリップテスト、dev CSP 整備
-- **自動検証**: `typecheck` / `lint` / `test`（214 passed, 2 skipped）/ `build` OK（`python scripts/run_smoke_check.py` 推奨）
-- **設定画面**: 実行中バージョンが `0.6.0-poc` であること
-- **手動スモーク（マスター確認待ち）**:
-  1. `npm run dev` 完全再起動後、新規 Image/Compose Export → Import（E5002 なし）
-  2. Compose Import が `openAsBase` 経路であること（旧 `dmigVersion: 0.2.0-poc` パックは E5002 想定どおり）
-  3. [dev-csp-verification.md](../testing/dev-csp-verification.md) §1: Network で CSP ヘッダ、Console に violation 大量なし
-  4. （任意）`npm run build` 後 `out/renderer/index.html` の `connect-src 'none'` meta
+- **対象バージョン**: `0.6.0-poc`（main 再起動済み `npm run dev`）
+- **判定**: **パターン A（NG なし）** — マスター実機確認完了
+- **確認済み**:
+  - 設定画面の実行中バージョン `0.6.0-poc`
+  - 新規 Image / Compose Export → Import（E5002 なし）
+  - Compose Import（`openAsBase` 経路）正常
+  - 旧 `dmigVersion: 0.2.0-poc` パックは E5002 想定どおり（仕様）
+  - dev CSP: Network で `Content-Security-Policy` ヘッダ確認、Console に violation 大量なし
+- **リリース内容（参照）**: U6-01 / U6-02 / U6-05 / dev CSP — 自動検証は `run_smoke_check.py` OK（214 tests）
 
 ### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
