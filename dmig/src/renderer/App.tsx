@@ -14,7 +14,10 @@ import { SettingsPage } from './pages/SettingsPage.js';
 import { LogsPage } from './pages/LogsPage.js';
 import { DryRunPage } from './pages/DryRunPage.js';
 import { RollbackPage } from './pages/RollbackPage.js';
+import { ComposePageStateProvider } from './context/ComposePageStateContext.js';
 import { DynamicCtaProvider } from './context/DynamicCtaContext.js';
+import { JobLockProvider } from './context/JobLockContext.js';
+import { RollbackJobProvider } from './context/RollbackJobContext.js';
 import { LogBufferProvider } from './hooks/useLogBuffer.js';
 
 export type PageKey =
@@ -54,8 +57,6 @@ export const App: React.FC = () => {
   const [dockerVersion, setDockerVersion] = useState<string>('未接続');
   const [dockerConnected, setDockerConnected] = useState(false);
   const [dockerPinging, setDockerPinging] = useState(false);
-  const [composeVisited, setComposeVisited] = useState(false);
-
   const pingDocker = useCallback(async () => {
     setDockerPinging(true);
     const r = await window.dmig.ping();
@@ -77,7 +78,6 @@ export const App: React.FC = () => {
     void window.dmig.getSettings().then((r) => {
       if (r.ok && r.data.restoreLastPage && r.data.lastPage && isPageKey(r.data.lastPage)) {
         setPage(r.data.lastPage);
-        if (r.data.lastPage === 'compose') setComposeVisited(true);
       }
       setAppReady(true);
     });
@@ -87,12 +87,6 @@ export const App: React.FC = () => {
     if (!appReady) return;
     void window.dmig.updateSettings({ lastPage: page });
   }, [page, appReady]);
-
-  useEffect(() => {
-    if (page === 'compose') {
-      setComposeVisited(true);
-    }
-  }, [page]);
 
   if (!appReady) {
     return (
@@ -105,7 +99,10 @@ export const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <LogBufferProvider>
-        <DynamicCtaProvider>
+        <JobLockProvider>
+          <RollbackJobProvider>
+            <ComposePageStateProvider>
+              <DynamicCtaProvider>
           <Sidebar
             page={page}
             onChange={setPage}
@@ -120,11 +117,7 @@ export const App: React.FC = () => {
           {page === 'target-overview' && <TargetOverviewPage onNavigate={setPage} />}
           {page === 'export' && <ExportPage />}
           {page === 'import' && <ImportPage />}
-          {composeVisited && (
-            <div className="main-page-panel" hidden={page !== 'compose'} aria-hidden={page !== 'compose'}>
-              <ComposePage />
-            </div>
-          )}
+          {page === 'compose' && <ComposePage />}
           {page === 'resume' && <ResumePage />}
           {page === 'help' && <HelpPage onNavigate={setPage} />}
           {page === 'settings' && <SettingsPage />}
@@ -132,9 +125,18 @@ export const App: React.FC = () => {
               {page === 'dryrun' && <DryRunPage />}
               {page === 'rollback' && <RollbackPage />}
             </div>
-            <NextStepFooter page={page} onNavigate={setPage} dockerConnected={dockerConnected} />
+            <NextStepFooter
+              page={page}
+              onNavigate={setPage}
+              dockerConnected={dockerConnected}
+              dockerPinging={dockerPinging}
+              onReconnect={() => void pingDocker()}
+            />
           </div>
-        </DynamicCtaProvider>
+              </DynamicCtaProvider>
+            </ComposePageStateProvider>
+          </RollbackJobProvider>
+        </JobLockProvider>
       </LogBufferProvider>
     </ErrorBoundary>
   );

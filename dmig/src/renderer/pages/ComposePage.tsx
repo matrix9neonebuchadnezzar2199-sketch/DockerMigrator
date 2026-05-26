@@ -36,6 +36,8 @@ import {
   transferSecondsAtUsbAssumption,
   USB_ASSUMED_BYTES_PER_SEC,
 } from '../utils/formatTransfer.js';
+import { useComposePageState } from '../context/ComposePageStateContext.js';
+import { useJobLock } from '../context/JobLockContext.js';
 import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
 import { RollbackInlineSection } from '../components/RollbackInlineSection.js';
 import { FlowStepSection, type FlowStepStatus } from '../components/FlowStepSection.js';
@@ -65,9 +67,14 @@ interface ComposeDeltaOpts {
  * Phase 5 の GOAL 機能 + Phase 6 差分プレビュー。
  */
 export const ComposePage: React.FC = () => {
-  const [projects, setProjects] = useState<ComposeProjectInfo[]>([]);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [outputDir, setOutputDir] = useState<string>('');
+  const { snapshot, replaceSnapshot } = useComposePageState();
+  const { tryBegin, end, blockedMessage } = useJobLock();
+
+  const [projects, setProjects] = useState<ComposeProjectInfo[]>(snapshot.projects);
+  const [selected, setSelected] = useState<Set<string>>(
+    () => new Set(snapshot.selectedProjectNames),
+  );
+  const [outputDir, setOutputDir] = useState<string>(snapshot.outputDir);
   const [error, setError] = useState<DmigErrorPayload | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [lastExportPackDir, setLastExportPackDir] = useState('');
@@ -77,14 +84,16 @@ export const ComposePage: React.FC = () => {
   const transferProgress = useDmigProgress('transfer');
   const snapshotProgress = useDmigProgress('snapshot');
   const systemProgress = useDmigProgress('system');
-  const [tab, setTab] = useState<'export' | 'import'>('export');
+  const [tab, setTab] = useState<'export' | 'import'>(snapshot.tab);
 
   const [bindChoicesState, setBindChoicesState] = useState<Record<string, BindMountChoice[]>>({});
   const [scanResults, setScanResults] = useState<Record<string, SecretScanResult[]>>({});
 
-  const [importPackDir, setImportPackDir] = useState<string>('');
-  const [importManifest, setImportManifest] = useState<DmigManifest | null>(null);
-  const [importSelected, setImportSelected] = useState<Set<string>>(new Set());
+  const [importPackDir, setImportPackDir] = useState<string>(snapshot.importPackDir);
+  const [importManifest, setImportManifest] = useState<DmigManifest | null>(snapshot.importManifest);
+  const [importSelected, setImportSelected] = useState<Set<string>>(
+    () => new Set(snapshot.importSelectedNames),
+  );
   const [importDestDirs, setImportDestDirs] = useState<Record<string, string>>({});
   const [currentJobToken, setCurrentJobToken] = useState<string | null>(null);
   const [preflight, setPreflight] = useState<PreflightResult | null>(null);
@@ -94,10 +103,10 @@ export const ComposePage: React.FC = () => {
   const exportProjectNamesRef = useRef<string[]>([]);
   const composeDeltaRef = useRef<ComposeDeltaOpts | null>(null);
 
-  const [diffMode, setDiffMode] = useState(false);
-  const [strictVolume, setStrictVolume] = useState(false);
+  const [diffMode, setDiffMode] = useState(snapshot.diffMode);
+  const [strictVolume, setStrictVolume] = useState(snapshot.strictVolume);
   const [snapshots, setSnapshots] = useState<SnapshotSummary[]>([]);
-  const [selectedSnapshotId, setSelectedSnapshotId] = useState('');
+  const [selectedSnapshotId, setSelectedSnapshotId] = useState(snapshot.selectedSnapshotId);
   const [diffDialogOpen, setDiffDialogOpen] = useState(false);
   const diffPreview = useDiffPreview();
 
@@ -107,8 +116,39 @@ export const ComposePage: React.FC = () => {
   const [dryRunHasErrors, setDryRunHasErrors] = useState(false);
 
   /** 書き出しウィザード: 解放済みの最大手順・展開中の手順（0 は完了済みのみ折りたたみ） */
-  const [exportFlowUnlocked, setExportFlowUnlocked] = useState(1);
-  const [exportFlowExpanded, setExportFlowExpanded] = useState(1);
+  const [exportFlowUnlocked, setExportFlowUnlocked] = useState(snapshot.exportFlowUnlocked);
+  const [exportFlowExpanded, setExportFlowExpanded] = useState(snapshot.exportFlowExpanded);
+
+  useEffect(() => {
+    replaceSnapshot({
+      tab,
+      outputDir,
+      selectedProjectNames: Array.from(selected),
+      projects,
+      importPackDir,
+      importManifest,
+      importSelectedNames: Array.from(importSelected),
+      exportFlowUnlocked,
+      exportFlowExpanded,
+      diffMode,
+      strictVolume,
+      selectedSnapshotId,
+    });
+  }, [
+    tab,
+    outputDir,
+    selected,
+    projects,
+    importPackDir,
+    importManifest,
+    importSelected,
+    exportFlowUnlocked,
+    exportFlowExpanded,
+    diffMode,
+    strictVolume,
+    selectedSnapshotId,
+    replaceSnapshot,
+  ]);
 
   const isModalOpen = phase === 'bindDlg' || phase === 'secretDlg';
   const isBusy = phase === 'running' || isModalOpen;
@@ -443,6 +483,9 @@ export const ComposePage: React.FC = () => {
     secretActions: Record<string, SecretAction>,
     bindChoices: Record<string, BindMountChoice[]>,
   ) => {
+    if (!tryBegin('export')) {
+      return;
+    }
     setPhase('running');
     setError(null);
     setLastAction('Compose エクスポート: 実行中');
@@ -490,6 +533,7 @@ export const ComposePage: React.FC = () => {
     } finally {
       setCurrentJobToken(null);
       composeDeltaRef.current = null;
+      end('export');
     }
   };
 
@@ -586,6 +630,9 @@ export const ComposePage: React.FC = () => {
       return;
     }
 
+    if (!tryBegin('import')) {
+      return;
+    }
     setPhase('running');
     const jobToken = crypto.randomUUID();
     setCurrentJobToken(jobToken);
@@ -606,6 +653,7 @@ export const ComposePage: React.FC = () => {
       }
     } finally {
       setCurrentJobToken(null);
+      end('import');
     }
   };
 
@@ -675,6 +723,11 @@ export const ComposePage: React.FC = () => {
         <div className="page-primary">
           <h2>プロジェクトを選ぶ</h2>
           <ResumeHintBanner message={resumeHint} onDismiss={() => setResumeHint(null)} />
+          {blockedMessage ? (
+            <p className="card" role="status">
+              {blockedMessage}
+            </p>
+          ) : null}
 
           <OperationProgress
             active={loading}

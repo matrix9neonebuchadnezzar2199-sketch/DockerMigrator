@@ -1,6 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { DmigAPI } from '../preload/index.js';
 import { DEFAULT_DMIG_SETTINGS } from '../shared/settings.js';
@@ -11,7 +11,7 @@ function makeDmigMock(): DmigAPI {
     ping: vi.fn().mockResolvedValue({ ok: true, data: { version: '24.0.0' } }),
     getSettings: vi.fn().mockResolvedValue({ ok: true, data: { ...DEFAULT_DMIG_SETTINGS } }),
     updateSettings: vi.fn().mockResolvedValue({ ok: true, data: { ...DEFAULT_DMIG_SETTINGS } }),
-    listImages: vi.fn(),
+    listImages: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     exportImages: vi.fn(),
     importImages: vi.fn(),
     readManifest: vi.fn(),
@@ -19,7 +19,7 @@ function makeDmigMock(): DmigAPI {
     resumeExport: vi.fn(),
     listResumablePackages: vi.fn(),
     onProgress: vi.fn(() => () => {}),
-    listComposeProjects: vi.fn(),
+    listComposeProjects: vi.fn().mockResolvedValue({ ok: true, data: [] }),
     listVolumes: vi.fn(),
     scanSecrets: vi.fn(),
     exportCompose: vi.fn(),
@@ -41,6 +41,10 @@ function makeDmigMock(): DmigAPI {
 }
 
 describe('App integration', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   beforeEach(() => {
     window.dmig = makeDmigMock();
   });
@@ -53,10 +57,32 @@ describe('App integration', () => {
     expect(screen.getByRole('contentinfo', { name: '次にやること' })).toBeInTheDocument();
   });
 
-  it('サイドバーから設定ページへ遷移できる', async () => {
+  it('compose ページは遷移時のみマウントされる', async () => {
+    const listComposeProjects = vi.fn().mockResolvedValue({ ok: true, data: [] });
+    window.dmig = { ...makeDmigMock(), listComposeProjects };
+
     const user = userEvent.setup();
     render(<App />);
     const nav = await screen.findByRole('navigation', { name: 'メインメニュー' });
+    await user.click(within(nav).getByRole('button', { name: 'プロジェクトを選ぶ' }));
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: 'プロジェクトを選ぶ' })).toBeInTheDocument();
+    });
+    expect(listComposeProjects).toHaveBeenCalled();
+
+    await user.click(within(nav).getByRole('button', { name: 'パックを書き出す' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { level: 2, name: 'プロジェクトを選ぶ' })).not.toBeInTheDocument();
+    });
+  });
+
+  it('サイドバーから設定ページへ遷移できる', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: /移行元での作業 — 概要/ })).toBeInTheDocument();
+    });
+    const nav = screen.getByRole('navigation', { name: 'メインメニュー' });
     await user.click(within(nav).getByRole('button', { name: '設定' }));
     expect(screen.getByRole('heading', { name: '設定' })).toBeInTheDocument();
   });
