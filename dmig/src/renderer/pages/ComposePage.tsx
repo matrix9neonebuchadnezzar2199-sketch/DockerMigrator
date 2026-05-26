@@ -1017,25 +1017,28 @@ export const ComposePage: React.FC = () => {
             <OperationProgress active={phase === 'running'} progress={transferProgress.progress} />
 
             <div className="flow-step-actions">
-              <button
-                type="button"
-                onClick={() => void startExport()}
-                disabled={
-                  isBusy ||
-                  selected.size === 0 ||
-                  !outputDir.trim() ||
-                  exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
-                }
-                title={
-                  dryRunHasErrors
-                    ? 'ドライランでエラー検出。確認してください'
-                    : exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
-                      ? '手順 1〜3 を完了してください'
-                      : undefined
-                }
-              >
-                {phase === 'running' ? '書き出し中…' : '▶ パックを書き出す'}
-              </button>
+              {!(phase === 'done' && done) ? (
+                <button
+                  type="button"
+                  data-testid="compose-pack-export-start"
+                  onClick={() => void startExport()}
+                  disabled={
+                    isBusy ||
+                    selected.size === 0 ||
+                    !outputDir.trim() ||
+                    exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
+                  }
+                  title={
+                    dryRunHasErrors
+                      ? 'ドライランでエラー検出。確認してください'
+                      : exportFlowUnlocked < EXPORT_FLOW_LAST_STEP
+                        ? '手順 1〜3 を完了してください'
+                        : undefined
+                  }
+                >
+                  {phase === 'running' ? '書き出し中…' : '▶ パックを書き出す'}
+                </button>
+              ) : null}
               {phase === 'running' && currentJobToken && (
                 <button
                   type="button"
@@ -1058,7 +1061,12 @@ export const ComposePage: React.FC = () => {
                 }}
               >
                 {done}
-                <button type="button" onClick={resetExportFlow} style={{ marginTop: 8 }}>
+                <button
+                  type="button"
+                  data-testid="compose-export-reset"
+                  onClick={resetExportFlow}
+                  style={{ marginTop: 8 }}
+                >
                   新しい書き出しを開始
                 </button>
               </div>
