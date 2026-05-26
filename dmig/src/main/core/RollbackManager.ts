@@ -1,5 +1,6 @@
 import { access, lstat, readdir, readFile, rm } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { assertPathUnderRoot, safeJoinUnder } from '../security/safeJoinUnder.js';
 import writeFileAtomic from 'write-file-atomic';
 
 import type {
@@ -42,7 +43,7 @@ export class RollbackManager {
   ) {}
 
   rollbackPath(packageDir: string): string {
-    return join(packageDir, ROLLBACK_FILENAME);
+    return safeJoinUnder(packageDir, ROLLBACK_FILENAME);
   }
 
   async loadRecord(packageDir: string): Promise<RollbackRecord | null> {
@@ -195,7 +196,7 @@ export class RollbackManager {
         break;
       }
       try {
-        const outcome = await this.executeOneEntry(entry, record.kind);
+        const outcome = await this.executeOneEntry(entry, record.kind, packageDir);
         if (outcome.status === 'succeeded') {
           result.succeeded.push(entry.id);
         } else {
@@ -223,6 +224,7 @@ export class RollbackManager {
   private async executeOneEntry(
     entry: RollbackEntry,
     kind: RollbackRecord['kind'],
+    packageDir: string,
   ): Promise<EntryOutcome> {
     switch (entry.type) {
       case 'docker-image': {
@@ -247,9 +249,13 @@ export class RollbackManager {
       case 'docker-network':
         return { status: 'skipped' };
       case 'file':
+        if (kind === 'export') {
+          assertPathUnderRoot(packageDir, entry.target);
+        }
         return this.removeFileOrSymlink(entry.target);
       case 'directory':
         if (kind === 'export') {
+          assertPathUnderRoot(packageDir, entry.target);
           return this.removeDirectoryForce(entry.target);
         }
         return this.removeDirectoryIfEmpty(entry);

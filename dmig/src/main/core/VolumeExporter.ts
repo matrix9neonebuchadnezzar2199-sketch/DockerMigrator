@@ -3,6 +3,7 @@ import { pipeline } from 'node:stream/promises';
 import { Transform } from 'node:stream';
 import { createHash } from 'node:crypto';
 import { join } from 'node:path';
+import { safeJoinUnder } from '../security/safeJoinUnder.js';
 import { EventEmitter } from 'node:events';
 
 import { DockerAdapter } from './DockerAdapter.js';
@@ -108,7 +109,7 @@ export class VolumeExporter extends EventEmitter {
     tarFileRelative: string,
     options: { overwrite?: boolean } = {},
   ): Promise<void> {
-    const tarPath = join(packageDir, tarFileRelative);
+    const tarPath = safeJoinUnder(packageDir, tarFileRelative);
 
     try {
       await fsp.access(tarPath);
