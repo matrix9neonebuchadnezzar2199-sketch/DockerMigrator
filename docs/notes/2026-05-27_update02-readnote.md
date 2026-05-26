@@ -231,7 +231,28 @@ ErrorBoundary
 
 - フェーズ1-2: `ProgressEvent` に `cancelRequested?: boolean` を追加（Main はフェーズ2-1 まで未送信でよい）。
 - フェーズ2-1: `resumeImagePack` / `resumeComposePack` の完了 emit 直前に `signal.aborted` を読み、true なら `cancelRequested: true` を付与。IPC は現状どおり `ok: true`（データ層は成功のまま）。
-- Renderer: `OperationProgress` または Resume/Export 完了カードで、フラグあり時は「処理は完了しましたが、中止操作が行われました」等の文言（フェーズ2-1 で実装）。
+- Renderer: `useDoneProgressNotice` + `useResumeFlow` で完了メッセージを差し替え（**実装済み** §13）。
+
+### フェーズ2-1 実装メモ（2026-05-27）
+
+- Main: ループ完了後 `signal.aborted` → 完了 progress に `cancelRequested: true`（`Exporter.resumeImagePack` / `ComposeExporter.resumeComposePack`）。
+- Renderer 文言: `RESUME_LATE_CANCEL_SUCCESS_MESSAGE`（`useDoneProgressNotice.ts`）。
+
+---
+
+## 13. Importer エラー UI（UPDATE-03 フェーズ2-3 判断）
+
+**調査結果（30 分以内）**
+
+| 項目 | 結果 |
+|------|------|
+| `ipc/importImages.ts` の `toPayload` | `DmigError.toPayload()` 経由で **code / message / detail 保持** |
+| ImportPage | 異常系は主に `probePackage` → `ProbeSummary.status` + `ProbeErrorPanel`（コード列挙ではない） |
+| `open` / `import` 時の `MANIFEST_PARTIAL_INVALID` 等 | `ErrorBox` 経由（コードは表示されるが専用文言なし） |
+
+**判断: UPDATE-04 に送る**
+
+理由: 専用 UI 改善は `ProbeErrorPanel` 拡張 + `ErrorBox` のコード別文言表 + テストが必要で、1 日以内の小タスクに収まりにくい。IPC 層の欠落はない。
 
 案A はユーザーに「止まったか成功したか」が分かりにくい。案C は `taskId` が動的（イメージ名）と混在し型が複雑化する。
 
