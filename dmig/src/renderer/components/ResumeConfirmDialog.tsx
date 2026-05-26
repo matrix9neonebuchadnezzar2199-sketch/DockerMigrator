@@ -64,6 +64,10 @@ export const ResumeConfirmDialog: React.FC<{
           {summary.pendingChunksPreview && summary.pendingChunksPreview.length > 0 && (
             <div style={{ marginTop: 12, fontSize: 13 }}>
               <strong>先頭プレビュー</strong>
+              <p style={{ margin: '4px 0 0', color: '#a6adc8' }}>
+                全 {summary.pendingChunkCount} 件のうち、先頭{' '}
+                {summary.pendingChunksPreview.length} 件を表示しています。
+              </p>
               <ul style={{ margin: '6px 0 0 18px' }}>
                 {summary.pendingChunksPreview.map((c, i) => (
                   <li key={`${c.contentKind}-${c.contentId}-${c.chunkIndex}-${i}`}>
