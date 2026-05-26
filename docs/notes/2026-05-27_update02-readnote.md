@@ -264,28 +264,87 @@ ErrorBoundary
 
 ---
 
-## 14. UPDATE-03 手動スモーク状況（UPDATE-04 フェーズ0）
+## 14. UPDATE-03 / UPDATE-04 手動スモーク結果
 
-**記録日**: 2026-05-26  
-**パターン**: **C（スモーク未実施）**
+### 実施情報
 
-### 根拠
+- **実施日**: 2026-05-26
+- **対象バージョン**: `0.5.1-poc`（UPDATE-03 + UPDATE-04 を一括検証）
+- **環境**: Windows + Docker Desktop、`F:\Docker_out`（マスター環境）
+- **判定**: **パターン A（NG なし）**
 
-- 開発日記 `docs/2026-05-27_開発日記.html` UPDATE-03 エントリ: 手動 Docker スモークは全シナリオ「未実施」、正本 `docs/testing/smoke-checklist.html` はマスター環境確認待ち。
-- Agent は Docker + Electron 実機スモークを実行できない。
+### 確認済み範囲
 
-### 運用
+- **UPDATE-03** Progress 集約 / cancel / rollback: OK
+  - E6010 (`JOB_CANCELLED`) によるキャンセル動作確認
+  - ErrorBox の新 3 段構造（E6010 は未登録のため汎用表示だがレイアウトは新構造）
+- **UPDATE-04** ErrorBox 構造 / B-23 lazy guides: OK
+  - `StaticPageGuides` 遅延読み込みでレイアウト崩れなし
+  - E2075 / E2071 / E8001 は未再現（`ErrorBox.test.tsx` 4 件で担保）
 
-- UPDATE-04 本体（フェーズ1–2）は着手可。
-- **フェーズ3 完了前**にマスターが手動スモークを実施し、結果を本 §14 に追記（パターン A/B へ更新）。
-- NG 時は Reserved smoke-fix（フェーズ0-2）を実施してからフェーズ3 続行。
+### follow-up
 
-### フェーズ1 対象コード確認（1-6）
+- **B-37**: Compose Export 完了後の二重書き出しを発見 → §15 参照。**UPDATE-04 の NG ではなく B-25 follow-up**。UPDATE-05 P0 で対応。
+
+### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
 | コード | 経路 | ImportPage の ErrorBox |
 |--------|------|------------------------|
 | E2075 `MANIFEST_PARTIAL_INVALID` | `Importer.validatePartialState`、open/resume IPC | Resume 経路・不正 partial パック open で `toPayload` → ErrorBox |
 | E2071 `NOT_A_PARTIAL_PACKAGE` | `Importer` 完了パックへの resume | Resume ページ中心。Import の通常 import では稀 |
-| E8001 `CHECKSUM_MISMATCH` | `Importer.verifyChecksum`（import 読み込み時） | import 失敗時に ErrorBox 表示可。**§13 + 実装確認済みのため E8001 も有効化** |
+| E8001 `CHECKSUM_MISMATCH` | `Importer.verifyChecksum`（import 読み込み時） | import 失敗時に ErrorBox 表示可 |
 
-`probePackage` の `version_incompatible` 等は **ProbeErrorPanel** 経路（今回対象外）。
+`probePackage` の `version_incompatible` 等は **ProbeErrorPanel** 経路（ErrorBox 対象外）。
+
+---
+
+## 15. B-37: Compose / Image Export 完了後の二重書き出し問題
+
+### 発見経緯
+
+2026-05-26 の `0.5.1-poc` 手動スモークで発見（パターン A 判定内の follow-up）。
+
+### 現象
+
+**ComposePage** で Compose プロジェクトを書き出した後:
+
+- 完了カード（B-25 の「新しい書き出しを開始」付き）が表示される
+- 同時に「▶ パックを書き出す」が押下可能なまま残る
+- 再押下で別タイムスタンプの `.dmig` ディレクトリへ重複エクスポート可能
+
+**ExportPage**（Image Export）もコード上同型: `done` があるのに「▶ エクスポート開始」が `running` 解除後に再表示される。
+
+### コード根拠
+
+- `ComposePage`: `phase === 'done'` かつ `done` 文字列ありでも、書き出しボタンの `disabled` に完了状態が含まれない（`isBusy` / 選択 / `outputDir` / フロー解放のみ）。
+- `ExportPage`: `done` 表示中も `disabled={running || listing || selected.size === 0}` のみ。
+
+### 影響
+
+- データ損失: なし（タイムスタンプ別ディレクトリ）
+- UX: 意図しない重複書き出し、完了と新規開始の境界が曖昧
+
+### 修正方針（UPDATE-05 P0・案 B）
+
+- 完了状態（`phase === 'done' && done` / Image は `done` のみ）では**書き出しボタンを非表示**
+- Compose: 既存の `resetExportFlow`（「新しい書き出しを開始」）で再表示
+- Image: 完了カードに「新しい書き出しを開始」を追加し `done` / `lastPackDir` をクリア
+
+### 関連
+
+- B-25 (UPDATE-02): 完了カード + Compose のリセット導線
+- B-37 (UPDATE-05): 完了時の書き出しボタン制御不足
+
+---
+
+## 16. Main IPC cancel 横展開（UPDATE-05 フェーズ2）
+
+正本: [docs/notes/2026-05-26_ipc-cancel-scope.md](./2026-05-26_ipc-cancel-scope.md)  
+**UPDATE-05 判定**: 実装見送り、UPDATE-06 で 1 IPC ずつ。
+
+---
+
+## 17. Importer UI 拡張設計（UPDATE-05 フェーズ3）
+
+正本: [docs/notes/2026-05-26_importer-ui-design.md](./2026-05-26_importer-ui-design.md)  
+**UPDATE-05 実施**: `errorMessages.ts` に E5002 追加のみ（案 A）。
