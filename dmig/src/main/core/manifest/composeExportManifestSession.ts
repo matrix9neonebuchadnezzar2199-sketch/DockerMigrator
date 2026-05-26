@@ -1,3 +1,4 @@
+import { DMIG_MANIFEST_VERSION } from '@shared/manifestVersion.js';
 import type {
   ChunkRef,
   ComposeExportRequest,
@@ -143,7 +144,7 @@ export class ComposeExportManifestSession {
 
     const ping = await docker.ping().catch(() => ({ version: 'unknown' }));
     const manifest: DmigManifest = {
-      dmigVersion: '0.2.0-poc',
+      dmigVersion: DMIG_MANIFEST_VERSION,
       schemaVersion: '1.1',
       createdAt: new Date().toISOString(),
       source: {
