@@ -271,7 +271,7 @@ ErrorBoundary
 - **実施日**: 2026-05-26
 - **対象バージョン**: `0.5.1-poc`（UPDATE-03 + UPDATE-04 を一括検証）
 - **環境**: Windows + Docker Desktop、`F:\Docker_out`（マスター環境）
-- **判定**: **パターン A（NG なし）**
+- **判定**: **パターン B（NG あり）** — 初回は A 相当だったが B-38 発見で更新（2026-05-26 hotfix）
 
 ### 確認済み範囲
 
@@ -282,9 +282,15 @@ ErrorBoundary
   - `StaticPageGuides` 遅延読み込みでレイアウト崩れなし
   - E2075 / E2071 / E8001 は未再現（`ErrorBox.test.tsx` 4 件で担保）
 
-### follow-up
+### NG（パターン B）
 
-- **B-37**: Compose Export 完了後の二重書き出しを発見 → §15 参照。**UPDATE-04 の NG ではなく B-25 follow-up**。UPDATE-05 P0 で対応。
+| ID | 内容 | 対応 |
+|----|------|------|
+| **B-38** | 同一アプリで書き出したパックが E5002 で取り込めない（`dmigVersion: 0.2.0-poc` ハードコード） | **0.5.2.1-poc hotfix** §18 |
+
+### follow-up（パターン A 内で解消済み）
+
+- **B-37**: Compose Export 完了後の二重書き出し → §15、UPDATE-05 で対応済み
 
 ### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
@@ -348,3 +354,37 @@ ErrorBoundary
 
 正本: [docs/notes/2026-05-26_importer-ui-design.md](./2026-05-26_importer-ui-design.md)  
 **UPDATE-05 実施**: `errorMessages.ts` に E5002 追加のみ（案 A）。
+
+---
+
+## 18. B-38: dmigVersion ハードコード起因の書き出し→読み込み不整合
+
+### 発見経緯
+
+`0.5.2-poc` 実機スモーク。UPDATE-05 で追加した E5002 ErrorBox 確認中、Compose で書き出した直後のパックを「取り込む」で `PACK_VERSION_INCOMPATIBLE`。詳細: `pack=0.2.0-poc, app supports 1.x`。
+
+### 原因
+
+- `composeExportManifestSession.ts` / `Exporter.ts` が `dmigVersion: '0.2.0-poc'`（package.json 時代の遺物）を書き込み
+- `Importer.readManifest` は `dmigVersion` の major が `'1'` を要求
+- `schemaVersion: '1.1'` とは別フィールドで、書き出し・読み込みで意味がズレていた
+
+### 修正（0.5.2.1-poc）
+
+案 A: 書き出し側を `DMIG_MANIFEST_VERSION`（`'1.1'`）に統一。`dmig/src/shared/manifestVersion.ts` を正本。
+
+### grep 結果（フェーズ1）
+
+| ファイル | 修正 |
+|----------|------|
+| `manifest/composeExportManifestSession.ts` | `'0.2.0-poc'` → 定数 |
+| `Exporter.ts` | `DMIG_VERSION` 削除 → 定数 |
+| テストフィクスチャ | `1.0.0` は major 1 のため変更不要 |
+
+### 非互換
+
+`dmigVersion` が `0.x` の既存パックは取り込み不可（PoC 許容）。
+
+### テスト
+
+`manifestVersion.roundtrip.test.ts` で readManifest 回帰を追加。

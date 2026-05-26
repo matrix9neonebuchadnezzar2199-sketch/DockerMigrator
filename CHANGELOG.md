@@ -5,6 +5,22 @@
 
 ## [Unreleased]
 
+## [0.5.2.1-poc] - hotfix B-38
+
+### Fixed
+
+- **B-38 (critical)**: 同一アプリで書き出したパックが取り込めない問題
+  - 原因: Compose / Image の manifest 書き出しが `dmigVersion: '0.2.0-poc'` のまま、`Importer` が `1.x` を要求していた
+  - 修正: `DMIG_MANIFEST_VERSION`（`1.1`）を `@shared/manifestVersion.js` で一元化
+
+### Added
+
+- `manifestVersion.roundtrip.test.ts`（readManifest 回帰、legacy `0.2.0-poc` 拒否）
+
+### Notes
+
+- `dmigVersion` が `0.x` の既存パックは取り込めません（PoC 許容）
+
 ## [0.5.2-poc] - UPDATE-05
 
 ### Fixed
