@@ -190,23 +190,22 @@ flowchart TB
 | B-37 | Compose/Image Export 完了後の書き出しボタン非表示化（案 B） | **完了 (0.5.2-poc)** §15、2026-05-26 実機 OK |
 | B-38 | dmigVersion ハードコード → 書き出し後に取り込めない (E5002) | **完了 (0.5.2.2-poc)** §18、0.5.2.1 起票 + hotfix-2 で実機確認 |
 | — | hotfix-2: appVersion 一元化・UI バージョン表示・実ラウンドトリップテスト | **完了 (0.5.2.2-poc)** §20 |
+| U6-03 | Electron ハードニング（CSP / navigation / sandbox） | **完了 (0.5.2.3-poc hotfix-3)** §14 hotfix-3 スモーク |
 
 通読ノート: [docs/notes/2026-05-27_update02-readnote.md](../notes/2026-05-27_update02-readnote.md)
 
-### UPDATE-06 候補（目標 `0.6.0-poc`）
+### UPDATE-06（目標 `0.6.0-poc`）
 
-| 優先度 | 項目 | 出典 |
-|--------|------|------|
-| P0 | `importCompose` の `Importer.readManifest` / `openAsBase` ゲート復活 | コードレビュー §1-1 |
-| P0 | path traversal 防御（`safeJoinUnder`、manifest 由来パス） | コードレビュー §1-2 |
-| P0 | Electron ハードニング（sandbox / CSP / navigation ガード） | コードレビュー §1-3 |
-| P1 | IPC 入口 zod 検証 | コードレビュー |
-| P1 | ラウンドトリップテスト拡張（delta / resume / Compose Import） | §19 / §20 |
-| P1 | manifest スキーマ Zod 化と仕様書同期 | §19 |
-| P2 | `checksums.sha256` の atomic 化、`runComposeConfig` 出力サイズ制限 | コードレビュー |
-| P2 | `DockerAdapter` の `alpine:3.19` digest pinning | コードレビュー |
+| 優先度 | 項目 | 状態 / 出典 |
+|--------|------|-------------|
+| P0 | `importCompose` の `Importer.readManifest` / `openAsBase` ゲート復活 | 未着手 — コードレビュー §1-1 |
+| P0 | path traversal 防御（`safeJoinUnder`、manifest 由来パス） | 未着手 — コードレビュー §1-2 |
+| P1 | ラウンドトリップテスト拡張（delta / resume / Compose Import） | 未着手 — §19 / §20 |
+| P1 | dev CSP 検証手順の整備（Console 違反の整理・本番同等チェック） | 未着手 — hotfix-3 §14 残課題 |
+| — | ~~U6-03 Electron ハードニング~~ | **完了 (0.5.2.3-poc hotfix-3)** |
+| — | U6-04 / U6-06 / P2 / 繰越 | **UPDATE-07 (`0.7.0-poc`)** へ移動（[update-06-instructions.md](../instructions/update-06-instructions.md) v0.2） |
 
-指示書ドラフト: [docs/instructions/update-06-instructions.md](../instructions/update-06-instructions.md)
+指示書: [docs/instructions/update-06-instructions.md](../instructions/update-06-instructions.md) v0.2
 
 ---
 
@@ -214,6 +213,7 @@ flowchart TB
 
 | 日付 | 内容 |
 |------|------|
+| 2026-05-26 | hotfix-3 リリース（0.5.2.3-poc、U6-03 CSP/navigation/sandbox、§14 C1〜C4 スモーク OK） |
 | 2026-05-26 | hotfix-2 クローズ（0.5.2.2-poc、§14 パターン A、B-38 実機解決、UPDATE-06 ドラフト） |
 | 2026-05-27 | UPDATE-03 完了印（B-27/B-20/rollback cancel）、Importer UI を UPDATE-04 候補に |
 | 2026-05-26 | UPDATE-04 完了印（ErrorBox コード別文言、B-23 lazy guides、0.5.1-poc） |

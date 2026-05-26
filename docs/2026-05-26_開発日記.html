@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>15:38</td>
+        <td>hotfix-3 リリース（0.5.2.3-poc / U6-03）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1538">詳細</a></td>
+      </tr>
+      <tr>
         <td>14:39</td>
         <td>B-37 / B-38 hotfix-2 クローズ（§14 パターン A）</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -416,6 +422,27 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1538">
+  <h2>hotfix-3: Electron ハードニング（0.5.2.3-poc）</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 15:38</span>
+    <span class="tag tag-type">release</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>U6-03 を hotfix-3 として分割リリース。CSP（本番 meta / dev session）、navigation ガード、<code>webPreferences</code> 明示化、<code>sandbox: true</code>。実機スモーク C1〜C4 OK。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/main/security/csp.ts</code>、<code>navigationGuards.ts</code>、<code>src/shared/rendererCsp.ts</code></li>
+    <li><span class="op op-mod">M</span> <code>dmig/src/main/index.ts</code>、<code>electron.vite.config.ts</code>、<code>package.json</code>、<code>CHANGELOG.md</code></li>
+    <li><span class="op op-mod">M</span> <code>docs/instructions/update-06-instructions.md</code> v0.2、roadmap、readnote §14</li>
+  </ul>
+  <h3>検証</h3>
+  <p><code>npm test</code> 189 passed。マスター実機: preload / Export / Import probe / ダイアログ / guides OK（sandbox 下）。Commits: <code>4f429c4</code>〜<code>9885afd</code>（C1〜C4）、C5 は本リリースコミット。</p>
+  <h3>残課題</h3>
+  <p>dev CSP 検証手順は UPDATE-06。次: U6-01 / U6-02 / U6-05（<code>0.6.0-poc</code>）。</p>
+</section>
 <section class="entry" id="entry-1335">
   <h2>B-38 教訓: データ契約ルール・§19</h2>
   <div class="meta">

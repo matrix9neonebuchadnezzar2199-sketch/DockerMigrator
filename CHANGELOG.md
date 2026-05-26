@@ -5,6 +5,29 @@
 
 ## [Unreleased]
 
+## [0.5.2.3-poc] - hotfix-3 (U6-03 Electron hardening)
+
+### Added
+
+- 本番ビルド時の CSP meta タグ注入（Vite プラグイン `prodRendererCspMetaPlugin`）
+- 開発時の `session.webRequest` による CSP ヘッダ（localhost:5173 向け、本番 meta は dev では付与しない）
+- navigation ガード（`setWindowOpenHandler` deny、`will-navigate` 許可リスト、`will-attach-webview` prevent）
+- `webPreferences.sandbox: true`
+- `webPreferences` の暗黙既定への依存を排除し明示化（`nodeIntegrationInWorker` / `webSecurity` 等）
+
+### Security
+
+- Electron セキュリティハードニング（CSP / navigation / sandbox）により、untrusted リンク・外部読み込み・renderer プロセスの権限を制限
+
+### Docs
+
+- hotfix-3 計画書 §8（dev/prod CSP 差分、sandbox ロールバック方針）、UPDATE-06 指示書 v0.2
+
+### Known issues
+
+- 開発環境では Electron Security Warning が表示されるが、packaged 本番ビルドでは消える想定
+- dev 環境での CSP 検証手順の整備は UPDATE-06 で対応予定
+
 ## [0.5.2.2-poc] - hotfix-2 (B-38 follow-up)
 
 ### Added

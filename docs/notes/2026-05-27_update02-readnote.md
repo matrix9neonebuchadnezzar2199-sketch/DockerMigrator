@@ -298,6 +298,10 @@ ErrorBoundary
 2. 実機で E5002 が続くように見えたが、**旧パック選択**および **ステイル main** が原因（§20）
 3. `0.5.2.2-poc`（appVersion 一元化・実ラウンドトリップテスト・設定画面バージョン表示）後、**新規 Export** でケース A 確定
 
+### hotfix-3（0.5.2.3-poc）実機スモーク（2026-05-26）
+
+2026-05-26 hotfix-3（`0.5.2.3-poc`）適用後の実機スモークで **C1〜C4 全項目 OK**。`window.dmig` API、Image Export、Import probe、ファイル選択ダイアログ、ガイド遅延読み込みすべて **sandbox 下で正常動作**を確認。dev 環境では CSP ヘッダが未注入 → **UPDATE-06** で整備予定。
+
 ### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
 | コード | 経路 | ImportPage の ErrorBox |
@@ -455,6 +459,7 @@ electron-vite は **renderer のみ HMR**。**main プロセスは `npm run dev`
 | 設定 UI バージョン表示 | **0.5.2.2-poc 完了** |
 | importCompose の `readManifest` ゲート | UPDATE-06 P0 |
 | path traversal 防御 | UPDATE-06 P0 |
-| Electron ハードニング | UPDATE-06 P0 |
+| Electron ハードニング（CSP / navigation / sandbox） | **0.5.2.3-poc hotfix-3 完了** |
+| dev CSP 検証手順の整備 | UPDATE-06 |
 
 正本: [docs/instructions/update-06-instructions.md](../instructions/update-06-instructions.md)
