@@ -91,7 +91,7 @@ flowchart TB
 | **M7** | 設定 v2 | 機能連動の設定束ね | 閾値・保持期間等 + `defaultExportDir` 配線。theme/i18n は M11 寄り | M10 | 未着手 |
 | **M9** | ドライラン UI（A） | 仕様 S4 を GUI 統合 | Validator / preflight 横断 UI | M8 | **完了**（2026-05-19、`da8e404`） |
 | **M10** | ロールバック（I） | 仕様 S12 | `rollback.json`、Import 後ロールバック UI | M9 推奨 | **完了**（2026-05-19、`b48e9ef`）。Resume Export `rollback.json` 追補（`7d4f6b0` / `f983eae` / `91c9cff`） |
-| **M11** | WSL2 丸ごと（L） | Windows 専用 | 仕様書 Phase 8 | M10 前後可 | 未着手 |
+| **M11** | WSL2 丸ごと（L） | Windows 専用 | 仕様書 Phase 8 | M10 前後可 | 未着手（事前論点: [m11-wsl2-prep-notes.md](./m11-wsl2-prep-notes.md)） |
 | **M12** | 運用拡張（C/D/N） | プロファイル等 | 仕様書 Phase 9 | M11 以降 | 未着手 |
 | **M13** | v1.0 ゲート | 製品化 | Playwright E2E、インストーラ、ユーザードキュメント | M6–M12 | 未着手 |
 | — | Phase 11+ | Extension 化 | Docker Desktop Extension | v1.0 後 | 将来 |
@@ -174,10 +174,27 @@ flowchart TB
 
 ---
 
+## PoC UX バグ修正トラッキング（UPDATE-01 / UPDATE-02）
+
+| ID | 内容 | 状態 |
+|----|------|------|
+| B-08, B-06, B-01, B-13, B-07, B-25, B-17, B-16, B-12, B-19, B-32, B-30, B-09, B-14, B-35, B-21 | Renderer 確証バグ | **完了 (0.3.1-poc)** |
+| B-02 | Compose 常時マウント廃止 + `ComposePageStateContext` | **進行中 (0.4.0-poc)** |
+| B-10, B-11, B-31 | Rollback グローバル化 + `JobLockContext` | **進行中 (0.4.0-poc)** |
+| B-27 | progress listener 重複（B-02 で緩和） | **B-02 に包含 → UPDATE-03 で Progress 集約検討** |
+| B-15, B-22, B-24, B-26, B-28, B-29 | 軽量 UX 修正 | **進行中 (0.4.0-poc)** |
+| B-23 | StaticPageGuides 遅延 import | **保留（UPDATE-03 候補）** |
+| B-20 | resumeExport cancel 競合 | **通読済・UPDATE-03 で Main 監査** |
+
+通読ノート: [docs/notes/2026-05-27_update02-readnote.md](../notes/2026-05-27_update02-readnote.md)
+
+---
+
 ## 変更履歴
 
 | 日付 | 内容 |
 |------|------|
+| 2026-05-27 | UPDATE-02 トラッキング節を追加（UPDATE-01 完了印・UPDATE-02 進行中） |
 | 2026-05-19 | 初版（チャットで合意した全体設計を文書化） |
 | 2026-05-19 | 確定方針 D-009〜D-012、着手順 M6→M8→…、案 B（§9.1）を M6 に内包 |
 | 2026-05-19 | M6 完了: Release 本文リポジトリ保存、build:win / smoke 検証（コミットは日記参照） |
