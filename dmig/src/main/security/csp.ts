@@ -60,7 +60,7 @@ function isDevRendererUrl(url: string): boolean {
 
 /**
  * 開発時のみ Vite 応答に CSP ヘッダを付与する。本番は index.html meta に委ねる。
- * `app.whenReady()` より前に呼ぶこと。
+ * `app.whenReady()` 内で `createWindow()` より前に 1 回だけ呼ぶこと。
  */
 export function installContentSecurityPolicy(isPackaged: boolean): void {
   if (isPackaged) {

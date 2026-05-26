@@ -99,7 +99,7 @@ export function installContentSecurityPolicy(isPackaged: boolean): void {
 }
 ```
 
-`app.whenReady()` の**前**に `installContentSecurityPolicy(app.isPackaged)` を呼ぶ（Electron 推奨パターン）。
+`app.whenReady()` 内で `createWindow()` の**前**に `installContentSecurityPolicy(app.isPackaged)` を 1 回呼ぶ（`session.defaultSession` は ready 後のみ利用可）。
 
 ### 2.4 リスクと緩和
 

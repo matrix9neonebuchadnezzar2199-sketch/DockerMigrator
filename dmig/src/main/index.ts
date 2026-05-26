@@ -8,8 +8,6 @@ import { installContentSecurityPolicy } from './security/csp.js';
 import { attachNavigationGuards } from './security/navigationGuards.js';
 import './phase-core-entry.js';
 
-installContentSecurityPolicy(app.isPackaged);
-
 const mainDir = dirname(fileURLToPath(import.meta.url));
 
 function resolvePreload(): string {
@@ -62,6 +60,8 @@ function createWindow() {
 }
 
 void app.whenReady().then(async () => {
+  installContentSecurityPolicy(app.isPackaged);
+
   try {
     await SnapshotStore.initialize(app.getPath('userData'));
     // eslint-disable-next-line no-console -- Phase 6: 起動時の初期化確認（DevTools）
