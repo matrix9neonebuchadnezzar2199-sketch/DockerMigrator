@@ -23,7 +23,8 @@ import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import {
   ComposeExportGuideBody,
   ComposeImportGuideBody,
-} from '../components/StaticPageGuides.js';
+  GuideSuspenseFallback,
+} from '../components/lazyStaticPageGuides.js';
 import { SecretWarningDialog } from '../components/SecretWarningDialog.js';
 import { BindMountDialog } from '../components/BindMountDialog.js';
 import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
@@ -1202,7 +1203,9 @@ export const ComposePage: React.FC = () => {
           <PageGuidePanel
             title={tab === 'export' ? '📋 書き出し — ページ解説' : '📋 取り込み — ページ解説'}
           >
-            {tab === 'export' ? <ComposeExportGuideBody /> : <ComposeImportGuideBody />}
+            <React.Suspense fallback={<GuideSuspenseFallback />}>
+              {tab === 'export' ? <ComposeExportGuideBody /> : <ComposeImportGuideBody />}
+            </React.Suspense>
           </PageGuidePanel>
         </aside>
       </div>

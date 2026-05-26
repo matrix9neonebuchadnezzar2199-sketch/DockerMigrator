@@ -6,7 +6,7 @@ import { OperationProgress } from '../components/OperationProgress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
-import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
+import { ExportPageGuideBody, GuideSuspenseFallback } from '../components/lazyStaticPageGuides.js';
 import { useJobLock } from '../context/JobLockContext.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
@@ -217,7 +217,9 @@ export const ExportPage: React.FC = () => {
 
         <aside className="page-guide-rail" aria-label="ページ解説">
           <PageGuidePanel title="📋 このページの解説">
-            <ExportPageGuideBody />
+            <React.Suspense fallback={<GuideSuspenseFallback />}>
+              <ExportPageGuideBody />
+            </React.Suspense>
           </PageGuidePanel>
         </aside>
       </div>

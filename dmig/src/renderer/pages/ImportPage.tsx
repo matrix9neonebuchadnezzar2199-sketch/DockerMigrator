@@ -5,7 +5,7 @@ import { buildProgressEvent, ProgressTaskIds } from '../../shared/progress.js';
 import { OperationProgress } from '../components/OperationProgress.js';
 import { ErrorBox } from '../components/ErrorBox.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
-import { ImportPageGuideBody } from '../components/StaticPageGuides.js';
+import { GuideSuspenseFallback, ImportPageGuideBody } from '../components/lazyStaticPageGuides.js';
 import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
 import { useJobLock } from '../context/JobLockContext.js';
@@ -249,7 +249,9 @@ export const ImportPage: React.FC = () => {
 
         <aside className="page-guide-rail" aria-label="ページ解説">
           <PageGuidePanel title="📋 このページの解説">
-            <ImportPageGuideBody />
+            <React.Suspense fallback={<GuideSuspenseFallback />}>
+              <ImportPageGuideBody />
+            </React.Suspense>
           </PageGuidePanel>
         </aside>
       </div>
