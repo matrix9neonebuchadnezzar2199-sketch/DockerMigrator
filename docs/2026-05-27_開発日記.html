@@ -254,7 +254,7 @@ footer {
   <h3>設計判断</h3>
   <p><strong>B-20</strong>: 最終 I/O 後の cancel はデータ層では成功のため <code>ok: false</code> にせず、完了 progress に <code>cancelRequested: true</code> + 専用文言。<strong>Rollback</strong>: 中断は <code>ok: true</code> + <code>cancelled: true</code>、<code>executedAt</code> は付けず再実行可能。<strong>Provider</strong>: <code>ProgressBusProvider</code> → <code>LogBufferProvider</code> → JobLock 系。</p>
   <h3>検証</h3>
-  <p>自動: <code>typecheck</code> / <code>lint</code> / <code>test</code> 177 pass (2 skipped) / <code>build</code> / <code>build:win</code>（<code>dmig Setup 0.5.0-poc.exe</code>）/ <code>run_smoke_check.py</code> 成功。Commits UPDATE-03: <code>7e4be52</code>〜<code>48ad5d2</code>（15 commits）。</p>
+  <p>自動: <code>typecheck</code> / <code>lint</code> / <code>test</code> 177 pass (2 skipped) / <code>build</code> / <code>build:win</code>（<code>dmig Setup 0.5.0-poc.exe</code>）/ <code>run_smoke_check.py</code> 成功。Commits UPDATE-03: <code>7e4be52</code>〜<code>bebec9e</code>（15 commits）。</p>
   <h3>手動スモーク（実 Docker）</h3>
   <table>
     <thead><tr><th>シナリオ</th><th>結果</th><th>備考</th></tr></thead>
