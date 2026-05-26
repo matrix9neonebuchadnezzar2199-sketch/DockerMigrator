@@ -1,61 +1,90 @@
-# UPDATE-06 指示書（ドラフト）
+# UPDATE-06 指示書 v0.2
 
-**目標バージョン**: `0.6.0-poc`  
-**前提**: hotfix-2（`0.5.2.2-poc`）クローズ済み。§14 パターン A（B-37 / B-38 実機解決）。  
+**ステータス**: マスター承認済み（B+C ハイブリッド / 0.6.0 スコープ限定 / M7 は 0.6.0 完了後）  
+**前提**: hotfix-2（`0.5.2.2-poc`）クローズ済み。§14 パターン A。  
 **通読ノート**: [docs/notes/2026-05-27_update02-readnote.md](../notes/2026-05-27_update02-readnote.md) §20
 
 ---
 
-## 目的
+## リリース分割（確定）
 
-PoC 安定化ラインの次段として、コードレビューで指摘された **セキュリティ P0** と **データ契約強化（§19/§20）** を一括で実施する。
-
----
-
-## スコープ一覧
-
-| 優先度 | ID | 内容 | 出典 | 完了条件 |
-|--------|-----|------|------|----------|
-| P0 | U6-01 | `dmig:importCompose` を `Importer.openAsBase` 経由にし version / partialState ゲートを復活 | レビュー §1-1 | Compose import が image import と同じ `readManifest` 検証を通る |
-| P0 | U6-02 | `safeJoinUnder(root, rel)` 導入。manifest 由来パス・tar 展開・rollback target を検証 | レビュー §1-2 | パック外パスで `PACK_FORMAT_INVALID`、Zip-slip 系テスト |
-| P0 | U6-03 | Electron: `sandbox: true`、CSP、`will-navigate` / `setWindowOpenHandler` | レビュー §1-3 | セキュリティチェックリスト充足 |
-| P1 | U6-04 | IPC 入口の zod 検証（`packageDir` / `packName` / 配列フィールド） | レビュー | 不正入力で早期 reject |
-| P1 | U6-05 | ラウンドトリップテスト拡張: delta export、resume、Compose Import 経路 | §19/§20 | 各経路 1 ケース以上 |
-| P1 | U6-06 | manifest Zod スキーマ一元化（`readManifest` / 書き込み前） | §19 | スキーマ drift を CI で検知 |
-| P2 | U6-07 | `checksums.sha256` を `write-file-atomic` に | レビュー | 中断時の checksum/manifest 不整合低減 |
-| P2 | U6-08 | `runComposeConfig` stdout サイズ上限 | レビュー | 巨大 compose config でメモリ暴走しない |
-| P2 | U6-09 | `alpine:3.19` digest pinning（ボリューム export/import） | レビュー | 定数 + ドキュメント |
-
-**UPDATE-05 からの繰越**（必要なら同リリースに含める）:
-
-- Main IPC cancel 横展開（[2026-05-26_ipc-cancel-scope.md](../notes/2026-05-26_ipc-cancel-scope.md)）
-- Importer UI 拡張（ProbeErrorPanel / ErrorBox 統合、[2026-05-26_importer-ui-design.md](../notes/2026-05-26_importer-ui-design.md)）
+| リリース | バージョン | スコープ | 工数目安 |
+|----------|------------|----------|----------|
+| **hotfix-3** | `0.5.2.3-poc` | **U6-03** Electron ハードニング（段階リリース、下記） | 0.5〜1.5 日 |
+| **UPDATE-06** | `0.6.0-poc` | **U6-01** importCompose ゲート、**U6-02** path traversal、**U6-05** ラウンドトリップ拡張 | 3〜5 日 |
+| **UPDATE-07** | `0.7.0-poc` | **U6-04** IPC zod、**U6-06** manifest Zod、**P2**、繰越（IPC cancel / Importer UI） | 1〜2 週間 |
+| **M7** | TBD | 設定 v2（別計画） | **0.6.0-poc 完了後**キックオフ。UPDATE-07 と**並行しない** |
 
 ---
 
-## 実装順序（推奨）
+## スコープ一覧（ID マスター）
 
-1. **U6-01**（1 行に近い IPC 修正、即効性高）
-2. **U6-02** + テスト（セキュリティ影響大）
-3. **U6-03**（独立、レビューしやすい）
-4. **U6-05**（P0 修正の回帰防止）
-5. **U6-04 / U6-06**（契約の構造化）
-6. P2 は余力で
+| 優先度 | ID | リリース | 内容 |
+|--------|-----|----------|------|
+| P0 | U6-03 | hotfix-3 | Electron ハードニング（CSP / navigation / webPreferences 明示化 → 任意 `sandbox: true`） |
+| P0 | U6-01 | UPDATE-06 | `importCompose` → `Importer.openAsBase` |
+| P0 | U6-02 | UPDATE-06 | `safeJoinUnder` + manifest 由来パス検証 + tar 展開ガード |
+| P1 | U6-05 | UPDATE-06 | ラウンドトリップ拡張（delta / resume / Compose Import） |
+| P1 | U6-04 | UPDATE-07 | IPC 入口 zod |
+| P1 | U6-06 | UPDATE-07 | manifest Zod 一元化 |
+| P2 | U6-07〜09 | UPDATE-07 | checksums atomic、compose config 上限、alpine digest |
+| 繰越 | — | UPDATE-07 | [ipc-cancel-scope](../notes/2026-05-26_ipc-cancel-scope.md)、[importer-ui-design](../notes/2026-05-26_importer-ui-design.md) |
+
+---
+
+## フェーズ表
+
+### hotfix-3（`0.5.2.3-poc`）— U6-03
+
+| 段 | 内容 | コミット | 規模 | 検証 |
+|----|------|----------|------|------|
+| **第 1 弾** | CSP、navigation ガード、webPreferences 明示化 | C1〜C3 | S | 起動、Export/Import、DevTools、lazy guides |
+| **第 2 弾** | `sandbox: true`（任意） | C4 | XS | 第 1 弾 OK 後。NG なら C4 のみロールバックして 0.5.2.3 リリース |
+| **リリース** | CHANGELOG / version / 日記 / §14 注記 | C5 | XS | `npm test` / `build` / 実機 |
+
+詳細実装計画: [hotfix-3-electron-hardening-plan.md](./hotfix-3-electron-hardening-plan.md)
+
+### UPDATE-06（`0.6.0-poc`）
+
+| フェーズ | ID | 内容 | コミット目安 | 規模 |
+|----------|-----|------|--------------|------|
+| 1 | U6-01 | `compose.ts` importCompose ゲート | 1 + test | XS |
+| 2 | U6-02 | `safeJoinUnder` + 適用箇所 + テスト | 2〜3 | M |
+| 3 | U6-05 | roundtrip 拡張（delta / resume / compose import） | 1〜2 | M |
+| 4 | — | CHANGELOG / roadmap / §14 追記 / 日記 | 1 | XS |
+
+**実装順序**: U6-01 → U6-02 → U6-05（U6-02 完了後に U6-05 で回帰を固める）。
+
+### UPDATE-07（`0.7.0-poc`）— 概要のみ（本書では詳細未展開）
+
+1. U6-04（IPC zod）  
+2. U6-06（manifest Zod）— 設計・ADR 検討時間を見込む  
+3. P2 + 繰越  
+
+---
+
+## U6-03 段階分け方針（合意）
+
+1. **第 1 弾（必須）**: CSP、`will-navigate` / `setWindowOpenHandler`、`webPreferences` の安全側を**明示**（暗黙既定に依存しない）。
+2. **第 2 弾（条件付き）**: `sandbox: true`。preload / `contextBridge` との相性を実機で確認。
+3. 第 2 弾でブロッカーが出た場合: 第 2 弾のみ revert し **0.5.2.3-poc は第 1 弾のみでリリース**。`sandbox` は hotfix-4 候補または ADR に「見送り理由」を記録。
 
 ---
 
 ## 共通ルール
 
-- ブランチ: `main` 直 push（PoC 運用）
-- Conventional Commits、`(UPDATE-06 …)` をメッセージ末尾に
-- 各フェーズ: `npm run typecheck` / `npm run lint` / `npm test` / `npm run build`
-- 手動スモーク: §14 相当（新規 Export → manifest → Import）
-- 開発日記・CHANGELOG・roadmap を同リリースで更新
+| 項目 | hotfix-3 | UPDATE-06 / 07 |
+|------|----------|----------------|
+| ブランチ | `main` 直 push | 同左 |
+| コミット suffix | `(hotfix-3 U6-03 Cn)` | `(UPDATE-06 …)` / `(UPDATE-07 …)` |
+| 検証 | typecheck / lint / test / build / 実機スモーク | 同左 + §14 相当 |
+| 手動スモーク | 起動・設定バージョン表示・Export→Import・DevTools | 新規パック manifest + path 攻撃フィクスチャ（U6-02 後） |
 
 ---
 
 ## 参照
 
+- [hotfix-3-electron-hardening-plan.md](./hotfix-3-electron-hardening-plan.md) — CSP / navigation 具体案
 - [dmig-serialized-data-contracts.md](../architecture/dmig-serialized-data-contracts.md)
 - `.cursor/rules/54-dmig-data-contracts.mdc`
-- `exportImport.roundtrip.test.ts`（hotfix-2 で追加した実 I/O テストの雛形）
+- `dmig/src/main/core/exportImport.roundtrip.test.ts`
