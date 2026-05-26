@@ -67,9 +67,20 @@ export const SettingsPage: React.FC = () => {
         <h3>既定の出力先</h3>
         <p className="settings-hint">エクスポート画面の初期値に使います（各ページで上書き可能）。</p>
         <p className="settings-path">{settings.defaultExportDir || '（未設定）'}</p>
-        <button type="button" className="btn-secondary" onClick={() => void pickDefaultDir()}>
-          フォルダを選ぶ
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+          <button type="button" className="btn-secondary" onClick={() => void pickDefaultDir()}>
+            フォルダを選ぶ
+          </button>
+          {settings.defaultExportDir ? (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => void persist({ defaultExportDir: '' })}
+            >
+              クリア
+            </button>
+          ) : null}
+        </div>
       </section>
 
       {saved ? <p className="settings-saved">{saved}</p> : null}
