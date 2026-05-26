@@ -23,12 +23,12 @@ import type {
   ManifestImageEntry,
   ProgressEvent,
 } from '@shared/types.js';
+import { DMIG_MANIFEST_VERSION } from '@shared/manifestVersion.js';
 import { buildProgressEvent } from '@shared/progress.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 import { RollbackManager } from './RollbackManager.js';
 import { buildExportPackDirectoryEntry, createRollbackRecord } from './rollbackRecordBuilder.js';
 
-const DMIG_VERSION = '0.2.0-poc';
 const APP_VERSION = '0.1.0-poc';
 
 function isAbortLike(e: unknown, signal?: AbortSignal): boolean {
@@ -93,7 +93,7 @@ export class Exporter extends EventEmitter {
 
     const ping = await this.docker.ping().catch(() => ({ version: 'unknown' }));
     let manifest: DmigManifest = {
-      dmigVersion: DMIG_VERSION,
+      dmigVersion: DMIG_MANIFEST_VERSION,
       schemaVersion: '1.1',
       createdAt: new Date().toISOString(),
       source: {
