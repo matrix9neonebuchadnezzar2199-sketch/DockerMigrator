@@ -571,6 +571,27 @@ input[type='text'] {
   opacity: 0.8;
   font-family: monospace;
 }
+.error-box-details summary {
+  cursor: pointer;
+  list-style: none;
+}
+.error-box-details summary::-webkit-details-marker {
+  display: none;
+}
+.error-box-expand-hint {
+  font-weight: normal;
+  opacity: 0.85;
+}
+.error-box-long {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 /* ─────────────────────────────────────────────── */
 /* Phase 5: Compose UI                              */
@@ -1569,6 +1590,20 @@ input[type='text'] {
   font-size: 14px;
   line-height: 1.5;
   color: #cdd6f4;
+}
+.next-step-reconnect {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #cdd6f4;
+  background: #313244;
+  border: 1px solid #45475a;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.next-step-reconnect:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .next-step-cta {
   flex: 0 0 auto;

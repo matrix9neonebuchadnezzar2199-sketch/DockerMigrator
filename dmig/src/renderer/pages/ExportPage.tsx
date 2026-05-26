@@ -7,6 +7,7 @@ import { ErrorBox } from '../components/ErrorBox.js';
 import { ResumeHintBanner } from '../components/ResumeHintBanner.js';
 import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ExportPageGuideBody } from '../components/StaticPageGuides.js';
+import { useJobLock } from '../context/JobLockContext.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
 import { DryRunInlineSection } from '../components/DryRunInlineSection.js';
@@ -37,6 +38,7 @@ export const ExportPage: React.FC = () => {
   const [dryRunHasErrors, setDryRunHasErrors] = useState(false);
   const [lastPackDir, setLastPackDir] = useState('');
 
+  const { tryBegin, end, blockedMessage } = useJobLock();
   const discoverProgress = useDmigProgress('discover');
   const transferProgress = useDmigProgress('transfer');
 
@@ -76,18 +78,26 @@ export const ExportPage: React.FC = () => {
   };
 
   const start = async () => {
+    if (!tryBegin('export')) {
+      return;
+    }
     setError(null);
     setDone(null);
     setRunning(true);
     transferProgress.clear();
-    const r = await window.dmig.exportImages({
-      jobToken: crypto.randomUUID(),
-      imageNames: Array.from(selected),
-      outputDir,
-      compressionLevel: 3,
-    });
-    setRunning(false);
-    transferProgress.clear();
+    let r;
+    try {
+      r = await window.dmig.exportImages({
+        jobToken: crypto.randomUUID(),
+        imageNames: Array.from(selected),
+        outputDir,
+        compressionLevel: 3,
+      });
+    } finally {
+      setRunning(false);
+      end('export');
+      transferProgress.clear();
+    }
     if (r.ok) {
       setLastPackDir(r.data.packDir);
       setDone(`完了: ${r.data.manifest.contents.images.length} 件のイメージを書き出しました`);
@@ -191,6 +201,11 @@ export const ExportPage: React.FC = () => {
         </button>
       </div>
 
+      {blockedMessage ? (
+        <p className="card" role="status">
+          {blockedMessage}
+        </p>
+      ) : null}
       <ErrorBox error={error} />
       {done && lastPackDir ? <RollbackInlineSection mode="export" packageDir={lastPackDir} /> : null}
       {done && (

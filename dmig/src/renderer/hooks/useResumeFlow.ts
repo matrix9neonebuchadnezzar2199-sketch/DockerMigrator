@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ProbeSummary, DmigErrorPayload } from '../../shared/types.js';
 import { ErrorCodes } from '@shared/codes.js';
+import { useJobLock } from '../context/JobLockContext.js';
 import { useDmigProgress } from './useDmigProgress.js';
 
 /**
@@ -16,6 +17,7 @@ export function useResumeFlow(
   const [resumeDialogOpen, setResumeDialogOpen] = useState(false);
   const [resumeRunning, setResumeRunning] = useState(false);
   const [resumeJobToken, setResumeJobToken] = useState<string | null>(null);
+  const { tryBegin, end } = useJobLock();
   const transferProgress = useDmigProgress('transfer');
 
   const openResumeDialog = (summary: ProbeSummary) => {
@@ -31,18 +33,24 @@ export function useResumeFlow(
 
   const onConfirmResume = async () => {
     if (!resumeSummary) return;
+    if (!tryBegin('resume')) return;
     const jobToken = crypto.randomUUID();
     setResumeJobToken(jobToken);
     transferProgress.clear();
     setResumeRunning(true);
-    const r = await window.dmig.resumeExport({
-      packageDir: resumeSummary.packageDir,
-      jobToken,
-      compressionLevel: 3,
-    });
-    setResumeRunning(false);
-    setResumeJobToken(null);
-    transferProgress.clear();
+    let r;
+    try {
+      r = await window.dmig.resumeExport({
+        packageDir: resumeSummary.packageDir,
+        jobToken,
+        compressionLevel: 3,
+      });
+    } finally {
+      setResumeRunning(false);
+      setResumeJobToken(null);
+      end('resume');
+      transferProgress.clear();
+    }
     if (r.ok) {
       setResumeDialogOpen(false);
       setResumeSummary(null);

@@ -8,6 +8,7 @@ import { PageGuidePanel } from '../components/PageGuidePanel.js';
 import { ImportPageGuideBody } from '../components/StaticPageGuides.js';
 import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
+import { useJobLock } from '../context/JobLockContext.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
 import { useResumeFlow } from '../hooks/useResumeFlow.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
@@ -35,6 +36,7 @@ export const ImportPage: React.FC = () => {
 
   const [probeErrorSummary, setProbeErrorSummary] = useState<ProbeSummary | null>(null);
 
+  const { tryBegin, end, blockedMessage } = useJobLock();
   const scanProgress = useDmigProgress('scan');
   const {
     resumeSummary,
@@ -128,18 +130,26 @@ export const ImportPage: React.FC = () => {
   };
 
   const start = async () => {
+    if (!tryBegin('import')) {
+      return;
+    }
     setError(null);
     setDone(null);
     setImported(false);
     setRunning(true);
     transferProgress.clear();
-    const r = await window.dmig.importImages({
-      jobToken: crypto.randomUUID(),
-      packageDir: packDir,
-      selectedImages: Array.from(selected),
-    });
-    setRunning(false);
-    transferProgress.clear();
+    let r;
+    try {
+      r = await window.dmig.importImages({
+        jobToken: crypto.randomUUID(),
+        packageDir: packDir,
+        selectedImages: Array.from(selected),
+      });
+    } finally {
+      setRunning(false);
+      end('import');
+      transferProgress.clear();
+    }
     if (r.ok) {
       setDone('インポートが完了しました。');
       setImported(true);
@@ -222,6 +232,11 @@ export const ImportPage: React.FC = () => {
             </div>
           )}
 
+          {blockedMessage ? (
+            <p className="card" role="status">
+              {blockedMessage}
+            </p>
+          ) : null}
           <ErrorBox error={error} />
           {imported && packDir ? <RollbackInlineSection mode="import" packageDir={packDir} /> : null}
           {done && (

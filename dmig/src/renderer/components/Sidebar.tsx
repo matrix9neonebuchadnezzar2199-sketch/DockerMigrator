@@ -14,6 +14,14 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import type { PageKey } from '../App.js';
+import { useJobLock, type JobLockKind } from '../context/JobLockContext.js';
+
+const PAGE_JOB_KIND: Partial<Record<PageKey, JobLockKind>> = {
+  export: 'export',
+  import: 'import',
+  resume: 'resume',
+  rollback: 'rollback',
+};
 
 const ICON_SIZE = 16;
 
@@ -23,14 +31,17 @@ function NavItem({
   label,
   icon,
   onChange,
+  runningSuffix,
 }: {
   page: PageKey;
   current: PageKey;
   label: string;
   icon: React.ReactNode;
   onChange: (p: PageKey) => void;
+  runningSuffix?: string;
 }) {
   const active = current === page;
+  const displayLabel = runningSuffix ? `${label}${runningSuffix}` : label;
   return (
     <div
       className={`nav-item ${active ? 'active' : ''}`}
@@ -42,7 +53,7 @@ function NavItem({
       <span className="nav-item-icon" aria-hidden="true">
         {icon}
       </span>
-      {label}
+      {displayLabel}
     </div>
   );
 }
@@ -53,7 +64,14 @@ export const Sidebar: React.FC<{
   dockerVersion: string;
   dockerPinging?: boolean;
   onRetryDocker?: () => void;
-}> = ({ page, onChange, dockerVersion, dockerPinging = false, onRetryDocker }) => (
+}> = ({ page, onChange, dockerVersion, dockerPinging = false, onRetryDocker }) => {
+  const { flags } = useJobLock();
+  const jobSuffix = (target: PageKey) => {
+    const kind = PAGE_JOB_KIND[target];
+    return kind && flags[kind] ? ' （実行中）' : '';
+  };
+
+  return (
   <aside className="sidebar">
     <h1 className="sidebar-brand">
       <Package size={18} aria-hidden="true" /> dmig
@@ -83,6 +101,7 @@ export const Sidebar: React.FC<{
           label="パックを書き出す"
           icon={<Package size={ICON_SIZE} />}
           onChange={onChange}
+          runningSuffix={jobSuffix('export')}
         />
         <NavItem
           page="resume"
@@ -90,6 +109,7 @@ export const Sidebar: React.FC<{
           label="中断したパックを再開"
           icon={<PlayCircle size={ICON_SIZE} />}
           onChange={onChange}
+          runningSuffix={jobSuffix('resume')}
         />
       </section>
 
@@ -110,6 +130,7 @@ export const Sidebar: React.FC<{
           label="パックを読み込む"
           icon={<Download size={ICON_SIZE} />}
           onChange={onChange}
+          runningSuffix={jobSuffix('import')}
         />
       </section>
 
@@ -137,6 +158,7 @@ export const Sidebar: React.FC<{
           label="ロールバック"
           icon={<Undo2 size={ICON_SIZE} />}
           onChange={onChange}
+          runningSuffix={jobSuffix('rollback')}
         />
         <NavItem
           page="help"
@@ -170,4 +192,5 @@ export const Sidebar: React.FC<{
       ) : null}
     </div>
   </aside>
-);
+  );
+};
