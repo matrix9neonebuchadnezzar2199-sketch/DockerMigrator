@@ -189,16 +189,19 @@ export const ExportPage: React.FC = () => {
 
         <OperationProgress active={running} progress={transferProgress.progress} />
 
-        <button
-          onClick={() => void start()}
-          disabled={running || listing || selected.size === 0}
-          style={{ marginTop: 8 }}
-          title={
-            dryRunHasErrors ? 'ドライランでエラー検出。確認してください' : undefined
-          }
-        >
-          {running ? '実行中...' : '▶ エクスポート開始'}
-        </button>
+        {!done ? (
+          <button
+            data-testid="image-export-start"
+            onClick={() => void start()}
+            disabled={running || listing || selected.size === 0}
+            style={{ marginTop: 8 }}
+            title={
+              dryRunHasErrors ? 'ドライランでエラー検出。確認してください' : undefined
+            }
+          >
+            {running ? '実行中...' : '▶ エクスポート開始'}
+          </button>
+        ) : null}
       </div>
 
       {blockedMessage ? (
@@ -211,6 +214,19 @@ export const ExportPage: React.FC = () => {
       {done && (
         <div className="card" style={{ background: '#a6e3a1', color: '#1e1e2e' }}>
           ✅ {done}
+          <button
+            type="button"
+            data-testid="image-export-reset"
+            onClick={() => {
+              setDone(null);
+              setLastPackDir('');
+              setError(null);
+              setResumeHint(null);
+            }}
+            style={{ marginTop: 8, display: 'block' }}
+          >
+            新しい書き出しを開始
+          </button>
         </div>
       )}
         </div>
