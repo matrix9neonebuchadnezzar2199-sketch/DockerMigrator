@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>16:06</td>
+        <td>UPDATE-06 U6-05: Compose / Resume ラウンドトリップテスト</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1606">詳細</a></td>
+      </tr>
+      <tr>
         <td>15:38</td>
         <td>hotfix-3 リリース（0.5.2.3-poc / U6-03）</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -422,6 +428,26 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1606">
+  <h2>UPDATE-06 Phase 3: U6-05 ラウンドトリップテスト拡張</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 16:06</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>Phase 2 で統一した <code>openAsBase</code> 経路を Compose / Resume で I/O 検証。<code>expectCompletedPackManifest</code> で <code>dmigVersion</code> / <code>schemaVersion</code> 1.1 と <code>APP_VERSION</code> を動的断言。Delta は IPC 実装済みだが基底パックチェインが要るため統合テストは UPDATE-07 候補として roadmap 記録。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>composeRoundtrip.test.ts</code>、<code>resumeRoundtrip.test.ts</code>、<code>__test-fixtures__/roundtripContract.ts</code></li>
+    <li><span class="op op-mod">M</span> <code>docs/milestones/M6-M13-roadmap.md</code>（U6-05 完了 / Delta 繰越）</li>
+  </ul>
+  <h3>検証</h3>
+  <p><code>npm test</code> 207 passed（+2）、typecheck / lint / build OK。Commits: <code>eda43bb</code>、<code>f8fb103</code>（親 <code>162ef4e</code> U6-01）。</p>
+  <h3>残課題</h3>
+  <p>Phase 4: dev CSP 整備。Phase 5: <code>0.6.0-poc</code> リリース。</p>
+</section>
 <section class="entry" id="entry-1538">
   <h2>hotfix-3: Electron ハードニング（0.5.2.3-poc）</h2>
   <div class="meta">
