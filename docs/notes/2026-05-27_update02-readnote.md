@@ -388,3 +388,31 @@ ErrorBoundary
 ### テスト
 
 `manifestVersion.roundtrip.test.ts` で readManifest 回帰を追加。
+
+---
+
+## 19. テスト戦略の穴と B-38 教訓（再発防止）
+
+### なぜ 184 テスト pass でも B-38 が残ったか
+
+- Exporter / Importer は**別単体テスト**で green。ディスク上の `manifest.json` を介した**契約**は未検証だった。
+- UI/IPC 操作フロー追跡（UPDATE-01〜02）では、export と import が別ページ・別ハンドラのため**データ意味のズレ**に届かない。
+
+### 有効だった手法（優先度）
+
+1. **ラウンドトリップテスト**（本命）— 書き出し → `readManifest` / `probePackage`
+2. **データ契約の明文化** — `DMIG_MANIFEST_VERSION`、仕様書 `dmig-manifest-1.1.md` との同期
+3. **データフロー図** — 書き手の意図と読み手の期待を同じ図に（シーケンス図よりフィールド意味に弱い場合あり）
+4. コントラクトテスト / Zod 一元化（UPDATE-06 候補）
+
+### 分析依頼時に AI が聞くべきだったこと
+
+- export で書いた manifest と import/probe が読む manifest はフィールド互換か
+- ラウンドトリップテストはあるか
+- 仕様書の version 例とコード定数は一致しているか
+
+### 恒久化（2026-05-26）
+
+- 正本: `docs/architecture/dmig-serialized-data-contracts.md`
+- Cursor: `.cursor/rules/54-dmig-data-contracts.mdc`
+- UPDATE-06: Compose/Image/resume 各経路のラウンドトリップ拡張、スキーマ一元化検討

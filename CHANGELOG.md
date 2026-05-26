@@ -5,6 +5,10 @@
 
 ## [Unreleased]
 
+### Docs
+
+- B-38 教訓の恒久化: `docs/architecture/dmig-serialized-data-contracts.md`、通読ノート §19、Cursor `54-dmig-data-contracts.mdc`
+
 ## [0.5.2.1-poc] - hotfix B-38
 
 ### Fixed
