@@ -10,6 +10,7 @@ import { ResumeConfirmDialog } from '../components/ResumeConfirmDialog.js';
 import { ProbeErrorPanel } from '../components/ProbeErrorPanel.js';
 import { useJobLock } from '../context/JobLockContext.js';
 import { useDmigProgress } from '../hooks/useDmigProgress.js';
+import { RESUME_SUCCESS_MESSAGE } from '../hooks/useDoneProgressNotice.js';
 import { useResumeFlow } from '../hooks/useResumeFlow.js';
 import { usePageDynamicCta } from '../context/DynamicCtaContext.js';
 import { RollbackInlineSection } from '../components/RollbackInlineSection.js';
@@ -50,7 +51,7 @@ export const ImportPage: React.FC = () => {
     closeResumeDialog,
   } = useResumeFlow(
     (msg) => {
-      if (msg === 'エクスポートの再開が完了しました。') {
+      if (msg === RESUME_SUCCESS_MESSAGE) {
         setDone('エクスポートの再開が完了しました。「読み込み」でマニフェストを更新してください。');
       } else {
         setDone(msg);

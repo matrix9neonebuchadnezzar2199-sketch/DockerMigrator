@@ -3,6 +3,11 @@ import type { ProbeSummary, DmigErrorPayload } from '../../shared/types.js';
 import { ErrorCodes } from '@shared/codes.js';
 import { useJobLock } from '../context/JobLockContext.js';
 import { useDmigProgress } from './useDmigProgress.js';
+import {
+  RESUME_LATE_CANCEL_SUCCESS_MESSAGE,
+  RESUME_SUCCESS_MESSAGE,
+  useDoneProgressNotice,
+} from './useDoneProgressNotice.js';
 
 /**
  * 中断パック再開ダイアログと resumeExport 実行を Import / Resume で共有する。
@@ -19,6 +24,7 @@ export function useResumeFlow(
   const [resumeJobToken, setResumeJobToken] = useState<string | null>(null);
   const { tryBegin, end } = useJobLock();
   const transferProgress = useDmigProgress('transfer');
+  const { cancelRequestedOnDone, clear: clearDoneNotice } = useDoneProgressNotice('transfer');
 
   const openResumeDialog = (summary: ProbeSummary) => {
     setResumeSummary(summary);
@@ -37,6 +43,7 @@ export function useResumeFlow(
     const jobToken = crypto.randomUUID();
     setResumeJobToken(jobToken);
     transferProgress.clear();
+    clearDoneNotice();
     setResumeRunning(true);
     let r;
     try {
@@ -54,7 +61,9 @@ export function useResumeFlow(
     if (r.ok) {
       setResumeDialogOpen(false);
       setResumeSummary(null);
-      onSuccessMessage('エクスポートの再開が完了しました。');
+      onSuccessMessage(
+        cancelRequestedOnDone ? RESUME_LATE_CANCEL_SUCCESS_MESSAGE : RESUME_SUCCESS_MESSAGE,
+      );
       await onAfterSuccess?.();
     } else if (r.error.code === ErrorCodes.JOB_CANCELLED) {
       setResumeDialogOpen(false);
