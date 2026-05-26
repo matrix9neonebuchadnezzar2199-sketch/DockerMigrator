@@ -3,6 +3,7 @@ import type { DmigErrorPayload, RollbackRecord, RollbackSummary } from '../../sh
 import { ErrorBox } from '../components/ErrorBox.js';
 import { RollbackConfirmDialog } from '../components/RollbackConfirmDialog.js';
 import { RollbackResultSummary } from '../components/RollbackResultSummary.js';
+import { useJobLock } from '../context/JobLockContext.js';
 import { useRollback } from '../hooks/useRollback.js';
 
 function dirBasename(packageDir: string): string {
@@ -22,6 +23,7 @@ export const RollbackPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [ipcError, setIpcError] = useState<DmigErrorPayload | null>(null);
 
+  const { tryBegin, end, blockedMessage } = useJobLock();
   const {
     status,
     records,
@@ -82,7 +84,15 @@ export const RollbackPage: React.FC = () => {
     if (!selectedRecord) {
       return;
     }
-    const r = await runRollback(selectedRecord.packageDir);
+    if (!tryBegin('rollback')) {
+      return;
+    }
+    let r;
+    try {
+      r = await runRollback(selectedRecord.packageDir);
+    } finally {
+      end('rollback');
+    }
     if (!r.ok) {
       return;
     }
@@ -181,6 +191,11 @@ export const RollbackPage: React.FC = () => {
         </div>
       ))}
 
+      {blockedMessage ? (
+        <p className="rollback-warn card" role="status">
+          {blockedMessage}
+        </p>
+      ) : null}
       <ErrorBox error={ipcError ?? (error ? { code: 'ROLLBACK', message: error } : null)} />
       {lastResult ? (
         <RollbackResultSummary result={lastResult} wasAlreadyExecuted={wasAlreadyExecuted} />

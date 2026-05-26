@@ -1,7 +1,18 @@
+import { createElement, type ReactNode } from 'react';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { JobLockProvider } from '../context/JobLockContext.js';
+import { RollbackJobProvider } from '../context/RollbackJobContext.js';
 import { countDirectoryNotEmptyWarnings, useRollback } from './useRollback.js';
+
+function wrapper({ children }: { children: ReactNode }) {
+  return createElement(
+    JobLockProvider,
+    null,
+    createElement(RollbackJobProvider, null, children),
+  );
+}
 
 describe('countDirectoryNotEmptyWarnings', () => {
   it('directory_not_empty: プレフィックスを数える', () => {
@@ -36,7 +47,7 @@ describe('useRollback', () => {
       }),
     } as typeof window.dmig;
 
-    const { result } = renderHook(() => useRollback());
+    const { result } = renderHook(() => useRollback(), { wrapper });
     await act(async () => {
       await result.current.listRecords({ rootDir: '/usb', maxDepth: 1 });
     });
@@ -51,7 +62,7 @@ describe('useRollback', () => {
       listRollbacks: vi.fn().mockRejectedValue(new Error('IPC channel missing')),
     } as typeof window.dmig;
 
-    const { result } = renderHook(() => useRollback());
+    const { result } = renderHook(() => useRollback(), { wrapper });
     await act(async () => {
       await result.current.listRecords({ rootDir: '/usb', maxDepth: 1 });
     });
@@ -75,7 +86,7 @@ describe('useRollback', () => {
       }),
     } as typeof window.dmig;
 
-    const { result } = renderHook(() => useRollback());
+    const { result } = renderHook(() => useRollback(), { wrapper });
     await act(async () => {
       await result.current.runRollback('/p');
     });

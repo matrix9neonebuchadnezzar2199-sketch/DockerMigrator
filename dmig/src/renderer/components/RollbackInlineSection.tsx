@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import type { RollbackKind, RollbackRecord } from '../../shared/types.js';
-import { useRollback } from '../hooks/useRollback.js';
+import { useJobLock } from '../context/JobLockContext.js';
+import { useRollbackJob } from '../context/RollbackJobContext.js';
 import { RollbackConfirmDialog } from './RollbackConfirmDialog.js';
 import { RollbackResultSummary } from './RollbackResultSummary.js';
 
@@ -10,7 +11,8 @@ export interface RollbackInlineSectionProps {
 }
 
 export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mode, packageDir }) => {
-  const { status, lastResult, error, wasAlreadyExecuted, runRollback, reset } = useRollback();
+  const { tryBegin, end, blockedMessage } = useJobLock();
+  const { status, lastResult, error, wasAlreadyExecuted, runRollback, reset } = useRollbackJob();
   const [record, setRecord] = useState<RollbackRecord | null | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -41,7 +43,14 @@ export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mo
     if (!record) {
       return;
     }
-    await runRollback(record.packageDir);
+    if (!tryBegin('rollback')) {
+      return;
+    }
+    try {
+      await runRollback(record.packageDir);
+    } finally {
+      end('rollback');
+    }
     setDialogOpen(false);
     const refreshed = await window.dmig.loadRollbackRecord(record.packageDir);
     if (refreshed.ok) {
@@ -71,6 +80,11 @@ export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mo
       >
         {status === 'running' ? '実行中…' : 'ロールバック実行'}
       </button>
+      {blockedMessage ? (
+        <p className="rollback-warn" role="status">
+          {blockedMessage}
+        </p>
+      ) : null}
       {error ? (
         <p className="rollback-error" role="alert">
           {error}
