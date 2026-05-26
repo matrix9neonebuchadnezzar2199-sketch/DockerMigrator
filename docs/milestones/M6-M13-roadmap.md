@@ -200,7 +200,8 @@ flowchart TB
 |--------|------|-------------|
 | P0 | `importCompose` の `Importer.openAsBase` ゲート復活 | **完了** — U6-01 |
 | P0 | path traversal 防御（`safeJoinUnder`、manifest 由来パス） | **完了** — U6-02 |
-| P1 | ラウンドトリップテスト拡張（delta / resume / Compose Import） | 未着手 — U6-05 |
+| P1 | ラウンドトリップテスト拡張（Compose / Resume / openAsBase） | **完了** — U6-05 |
+| P2 | Delta Export → Import ラウンドトリップ（`diffMode` + 基底パックチェイン） | 未着手 — Delta IPC は実装済み、統合テストは UPDATE-07 候補 |
 | P1 | dev CSP 検証手順の整備（Console 違反の整理・本番同等チェック） | 未着手 — hotfix-3 §14 残課題 |
 | P2 | tar 内エントリ path traversal の直接統合テスト（tar-stream async 要改善） | 低優先 — UPDATE-07 候補 |
 | — | ~~U6-03 Electron ハードニング~~ | **完了 (0.5.2.3-poc hotfix-3)** |
