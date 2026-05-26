@@ -294,10 +294,11 @@ describe('dmig:resumeExport cancel (B-20)', () => {
     const manifest = await readPackManifest(pkgDir);
     const progress = progressPayloads(harness.captureProgress());
 
-    // 最終チャンクの I/O 完了後に abort してもループ後半に signal チェックが無い → 成功扱いになり得る（B-20 P1）
     expect(res.ok).toBe(true);
     expect(manifest.partialState).toBeUndefined();
-    expect(progress.some(isCompletionProgress)).toBe(true);
+    const doneEv = progress.find(isCompletionProgress);
+    expect(doneEv).toBeDefined();
+    expect(doneEv?.cancelRequested).toBe(true);
     expect(hasContradiction(res, manifest, progress)).toBe(false);
   });
 
