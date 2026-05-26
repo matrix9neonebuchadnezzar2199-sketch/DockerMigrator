@@ -186,7 +186,7 @@ footer {
 <body class="diary">
 <header>
   <h1>2026-05-27 開発日記</h1>
-  <p class="subtitle">DockerMigrator — UPDATE-02（0.4.0-poc）通読・Renderer 設計変更</p>
+  <p class="subtitle">DockerMigrator — UPDATE-02/03（0.4.0-poc → 0.5.0-poc）</p>
 </header>
 
 <section class="diary-toc">
@@ -201,6 +201,12 @@ footer {
         <td>UPDATE-02: Main 通読・Context 化・Compose アンマウント</td>
         <td><span class="tag tag-ok">OK</span></td>
         <td><a href="#entry-0912">詳細</a></td>
+      </tr>
+      <tr>
+        <td>10:37</td>
+        <td>UPDATE-03: ProgressBus・B-20 案B・Rollback cancel</td>
+        <td><span class="tag tag-warn">OK</span></td>
+        <td><a href="#entry-1037">詳細</a></td>
       </tr>
     </tbody>
   </table>
@@ -233,6 +239,45 @@ footer {
   <p><code>typecheck</code> / <code>lint</code> / <code>test</code>（169 pass, 2 skipped）/ <code>build</code> / <code>python scripts/run_smoke_check.py</code> すべて成功。Commits: <code>22b0422</code>〜<code>644b379</code>（13 commits）</p>
   <h3>残課題</h3>
   <p>B-23（StaticPageGuides 遅延 import）は roadmap で保留。B-20（resumeExport cancel 競合）は Main 監査として UPDATE-03。B-27 の Progress 一本化も UPDATE-03。</p>
+</section>
+
+<section class="entry" id="entry-1037">
+  <h2>UPDATE-03: 0.5.0-poc</h2>
+  <div class="meta">
+    <span class="date">2026-05-27 10:37</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-warn">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>フェーズ0で B-20 を再現テスト化（P0 なし・シナリオ3は P1）。フェーズ1で <strong>ProgressBus</strong> により <code>onProgress</code> 購読を 1 本化（B-27 本丸）。フェーズ2で案B（<code>cancelRequested</code>）と Rollback <code>jobToken</code> 中断。フェーズ3で <code>0.5.0-poc</code> リリース体裁を整備。</p>
+  <h3>設計判断</h3>
+  <p><strong>B-20</strong>: 最終 I/O 後の cancel はデータ層では成功のため <code>ok: false</code> にせず、完了 progress に <code>cancelRequested: true</code> + 専用文言。<strong>Rollback</strong>: 中断は <code>ok: true</code> + <code>cancelled: true</code>、<code>executedAt</code> は付けず再実行可能。<strong>Provider</strong>: <code>ProgressBusProvider</code> → <code>LogBufferProvider</code> → JobLock 系。</p>
+  <h3>検証</h3>
+  <p>自動: <code>typecheck</code> / <code>lint</code> / <code>test</code> 177 pass (2 skipped) / <code>build</code> / <code>build:win</code>（<code>dmig Setup 0.5.0-poc.exe</code>）/ <code>run_smoke_check.py</code> 成功。Commits UPDATE-03: <code>7e4be52</code>〜<code>48ad5d2</code>（15 commits）。</p>
+  <h3>手動スモーク（実 Docker）</h3>
+  <table>
+    <thead><tr><th>シナリオ</th><th>結果</th><th>備考</th></tr></thead>
+    <tbody>
+      <tr><td>Export 通常完了</td><td>未実施</td><td>Agent 環境で Docker+Electron UI 不可</td></tr>
+      <tr><td>Export 中 cancel</td><td>未実施</td><td>同上</td></tr>
+      <tr><td>Resume 通常完了</td><td>未実施</td><td>同上</td></tr>
+      <tr><td>Resume 最終直後 cancel (B-20)</td><td>未実施</td><td>手動再現困難のため省略可</td></tr>
+      <tr><td>Import 通常完了</td><td>未実施</td><td>同上</td></tr>
+      <tr><td>Compose Export/Import</td><td>未実施</td><td>同上</td></tr>
+      <tr><td>Dry-run</td><td>未実施</td><td>同上</td></tr>
+      <tr><td>Rollback 実行 + 中止</td><td>未実施</td><td>同上</td></tr>
+      <tr><td>ページ遷移時ログ二重化なし</td><td>未実施</td><td>ProgressBus 単体テストで代替</td></tr>
+    </tbody>
+  </table>
+  <p>正本: <code>docs/testing/smoke-checklist.html</code> — マスター環境での確認待ち。</p>
+  <h3>残課題（UPDATE-04 申し送り）</h3>
+  <ul>
+    <li>Importer / OpenedPackage 境界エラーの UI 露出（P2、§13 defer）</li>
+    <li>B-23 StaticPageGuides 遅延 import</li>
+    <li>手動スモーク正本の実施と NG 時の follow-up</li>
+    <li>通読ノート follow-up（B-20 以外の Main 監査項目があれば継続）</li>
+  </ul>
 </section>
 </main>
 
