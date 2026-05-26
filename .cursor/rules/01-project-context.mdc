@@ -45,6 +45,10 @@ alwaysApply: true
 ## FiveM MOD 開発について
 FiveM MOD 開発関連は `F:\Cursor\fivem-mods_ja\` 配下の別リポジトリで管理。F:\Cursor 環境では FiveM 関連の規約・コードを扱わない。
 
+## dmig 分析・変更時（B-38 教訓）
+
+manifest / export / import / バグ追跡では **UI フローに加えシリアライズデータ契約** を確認する。詳細は `54-dmig-data-contracts.mdc` と `docs/architecture/dmig-serialized-data-contracts.md`。
+
 ## 関連ルール
 - `02-coding-style.mdc`: コーディング規約
 - `03-ai-behavior.mdc`: AI への要望・振る舞い
@@ -54,3 +58,4 @@ FiveM MOD 開発関連は `F:\Cursor\fivem-mods_ja\` 配下の別リポジトリ
 - `08-ai-opsec.mdc`: 解析業務時の AI OPSEC（IoC 扱い等）
 - `00-karpathy-guidelines.mdc`: 行動規範（優先順位含む）
 - `90-security-ethics.mdc`: セキュリティ・倫理規約（最優先）
+- `54-dmig-data-contracts.mdc`: dmig シリアライズデータ契約・ラウンドトリップ（B-38 教訓）

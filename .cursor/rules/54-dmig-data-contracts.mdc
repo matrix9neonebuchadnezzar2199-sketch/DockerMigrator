@@ -1,0 +1,129 @@
+---
+description: >-
+  dmig のシリアライズデータ契約・ラウンドトリップテスト・分析チェックリスト。
+  manifest / partialState / rollback 等の「書き手と読み手」整合性。B-38 再発防止。
+  export/import/manifest 変更、バグ追跡、テスト追加時に適用。
+globs:
+  - "dmig/src/main/core/**"
+  - "dmig/src/main/ipc/**"
+  - "dmig/src/shared/**"
+  - "docs/dmig-manifest*.md"
+  - "docs/architecture/**"
+alwaysApply: false
+---
+
+# dmig シリアライズデータ契約（B-38 教訓）
+
+UI/IPC の操作フローだけ追っても、**ディスク上のファイルを介した書き手・読み手の契約ズレ**は見えない（B-38: `dmigVersion` ハードコード vs Importer `1.x` 要求）。
+
+## 関連
+
+- 正本定数: `dmig/src/shared/manifestVersion.ts` (`DMIG_MANIFEST_VERSION`)
+- 仕様: `docs/dmig-manifest-1.1.md`
+- 教訓メモ: `docs/architecture/dmig-serialized-data-contracts.md`
+- 通読ノート: `docs/notes/2026-05-27_update02-readnote.md` §19
+- 汎用: `14-data-integrity.mdc`（ハッシュ・atomic write）
+
+---
+
+## 1. 分析時に必ず確認すること（バグ追跡・通読）
+
+「ユーザーの操作フロー」に加え、次を**明示的に**たどる:
+
+1. **シリアライズ境界の一覧**
+   - `manifest.json`（Export / Compose / Resume）
+   - `partialState`（manifest 1.1 内）
+   - `rollback.json`（export / resume 完了時）
+   - 将来: snapshot / diff メタデータ
+
+2. **各境界について書き手と読み手をペアで列挙**
+   - 書き手: `Exporter`, `ComposeExportManifestSession`, `ManifestWriter`, …
+   - 読み手: `Importer.readManifest`, `OpenedPackage`, `probePackage`, …
+   - **同じフィールド名でも意味が違うことがある**（B-38: `dmigVersion` ≠ `package.json` version）
+
+3. **ラウンドトリップテストの有無**
+   - 「Exporter 単体」「Importer 単体」だけでは不十分
+   - **書き出し → 同プロセスで readManifest / probePackage** が各経路にあるか
+
+4. **仕様書とコード定数の一致**
+   - `docs/dmig-manifest-1.1.md` の例と `DMIG_MANIFEST_VERSION` / ハードコード文字列を grep 照合
+
+### 分析依頼への聞き返し例
+
+> export で生成した manifest と import/probe が読む manifest は、フィールド単位で互換ですか？ラウンドトリップテストはありますか？
+
+---
+
+## 2. 実装規約
+
+### 2.1 バージョン・識別子
+
+| フィールド | 意味 | 正本 |
+|-----------|------|------|
+| `dmigVersion` | manifest スキーマ識別（Importer は major `1` 必須） | `DMIG_MANIFEST_VERSION` |
+| `schemaVersion` | manifest 1.0 / 1.1 等 | `DmigManifest` 型・仕様書 |
+| `source.appVersion` | 書き出し時のアプリ版（`package.json`） | 実行時取得。`dmigVersion` と混同しない |
+
+- ❌ `dmigVersion` に `package.json` の PoC 版を直書き
+- ❌ 書き出し箇所ごとに別の文字列リテラル
+- ✅ 共有定数 `DMIG_MANIFEST_VERSION` を import（将来 Zod 化可）
+
+### 2.2 不変条件コメント（新規 manifest 生成時）
+
+書き出し側で version 系フィールドを触るとき、読み手のチェックを 1 行で参照:
+
+```typescript
+// INVARIANT: Importer.readManifest — dmigVersion major must be '1' (see manifestVersion.ts)
+dmigVersion: DMIG_MANIFEST_VERSION,
+```
+
+### 2.3 変更時の必須作業
+
+manifest 書き出しまたは読み込み検証を変更したら:
+
+1. `grep -rn "dmigVersion" dmig/src`
+2. `manifestVersion.roundtrip.test.ts` または経路別ラウンドトリップを追加・更新
+3. `docs/dmig-manifest-1.1.md` と定数の乖離があれば仕様 or コードを揃える
+
+---
+
+## 3. テスト規約（dmig / Vitest）
+
+### 3.1 ラウンドトリップ（必須パターン）
+
+シリアライズ境界ごとに最低 1 件:
+
+```typescript
+// 例: manifestVersion.roundtrip.test.ts
+// 1. makeManifest / 実 Exporter 相当のオブジェクト
+// 2. Importer.readManifest(dir) が E5002 等を投げない
+// 3. legacy 値は意図的に reject するテストを別ケースで
+```
+
+経路別の追加候補（UPDATE-06）:
+
+- Compose export → readManifest
+- Image export → readManifest
+- Resume 完了 manifest → open / probe
+
+### 3.2 UI/IPC テストだけでは足りない理由
+
+B-38 は `exportCompose` と `importCompose` が**別テストで green** でも、ディスク上の `manifest.json` で失敗した。契約テストは **データ中心** に置く。
+
+---
+
+## 4. レビュー・PR チェックリスト
+
+- [ ] 新しい manifest フィールドに書き手・読み手両方の更新があるか
+- [ ] version 系は `DMIG_MANIFEST_VERSION` または仕様書と一致するか
+- [ ] ラウンドトリップまたは契約テストが追加されているか
+- [ ] CHANGELOG に既存パック非互換があれば明記されているか
+
+---
+
+## 5. アンチパターン（B-38）
+
+- ❌ 「操作フロー追跡」だけで export/import バグ追跡を完了とみなす
+- ❌ 仕様書 `dmig-manifest-1.1.md` とコードのハードコードをリンクしない
+- ❌ `DmigManifest` 型がある＝フィールド意味が保証されていると思い込む
+- ❌ 186 テスト pass＝書き出し→読み込みが成立すると思い込む

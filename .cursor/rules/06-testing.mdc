@@ -12,6 +12,7 @@ alwaysApply: false
 - `02-coding-style.mdc`: コーディング規約・型ヒント
 - `11-python-tooling.mdc`: pytest / coverage 設定
 - `04-diary-workflow.mdc`: テスト追加時の日記記録
+- `54-dmig-data-contracts.mdc`: dmig manifest ラウンドトリップ・データ契約（Vitest）
 
 ## フレームワーク
 
@@ -184,6 +185,14 @@ def valid_pe_path(tmp_path: Path) -> Path:
     """有効な合成 PE ファイルへのパス（pefile 生成）。"""
     ...
 ```
+
+## dmig (Vitest) — シリアライズ境界のラウンドトリップ
+
+export と import が別モジュールのとき、**書き出し → 読み込み**の契約テストを必須とする（B-38）。
+
+- 例: `dmig/src/main/core/manifestVersion.roundtrip.test.ts`
+- 新規 manifest 書き出し経路を追加したら、同パターンのテストを 1 件以上追加
+- 詳細: `54-dmig-data-contracts.mdc`
 
 ## 解析関連テストの特例
 
