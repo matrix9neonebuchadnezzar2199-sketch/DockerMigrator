@@ -261,3 +261,31 @@ ErrorBoundary
 - シナリオ3 再実行時: `ok: true` のまま、最終 progress に `cancelRequested: true`。
 - シナリオ1/2/4: 完了 progress なし、または `cancelRequested` 未設定。
 - シナリオ5: 通常完了、`cancelRequested` なし。
+
+---
+
+## 14. UPDATE-03 手動スモーク状況（UPDATE-04 フェーズ0）
+
+**記録日**: 2026-05-26  
+**パターン**: **C（スモーク未実施）**
+
+### 根拠
+
+- 開発日記 `docs/2026-05-27_開発日記.html` UPDATE-03 エントリ: 手動 Docker スモークは全シナリオ「未実施」、正本 `docs/testing/smoke-checklist.html` はマスター環境確認待ち。
+- Agent は Docker + Electron 実機スモークを実行できない。
+
+### 運用
+
+- UPDATE-04 本体（フェーズ1–2）は着手可。
+- **フェーズ3 完了前**にマスターが手動スモークを実施し、結果を本 §14 に追記（パターン A/B へ更新）。
+- NG 時は Reserved smoke-fix（フェーズ0-2）を実施してからフェーズ3 続行。
+
+### フェーズ1 対象コード確認（1-6）
+
+| コード | 経路 | ImportPage の ErrorBox |
+|--------|------|------------------------|
+| E2075 `MANIFEST_PARTIAL_INVALID` | `Importer.validatePartialState`、open/resume IPC | Resume 経路・不正 partial パック open で `toPayload` → ErrorBox |
+| E2071 `NOT_A_PARTIAL_PACKAGE` | `Importer` 完了パックへの resume | Resume ページ中心。Import の通常 import では稀 |
+| E8001 `CHECKSUM_MISMATCH` | `Importer.verifyChecksum`（import 読み込み時） | import 失敗時に ErrorBox 表示可。**§13 + 実装確認済みのため E8001 も有効化** |
+
+`probePackage` の `version_incompatible` 等は **ProbeErrorPanel** 経路（今回対象外）。
