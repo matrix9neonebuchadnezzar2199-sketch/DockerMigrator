@@ -1,6 +1,7 @@
 import { createReadStream, promises as fsp } from 'node:fs';
 import type { Readable } from 'node:stream';
 import { join } from 'node:path';
+import { safeJoinUnder } from '../security/safeJoinUnder.js';
 import { EventEmitter } from 'node:events';
 import { createHash } from 'node:crypto';
 
@@ -336,7 +337,7 @@ export class Importer extends EventEmitter {
 
       const entry = targets[i];
       const rel = entry.filename.startsWith('images/') ? entry.filename : `images/${entry.filename}`;
-      const filepath = join(opened.packageDir, rel);
+      const filepath = safeJoinUnder(opened.packageDir, rel);
 
       this.emitProgress({
         taskId: entry.name,
