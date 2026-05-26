@@ -5,6 +5,28 @@
 
 ## [Unreleased]
 
+## [0.5.2-poc] - UPDATE-05
+
+### Fixed
+
+- B-37: Compose / Image Export 完了後も書き出しボタンが残り二重エクスポートできた問題を解消（完了時は非表示、Image は「新しい書き出しを開始」で再表示）
+
+### Added
+
+- `errorMessages.ts` に E5002（パックバージョン非対応）のユーザー向け文言
+- `ExportPage.test.tsx`（B-37 ボタン表示 2 ケース）
+
+### Docs
+
+- 通読ノート §14（パターン A スモーク結果）/ §15（B-37）/ §16–§17
+- `docs/notes/2026-05-26_ipc-cancel-scope.md`（IPC cancel は UPDATE-06 へ）
+- `docs/notes/2026-05-26_importer-ui-design.md`
+
+### Deferred
+
+- Main IPC cancel 横展開の実装 → UPDATE-06
+- ProbeErrorPanel / ErrorBox 統合 → UPDATE-06 以降
+
 ## [0.5.1-poc] - UPDATE-04
 
 ### Added

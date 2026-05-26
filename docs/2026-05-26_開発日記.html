@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>11:51</td>
+        <td>UPDATE-05: B-37 二重書き出し修正 + 0.5.1 スモーク記録（0.5.2-poc）</td>
+        <td><span class="tag tag-warn">WARN</span></td>
+        <td><a href="#entry-1151">詳細</a></td>
+      </tr>
+      <tr>
         <td>11:04</td>
         <td>UPDATE-04: ErrorBox コード別文言 + B-23 lazy guides（0.5.1-poc）</td>
         <td><span class="tag tag-warn">WARN</span></td>
@@ -386,6 +392,39 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1151">
+  <h2>UPDATE-05: 0.5.2-poc（B-37 + スモーク記録）</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 11:51</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-warn">WARN</span>
+  </div>
+  <h3>概要</h3>
+  <p><code>0.5.1-poc</code> の手動スモークを実施し <strong>パターン A</strong> と判定。follow-up として <strong>B-37</strong>（完了後の二重書き出し）を UPDATE-05 P0 で修正。IPC cancel 横展開は要件メモのみ、Importer UI は E5002 追加（案 A）。</p>
+  <h3>手動スモーク（0.5.1-poc）</h3>
+  <ul>
+    <li>UPDATE-03 Progress / cancel / rollback: OK（E6010 キャンセル、ErrorBox 新構造）</li>
+    <li>UPDATE-04 lazy guides: OK</li>
+    <li>E2075/E2071/E8001: 未再現（自動テストで担保）</li>
+    <li>発見: B-37（Compose 完了後も「パックを書き出す」が有効）— UPDATE-04 の NG ではなく B-25 follow-up</li>
+  </ul>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">M</span> <code>ComposePage.tsx</code> / <code>ExportPage.tsx</code> — 完了時書き出しボタン非表示（案 B）</li>
+    <li><span class="op op-add">+</span> <code>ExportPage.test.tsx</code></li>
+    <li><span class="op op-mod">M</span> <code>errorMessages.ts</code> — E5002</li>
+    <li><span class="op op-mod">M</span> readnote §14–§17、IPC/Importer 設計メモ</li>
+  </ul>
+  <h3>検証</h3>
+  <p><code>test</code> 184 pass (2 skipped) / <code>build</code> / <code>run_smoke_check.py</code> OK。B-37 の実機再確認はマスター待ち。Commits: <code>pending</code></p>
+  <h3>残課題 / UPDATE-06</h3>
+  <ol>
+    <li>B-37 手動スモーク（Compose + Image）</li>
+    <li>IPC cancel 横展開（<code>2026-05-26_ipc-cancel-scope.md</code>）</li>
+    <li>Importer UI 統合</li>
+  </ol>
+</section>
 <section class="entry" id="entry-1104">
   <h2>UPDATE-04: 0.5.1-poc（Import ErrorBox + B-23）</h2>
   <div class="meta">
