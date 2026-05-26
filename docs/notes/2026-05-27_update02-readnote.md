@@ -264,33 +264,39 @@ ErrorBoundary
 
 ---
 
-## 14. UPDATE-03 / UPDATE-04 手動スモーク結果
+## 14. UPDATE-03〜05 / hotfix-2 手動スモーク結果
 
 ### 実施情報
 
 - **実施日**: 2026-05-26
-- **対象バージョン**: `0.5.1-poc`（UPDATE-03 + UPDATE-04 を一括検証）
+- **対象バージョン**: `0.5.2.2-poc`（hotfix-2 適用後、main 再起動済み）
 - **環境**: Windows + Docker Desktop、`F:\Docker_out`（マスター環境）
-- **判定**: **パターン B（NG あり）** — 初回は A 相当だったが B-38 発見で更新（2026-05-26 hotfix）
+- **判定**: **パターン A（NG なし）**
 
 ### 確認済み範囲
 
-- **UPDATE-03** Progress 集約 / cancel / rollback: OK
-  - E6010 (`JOB_CANCELLED`) によるキャンセル動作確認
-  - ErrorBox の新 3 段構造（E6010 は未登録のため汎用表示だがレイアウトは新構造）
+- **UPDATE-03** Progress 集約 / cancel / rollback: OK（0.5.1-poc 時点で確認済み）
 - **UPDATE-04** ErrorBox 構造 / B-23 lazy guides: OK
-  - `StaticPageGuides` 遅延読み込みでレイアウト崩れなし
-  - E2075 / E2071 / E8001 は未再現（`ErrorBox.test.tsx` 4 件で担保）
+- **B-37** Compose Export 完了後のボタン非表示: OK（「新しい書き出しを開始」のみ、二重書き出し不可）
+- **B-38 / hotfix-2** 新規 Export → Import ラウンドトリップ: **OK**
+  - 新規パック: `dmig-2026-05-26T05-27-24.dmig`（626.6 MB、1 プロジェクト / 1 イメージ）
+  - Import 画面: E5002 なし、パッケージ情報正常（作成 2026-05-26T05:27:25Z / win32 / Docker 29.4.3）
+  - Compose 認識: `cyber-ghidra-webui-main`（1 services / 0 volumes）、「▶ インポート開始」活性
 
-### NG（パターン B）
+### 旧パック（Import 不可は仕様どおり）
 
-| ID | 内容 | 対応 |
-|----|------|------|
-| **B-38** | 同一アプリで書き出したパックが E5002 で取り込めない（`dmigVersion: 0.2.0-poc` ハードコード） | **0.5.2.1-poc hotfix** §18 |
+| パック | 理由 |
+|--------|------|
+| `dmig-2026-05-26T04-50-56.dmig` | hotfix-2 前バイナリで書き出し（`dmigVersion: 0.2.0-poc`） |
+| `dmig-2026-05-26T04-53-00.dmig` | 同上 |
 
-### follow-up（パターン A 内で解消済み）
+**破棄して問題なし。** hotfix-2 適用後に旧パックを Import し続けると偽陽性 NG に見える（§20 参照）。
 
-- **B-37**: Compose Export 完了後の二重書き出し → §15、UPDATE-05 で対応済み
+### 経緯（判定が B → A になった流れ）
+
+1. `0.5.2-poc` スモークで B-38 発見 → `0.5.2.1-poc` で `DMIG_MANIFEST_VERSION` 導入（§18）
+2. 実機で E5002 が続くように見えたが、**旧パック選択**および **ステイル main** が原因（§20）
+3. `0.5.2.2-poc`（appVersion 一元化・実ラウンドトリップテスト・設定画面バージョン表示）後、**新規 Export** でケース A 確定
 
 ### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
@@ -419,30 +425,36 @@ ErrorBoundary
 
 ---
 
-## 20. ステイル main プロセスと hotfix-2（0.5.2.2-poc）
+## 20. 定数化と実行バイナリ世代の特定
 
-### 実機 NG の再切り分け（2026-05-26）
+### 背景
 
-- `dmig-2026-05-26T04-53-00.dmig` の `manifest.json`: `dmigVersion: "0.2.0-poc"`, `source.appVersion: "0.1.0-poc"`
-- リポジトリ grep: `src/main/` に `0.2.0-poc` ハードコード **0 件**（`Exporter` / `composeExportManifestSession` は `DMIG_MANIFEST_VERSION`）
-- **結論**: B-38 コード修正は正しい。実機 NG は **hotfix 前の main プロセスで Export した**（ステイルバイナリ）。B-38 の再発ではない。
+B-38 hotfix（`0.5.2.1-poc`）後、実機で E5002 が再発したように見えたが、実際は **古い main プロセスが書き出した旧パック**（`04-50-56` / `04-53-00` 等）を Import していた **偽陽性 NG** だった。`0.5.2.2-poc` で新規 Export（`05-27-24.dmig`）後、Import ラウンドトリップ成立（§14 パターン A）。
 
-### 診断のスモーキングガン
+### 教訓 1（テスト戦略）
 
-- `source.appVersion` が `0.1.0-poc` 固定だったため、UI が `0.5.2.1-poc` でも manifest だけ見ると世代が判別できなかった。
-- hotfix-2: `@shared/appVersion`（`package.json` import）、設定画面に実行バージョン表示。
+データ契約の定数化（`DMIG_MANIFEST_VERSION`）は **必要だが十分ではない**。`manifestVersion.roundtrip.test.ts` のように定数値だけを比較するテストでは、実コードのハードコード残存を検知できない。
 
-### テストの教訓（§19 補強）
+**ラウンドトリップテストは実 I/O 経路（Exporter → disk → Importer）を通すこと。** hotfix-2 で `exportImport.roundtrip.test.ts` を追加（`Exporter.exportImages` / `ComposeExportManifestSession.create` → `readManifest`）。
 
-- `manifestVersion.roundtrip.test.ts` は **手書き JSON** のみで、実 Exporter を通さない → B-38 を検知できない。
-- hotfix-2: `exportImport.roundtrip.test.ts` で `Exporter.exportImages` / `ComposeExportManifestSession.create` → ディスク → `readManifest`。
+### 教訓 2（開発フロー）
 
-### 開発フロー
+electron-vite は **renderer のみ HMR**。**main プロセスは `npm run dev` の再起動が必要。** コード修正後に旧 main で Export した結果を見て「修正が効いていない」と誤判定する罠が頻発しうる。
 
-- electron-vite **main は HMR されない**。hotfix 後は dmig 完全終了 → `npm run build` または `npm run dev` 再起動 → 新規 Export 必須。
-- 既存 `dmigVersion: 0.x` パックは再エクスポートが正攻法（手書き修正は非推奨）。
+### 教訓 3（診断容易性）
 
-### §14 更新（B-38 コード面）
+- manifest の `source.appVersion` を `package.json` から動的取得（`@shared/appVersion`）→ 書き出したパックから実行バイナリ世代を特定可能。
+- 設定画面の「実行中バージョン」表示と組み合わせ、開発者・ユーザー双方の混乱を防止。
 
-- B-38 hotfix **コード**: 検証 OK（grep + 再起動後 `0.5.2.1-poc` dev 起動）
-- B-38 **実機 Import**: マスター再検証待ち（新規 Export → `dmigVersion: 1.1` + `appVersion: 0.5.2.2-poc`）
+### 再発防止策（UPDATE-06 反映）
+
+| 項目 | 状態 |
+|------|------|
+| 実ラウンドトリップテスト拡張（delta / resume / Compose Import） | UPDATE-06 P1 |
+| `source.appVersion` 動的取得 | **0.5.2.2-poc 完了** |
+| 設定 UI バージョン表示 | **0.5.2.2-poc 完了** |
+| importCompose の `readManifest` ゲート | UPDATE-06 P0 |
+| path traversal 防御 | UPDATE-06 P0 |
+| Electron ハードニング | UPDATE-06 P0 |
+
+正本: [docs/instructions/update-06-instructions.md](../instructions/update-06-instructions.md)
