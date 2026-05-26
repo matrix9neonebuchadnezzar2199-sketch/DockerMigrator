@@ -5,6 +5,7 @@ import { existsSync } from 'node:fs';
 import { registerIpcHandlers } from './ipc.js';
 import { SnapshotStore } from './core/snapshot/SnapshotStore.js';
 import { installContentSecurityPolicy } from './security/csp.js';
+import { attachNavigationGuards } from './security/navigationGuards.js';
 import './phase-core-entry.js';
 
 installContentSecurityPolicy(app.isPackaged);
@@ -22,6 +23,8 @@ function resolvePreload(): string {
 }
 
 function createWindow() {
+  const isDev = !app.isPackaged;
+
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -35,6 +38,8 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+
+  attachNavigationGuards(win, isDev);
 
   if (process.env.ELECTRON_RENDERER_URL) {
     void win.loadURL(process.env.ELECTRON_RENDERER_URL);
