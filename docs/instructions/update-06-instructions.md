@@ -51,9 +51,10 @@
 | 1 | U6-01 | `compose.ts` importCompose ゲート | 1 + test | XS |
 | 2 | U6-02 | `safeJoinUnder` + 適用箇所 + テスト | 2〜3 | M |
 | 3 | U6-05 | roundtrip 拡張（delta / resume / compose import） | 1〜2 | M |
-| 4 | — | CHANGELOG / roadmap / §14 追記 / 日記 | 1 | XS |
+| 4 | — | dev CSP 検証手順 + ヘッダ注入強化 | 1〜2 | S |
+| 5 | — | CHANGELOG / version `0.6.0-poc` / §14 / 日記 | 1 | XS |
 
-**実装順序**: U6-01 → U6-02 → U6-05（U6-02 完了後に U6-05 で回帰を固める）。
+**実装順序**: U6-01 → U6-02 → U6-05 → dev CSP（U6-02 完了後に U6-05 で回帰を固める）。
 
 ### UPDATE-07（`0.7.0-poc`）— 概要のみ（本書では詳細未展開）
 

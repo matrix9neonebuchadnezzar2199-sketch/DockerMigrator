@@ -300,7 +300,7 @@ ErrorBoundary
 
 ### hotfix-3（0.5.2.3-poc）実機スモーク（2026-05-26）
 
-2026-05-26 hotfix-3（`0.5.2.3-poc`）適用後の実機スモークで **C1〜C4 全項目 OK**。`window.dmig` API、Image Export、Import probe、ファイル選択ダイアログ、ガイド遅延読み込みすべて **sandbox 下で正常動作**を確認。dev 環境では CSP ヘッダが未注入 → **UPDATE-06** で整備予定。
+2026-05-26 hotfix-3（`0.5.2.3-poc`）適用後の実機スモークで **C1〜C4 全項目 OK**。`window.dmig` API、Image Export、Import probe、ファイル選択ダイアログ、ガイド遅延読み込みすべて **sandbox 下で正常動作**を確認。dev CSP のヘッダ注入・検証手順は **UPDATE-06（0.6.0-poc）** で整備（`docs/testing/dev-csp-verification.md`、`[::1]` / `ELECTRON_RENDERER_URL` 対応）。
 
 ### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
@@ -460,6 +460,6 @@ electron-vite は **renderer のみ HMR**。**main プロセスは `npm run dev`
 | importCompose の `readManifest` ゲート | UPDATE-06 P0 |
 | path traversal 防御 | UPDATE-06 P0 |
 | Electron ハードニング（CSP / navigation / sandbox） | **0.5.2.3-poc hotfix-3 完了** |
-| dev CSP 検証手順の整備 | UPDATE-06 |
+| dev CSP 検証手順の整備 | **完了 (0.6.0-poc)** — `docs/testing/dev-csp-verification.md` |
 
 正本: [docs/instructions/update-06-instructions.md](../instructions/update-06-instructions.md)

@@ -52,7 +52,7 @@ tr:last-child td { border-bottom: none; }
 <header>
   <h1>dmig 手動スモークチェックリスト（M5）</h1>
   <p class="subtitle">Phase 6 第4回完了後の最小確認。lab 環境・テスト用 Docker のみ。</p>
-  <nav><a href="index.html">← テスト資料一覧</a> · <a href="m10-rollback-smoke-checklist.html">M10 ロールバック smoke（詳細）</a></nav>
+  <nav><a href="index.html">← テスト資料一覧</a> · <a href="m10-rollback-smoke-checklist.html">M10 ロールバック smoke（詳細）</a> · <a href="dev-csp-verification.md">dev / 本番 CSP 検証</a></nav>
 </header>
 
 <section id="auto">
@@ -89,6 +89,17 @@ tr:last-child td { border-bottom: none; }
   <div class="callout">
     <strong>実施前:</strong> <code>npm run dev</code> を完全再起動（Main に <code>2a1efa4</code> 以降が載っていること）。
   </div>
+</section>
+
+<section id="csp">
+  <h2>CSP（hotfix-3 / UPDATE-06）</h2>
+  <p>開発時は Vite 応答へ <code>Content-Security-Policy</code> ヘッダを注入。本番は <code>out/renderer/index.html</code> の meta。詳細手順:</p>
+  <p><a href="dev-csp-verification.md"><strong>dev-csp-verification.md</strong></a></p>
+  <ul class="checklist">
+    <li><label><input type="checkbox"> Network: ドキュメント応答に CSP ヘッダあり（dev）</label></li>
+    <li><label><input type="checkbox"> Console: CSP violation が大量に出ない</label></li>
+    <li><label><input type="checkbox"> <code>npm run build</code> 後の index.html に <code>connect-src 'none'</code> meta（任意）</label></li>
+  </ul>
 </section>
 
 <section id="prereq">
