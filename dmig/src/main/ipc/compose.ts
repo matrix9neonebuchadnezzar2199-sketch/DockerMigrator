@@ -21,7 +21,6 @@ import type {
   ComposeProjectInfo,
   ComposeLifecycleRequest,
   SecretScanResult,
-  DmigManifest,
   ProgressEvent,
 } from '@shared/types.js';
 import { buildProgressEvent } from '@shared/progress.js';
@@ -425,11 +424,9 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     volumeExporter.on('progress', progressForwarder);
 
     try {
-      const manifestPath = join(req.packageDir, 'manifest.json');
-      const txt = await fsp.readFile(manifestPath, 'utf-8');
-      const manifest = JSON.parse(txt) as DmigManifest;
+      const opened = await importer.openAsBase(req.packageDir);
 
-      await composeImporter.importProjects(req, manifest, controller.signal);
+      await composeImporter.importProjects(req, opened.manifest, controller.signal);
       return { ok: true as const, data: undefined };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
