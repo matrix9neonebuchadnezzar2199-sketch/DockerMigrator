@@ -1,6 +1,19 @@
 import React, { useState } from 'react';
 import type { DmigErrorPayload } from '../../shared/types.js';
 
+const COLLAPSE_THRESHOLD = 400;
+
+function formatErrorBody(error: DmigErrorPayload): string {
+  const parts = [`[${error.code}] ${error.message}`];
+  if (error.detail) {
+    parts.push(`詳細: ${error.detail}`);
+  }
+  if (error.phase) {
+    parts.push(`フェーズ: ${error.phase}`);
+  }
+  return parts.join('\n');
+}
+
 /**
  * エラー表示ボックス。Phase 5.1 第3回: エラーレポート ZIP 保存。
  */
@@ -45,12 +58,27 @@ export const ErrorBox: React.FC<{
     }
   };
 
+  const body = formatErrorBody(error);
+  const isLong = body.length > COLLAPSE_THRESHOLD;
+
   return (
     <div className="error-box">
-      <div className="code">
-        [{error.code}] {error.message}
-      </div>
-      {error.detail && <div className="detail">詳細: {error.detail}</div>}
+      {isLong ? (
+        <details className="error-box-details">
+          <summary className="code">
+            [{error.code}] {error.message}
+            <span className="error-box-expand-hint"> …全文を表示</span>
+          </summary>
+          <pre className="error-box-long">{body}</pre>
+        </details>
+      ) : (
+        <>
+          <div className="code">
+            [{error.code}] {error.message}
+          </div>
+          {error.detail && <div className="detail">詳細: {error.detail}</div>}
+        </>
+      )}
       {reportError && (
         <div className="detail" style={{ marginTop: 6 }}>
           レポート保存: {reportError}
