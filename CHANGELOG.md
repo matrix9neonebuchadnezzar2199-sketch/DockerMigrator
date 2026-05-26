@@ -5,6 +5,33 @@
 
 ## [Unreleased]
 
+## [0.5.0-poc] - UPDATE-03
+
+### Changed
+
+- Progress イベント購読を `ProgressBusProvider` に集約し、`window.dmig.onProgress` の Renderer 購読を 1 本化 (B-27)
+- `ProgressPhase` / `ProgressTaskId` を union 型として整理 (`shared/types.ts`)
+- `useDmigProgress` / `useLogBuffer` を ProgressBus 経由に切り替え
+
+### Added
+
+- 完了 progress に `cancelRequested` フラグ。最終チャンク完了直後の cancel 要求を半成功として表現 (B-20)
+- Rollback の `jobToken` 登録と `dmig:cancel` による中断（`RunRollbackResult.cancelled` で部分結果を返却）
+- `useDoneProgressNotice` による Resume 完了文言の出し分け
+
+### Fixed
+
+- B-20: Resume の最終チャンク完了直後に cancel した場合の UX 不整合（`ok: true` のまま注記付き完了メッセージ）
+
+### Docs
+
+- 通読ノート §10–§13（Progress 集約設計、B-20 マトリクス、案B 採択、Importer UI defer）
+- UPDATE-03 開発日記
+
+### Deferred
+
+- Importer 境界エラー UI 露出 (P2) → UPDATE-04
+
 ## [0.4.0-poc] - UPDATE-02
 
 ### Changed
