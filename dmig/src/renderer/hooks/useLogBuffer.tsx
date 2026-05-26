@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ProgressEvent } from '../../shared/types.js';
+import { useProgressBus } from '../context/ProgressBusContext.js';
 
 /** ログ FIFO の上限（LogsPage 表示とも共有）。 */
 export const LOG_BUFFER_MAX = 1000;
@@ -77,14 +78,15 @@ type LogBufferContextValue = {
 const LogBufferContext = createContext<LogBufferContextValue | null>(null);
 
 export const LogBufferProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { subscribe } = useProgressBus();
   const [entries, setEntries] = useState<LogEntry[]>([]);
 
   useEffect(() => {
-    return window.dmig.onProgress((ev) => {
+    return subscribe(undefined, (ev) => {
       const entry = progressEventToLogEntry(ev);
       setEntries((prev) => appendLogEntry(prev, entry));
     });
-  }, []);
+  }, [subscribe]);
 
   const clear = useCallback(() => setEntries([]), []);
 

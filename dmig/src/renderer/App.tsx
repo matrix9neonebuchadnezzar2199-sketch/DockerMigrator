@@ -18,6 +18,7 @@ import { ComposePageStateProvider } from './context/ComposePageStateContext.js';
 import { DynamicCtaProvider } from './context/DynamicCtaContext.js';
 import { JobLockProvider } from './context/JobLockContext.js';
 import { RollbackJobProvider } from './context/RollbackJobContext.js';
+import { ProgressBusProvider } from './context/ProgressBusContext.js';
 import { LogBufferProvider } from './hooks/useLogBuffer.js';
 
 export type PageKey =
@@ -98,7 +99,8 @@ export const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <LogBufferProvider>
+      <ProgressBusProvider>
+        <LogBufferProvider>
         <JobLockProvider>
           <RollbackJobProvider>
             <ComposePageStateProvider>
@@ -137,7 +139,8 @@ export const App: React.FC = () => {
             </ComposePageStateProvider>
           </RollbackJobProvider>
         </JobLockProvider>
-      </LogBufferProvider>
+        </LogBufferProvider>
+      </ProgressBusProvider>
     </ErrorBoundary>
   );
 };
