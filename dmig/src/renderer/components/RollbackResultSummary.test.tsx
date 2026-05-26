@@ -16,6 +16,15 @@ describe('RollbackResultSummary', () => {
     expect(screen.getByText(/既にロールバック済みです/)).toBeInTheDocument();
   });
 
+  it('全件ゼロのとき空状態メッセージ', () => {
+    render(
+      <RollbackResultSummary
+        result={{ succeeded: [], skipped: [], failed: [], warnings: [] }}
+      />,
+    );
+    expect(screen.getByText(/ロールバック対象が見つかりませんでした/)).toBeInTheDocument();
+  });
+
   it('directory_not_empty 件数を表示', () => {
     render(
       <RollbackResultSummary

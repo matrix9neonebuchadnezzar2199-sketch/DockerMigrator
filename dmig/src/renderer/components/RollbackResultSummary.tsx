@@ -9,8 +9,19 @@ export const RollbackResultSummary: React.FC<{
   const dirSkipped = countDirectoryNotEmptyWarnings(result.warnings);
   const showAlreadyExecuted =
     wasAlreadyExecuted || result.warnings.includes('already_executed');
+  const isEmpty =
+    result.succeeded.length === 0 &&
+    result.skipped.length === 0 &&
+    result.failed.length === 0 &&
+    !showAlreadyExecuted;
+
   return (
     <div className="rollback-result-summary card">
+      {isEmpty ? (
+        <p className="rollback-warn" role="status">
+          ロールバック対象が見つかりませんでした。
+        </p>
+      ) : null}
       {showAlreadyExecuted ? (
         <p className="rollback-warn" role="status">
           このパックは既にロールバック済みです。新たに削除された項目はありません。
