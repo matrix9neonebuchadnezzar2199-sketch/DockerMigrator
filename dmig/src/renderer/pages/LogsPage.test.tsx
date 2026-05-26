@@ -58,6 +58,11 @@ describe('LogsPage', () => {
     });
   });
 
+  it('バッファ上限を LOG_BUFFER_MAX で表示', () => {
+    render(<LogsPage />);
+    expect(screen.getByText(/1,000 件/)).toBeInTheDocument();
+  });
+
   it('ログ一覧を表示する', () => {
     render(<LogsPage />);
     expect(screen.getByRole('log', { name: '操作ログ' })).toBeInTheDocument();

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import type { LogLevel } from '../hooks/useLogBuffer.js';
-import { formatLogEntriesTsv, useLogBuffer } from '../hooks/useLogBuffer.js';
+import { formatLogEntriesTsv, LOG_BUFFER_MAX, useLogBuffer } from '../hooks/useLogBuffer.js';
 
 const ALL_LEVELS: LogLevel[] = ['info', 'warn', 'error'];
 
@@ -44,7 +44,7 @@ export const LogsPage: React.FC = () => {
       <h2>ログ</h2>
       <p className="page-lead">
         進行中操作の進捗メッセージを表示します（最大 {entries.length > 0 ? `${entries.length} / ` : ''}
-        1000 件、超過分は古い順に破棄）。
+        {LOG_BUFFER_MAX.toLocaleString('ja-JP')} 件、超過分は古い順に破棄）。
       </p>
 
       <div className="logs-toolbar card">

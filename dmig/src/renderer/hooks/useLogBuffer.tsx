@@ -1,7 +1,11 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ProgressEvent } from '../../shared/types.js';
 
+/** ログ FIFO の上限（LogsPage 表示とも共有）。 */
 export const LOG_BUFFER_MAX = 1000;
+
+/** @deprecated 互換 alias — 新規コードは LOG_BUFFER_MAX を使用 */
+export const MAX_LOG_ENTRIES = LOG_BUFFER_MAX;
 
 export type LogLevel = 'info' | 'warn' | 'error';
 
