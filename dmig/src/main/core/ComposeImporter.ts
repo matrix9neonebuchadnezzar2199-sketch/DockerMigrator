@@ -27,6 +27,7 @@ import {
   buildDockerVolumeEntry,
   createRollbackRecord,
 } from './rollbackRecordBuilder.js';
+import { safeJoinUnder } from '../security/safeJoinUnder.js';
 
 /**
  * Compose プロジェクトをパッケージから復元する。
@@ -75,7 +76,7 @@ export class ComposeImporter extends EventEmitter {
       const allImages = new Set<string>();
 
       for (const entry of targets) {
-        const projectManifestPath = join(req.packageDir, entry.manifestFile);
+        const projectManifestPath = safeJoinUnder(req.packageDir, entry.manifestFile);
         let pm: ProjectManifest;
         try {
           const txt = await fsp.readFile(projectManifestPath, 'utf-8');
@@ -157,11 +158,14 @@ export class ComposeImporter extends EventEmitter {
       throw wrapError(e, ErrorCodes.DESTINATION_DIR_INVALID, `mkdir(${destDir})`);
     }
 
-    const packageProjectDir = join(req.packageDir, 'compose', this.safeName(pm.projectName));
+    const packageProjectDir = safeJoinUnder(
+      req.packageDir,
+      join('compose', this.safeName(pm.projectName)),
+    );
 
     for (const cfgRel of pm.configFiles) {
       try {
-        await fsp.copyFile(join(packageProjectDir, cfgRel), join(destDir, cfgRel));
+        await fsp.copyFile(safeJoinUnder(packageProjectDir, cfgRel), join(destDir, cfgRel));
       } catch (e) {
         throw wrapError(e, ErrorCodes.COMPOSE_IMPORT_FAILED, `copyConfig(${cfgRel})`);
       }
@@ -170,7 +174,7 @@ export class ComposeImporter extends EventEmitter {
     for (const env of pm.envFiles) {
       if (!env.path) continue;
       try {
-        await fsp.copyFile(join(packageProjectDir, env.path), join(destDir, env.path));
+        await fsp.copyFile(safeJoinUnder(packageProjectDir, env.path), join(destDir, env.path));
       } catch (e) {
         throw wrapError(e, ErrorCodes.COMPOSE_IMPORT_FAILED, `copyEnv(${env.path})`);
       }
@@ -178,7 +182,7 @@ export class ComposeImporter extends EventEmitter {
 
     for (const svc of pm.services) {
       if (!svc.buildContext) continue;
-      const tarPath = join(packageProjectDir, svc.buildContext.tarFile);
+      const tarPath = safeJoinUnder(packageProjectDir, svc.buildContext.tarFile);
       const lastSeg =
         svc.buildContext.originalPath
           .replace(/[/\\]+$/, '')
@@ -200,7 +204,7 @@ export class ComposeImporter extends EventEmitter {
 
     for (const bm of pm.bindMounts) {
       if (!bm.packaged || !bm.tarFile) continue;
-      const tarPath = join(packageProjectDir, bm.tarFile);
+      const tarPath = safeJoinUnder(packageProjectDir, bm.tarFile);
       const remappedHost = req.bindMountRemap?.[bm.hostPath] ?? bm.hostPath;
       await this.untarZstd(tarPath, remappedHost, `${pm.projectName} bind mount`);
       entries.push(
