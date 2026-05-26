@@ -187,10 +187,26 @@ flowchart TB
 | B-20 | resumeExport cancel（案B `cancelRequested`） | **完了 (0.5.0-poc)** |
 | — | `runRollback` の jobToken / cancel | **完了 (0.5.0-poc)** |
 | — | Importer / OpenedPackage 境界エラー UI | **完了 (0.5.1-poc)** ※E2075/E2071/E8001 の ErrorBox のみ。他コード・ProbeErrorPanel は UPDATE-05 以降 |
-| B-37 | Compose/Image Export 完了後の書き出しボタン非表示化（案 B） | **完了 (0.5.2-poc)** §15 参照、B-25 follow-up |
-| B-38 | dmigVersion ハードコード → 書き出し後に取り込めない (E5002) | **完了 (0.5.2.1-poc)** §18 参照 |
+| B-37 | Compose/Image Export 完了後の書き出しボタン非表示化（案 B） | **完了 (0.5.2-poc)** §15、2026-05-26 実機 OK |
+| B-38 | dmigVersion ハードコード → 書き出し後に取り込めない (E5002) | **完了 (0.5.2.2-poc)** §18、0.5.2.1 起票 + hotfix-2 で実機確認 |
+| — | hotfix-2: appVersion 一元化・UI バージョン表示・実ラウンドトリップテスト | **完了 (0.5.2.2-poc)** §20 |
 
 通読ノート: [docs/notes/2026-05-27_update02-readnote.md](../notes/2026-05-27_update02-readnote.md)
+
+### UPDATE-06 候補（目標 `0.6.0-poc`）
+
+| 優先度 | 項目 | 出典 |
+|--------|------|------|
+| P0 | `importCompose` の `Importer.readManifest` / `openAsBase` ゲート復活 | コードレビュー §1-1 |
+| P0 | path traversal 防御（`safeJoinUnder`、manifest 由来パス） | コードレビュー §1-2 |
+| P0 | Electron ハードニング（sandbox / CSP / navigation ガード） | コードレビュー §1-3 |
+| P1 | IPC 入口 zod 検証 | コードレビュー |
+| P1 | ラウンドトリップテスト拡張（delta / resume / Compose Import） | §19 / §20 |
+| P1 | manifest スキーマ Zod 化と仕様書同期 | §19 |
+| P2 | `checksums.sha256` の atomic 化、`runComposeConfig` 出力サイズ制限 | コードレビュー |
+| P2 | `DockerAdapter` の `alpine:3.19` digest pinning | コードレビュー |
+
+指示書ドラフト: [docs/instructions/update-06-instructions.md](../instructions/update-06-instructions.md)
 
 ---
 
@@ -198,10 +214,11 @@ flowchart TB
 
 | 日付 | 内容 |
 |------|------|
+| 2026-05-26 | hotfix-2 クローズ（0.5.2.2-poc、§14 パターン A、B-38 実機解決、UPDATE-06 ドラフト） |
 | 2026-05-27 | UPDATE-03 完了印（B-27/B-20/rollback cancel）、Importer UI を UPDATE-04 候補に |
 | 2026-05-26 | UPDATE-04 完了印（ErrorBox コード別文言、B-23 lazy guides、0.5.1-poc） |
-| 2026-05-26 | UPDATE-05 完了印（B-37、§14 パターン A、E5002、0.5.2-poc） |
-| 2026-05-26 | B-38 hotfix（0.5.2.1-poc、dmigVersion 1.1、§14→パターン B） |
+| 2026-05-26 | UPDATE-05 完了印（B-37、0.5.2-poc） |
+| 2026-05-26 | B-38 hotfix（0.5.2.1-poc、dmigVersion 1.1） |
 | 2026-05-27 | UPDATE-02 トラッキング節を追加（UPDATE-01 完了印・UPDATE-02 進行中） |
 | 2026-05-19 | 初版（チャットで合意した全体設計を文書化） |
 | 2026-05-19 | 確定方針 D-009〜D-012、着手順 M6→M8→…、案 B（§9.1）を M6 に内包 |
