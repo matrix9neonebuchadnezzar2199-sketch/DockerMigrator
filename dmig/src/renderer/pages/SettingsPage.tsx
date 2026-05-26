@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { APP_VERSION } from '@shared/appVersion.js';
 import type { DmigSettings } from '../../shared/settings.js';
 export const SettingsPage: React.FC = () => {
   const [settings, setSettings] = useState<DmigSettings | null>(null);
@@ -45,6 +46,9 @@ export const SettingsPage: React.FC = () => {
     <div className="page-shell settings-page">
       <h2>設定</h2>
       <p className="page-lead">アプリの動作に関する設定です。テーマや言語は今後の更新で追加予定です（判断 D-003）。</p>
+      <p className="settings-hint">
+        実行中バージョン: <code>{APP_VERSION}</code>（manifest の <code>source.appVersion</code> と一致）
+      </p>
 
       <section className="settings-section">
         <h3>起動時のページ</h3>
