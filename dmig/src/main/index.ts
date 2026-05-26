@@ -34,8 +34,14 @@ function createWindow() {
     backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: resolvePreload(),
+      // Renderer に Node を渡さない（IPC + preload のみ）
       contextIsolation: true,
       nodeIntegration: false,
+      nodeIntegrationInWorker: false,
+      nodeIntegrationInSubFrames: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      enableWebSQL: false,
     },
   });
 
