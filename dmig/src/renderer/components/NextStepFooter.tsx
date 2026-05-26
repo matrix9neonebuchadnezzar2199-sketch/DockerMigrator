@@ -10,7 +10,9 @@ export const NextStepFooter: React.FC<{
   page: PageKey;
   onNavigate: (page: PageKey) => void;
   dockerConnected: boolean;
-}> = ({ page, onNavigate, dockerConnected }) => {
+  dockerPinging?: boolean;
+  onReconnect?: () => void;
+}> = ({ page, onNavigate, dockerConnected, dockerPinging = false, onReconnect }) => {
   const step = getNextStepForPage(page);
   const { dynamicCta } = useDynamicCta();
   if (!step) return null;
@@ -31,6 +33,16 @@ export const NextStepFooter: React.FC<{
     <footer className="next-step-footer" role="contentinfo" aria-label="次にやること">
       <div className="next-step-footer-inner">
         <p className="next-step-description">{description}</p>
+        {!dockerConnected && onReconnect ? (
+          <button
+            type="button"
+            className="next-step-reconnect"
+            onClick={onReconnect}
+            disabled={dockerPinging}
+          >
+            Docker 接続を再確認
+          </button>
+        ) : null}
         {activeCta ? (
           <button
             type="button"
