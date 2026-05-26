@@ -8,8 +8,10 @@ import { Snapshotter } from '../core/snapshot/Snapshotter.js';
 import { DiffEngine } from '../core/diff/DiffEngine.js';
 import { DiffPreview } from '../core/diff/DiffPreview.js';
 import { createProgressRelay } from '../utils/progressIpc.js';
+import { diffPreviewRequestSchema, snapshotIdSchema } from '@shared/ipcSchemas.js';
 import type { HandlerDeps } from './shared.js';
 import { toPayload } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
 
 export function registerSnapshotHandlers(deps: HandlerDeps): void {
   const { docker } = deps;
@@ -24,7 +26,13 @@ export function registerSnapshotHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:deleteSnapshot', async (_evt, id: string) => {
+  ipcMain.handle('dmig:deleteSnapshot', async (_evt, raw: unknown) => {
+    let id: string;
+    try {
+      id = parseIpcArgs(snapshotIdSchema, raw, 'dmig:deleteSnapshot');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     try {
       const store = SnapshotStore.getInstance();
       await store.delete(id);
@@ -36,7 +44,13 @@ export function registerSnapshotHandlers(deps: HandlerDeps): void {
 
   ipcMain.handle(
     'dmig:computeDiff',
-    async (event: IpcMainInvokeEvent, req: DiffPreviewRequest) => {
+    async (event: IpcMainInvokeEvent, raw: unknown) => {
+      let req: DiffPreviewRequest;
+      try {
+        req = parseIpcArgs(diffPreviewRequestSchema, raw, 'dmig:computeDiff');
+      } catch (e) {
+        return { ok: false as const, error: toPayload(e) };
+      }
       const controller = jobRegistry.register(req.jobToken);
       const relay = createProgressRelay(event.sender);
       const onProgress = relay.forwarder;

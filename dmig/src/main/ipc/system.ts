@@ -7,8 +7,10 @@ import { ErrorCodes } from '../core/errors/codes.js';
 import type { JobToken, CancelResult } from '@shared/types.js';
 import { ProgressTaskIds } from '@shared/progress.js';
 import { createProgressRelay } from '../utils/progressIpc.js';
+import { jobTokenRequiredSchema } from '@shared/ipcSchemas.js';
 import type { HandlerDeps } from './shared.js';
 import { toPayload } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
 
 const execFile = promisify(execFileCb);
 
@@ -49,7 +51,13 @@ export function registerSystemHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:cancel', async (_e, jobToken: JobToken) => {
+  ipcMain.handle('dmig:cancel', async (_e, raw: unknown) => {
+    let jobToken: JobToken;
+    try {
+      jobToken = parseIpcArgs(jobTokenRequiredSchema, raw, 'dmig:cancel');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     try {
       const result: CancelResult = jobRegistry.cancel(jobToken);
       return { ok: true as const, data: result };

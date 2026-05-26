@@ -9,13 +9,25 @@ import type {
 } from '@shared/types.js';
 import { ProgressTaskIds } from '@shared/progress.js';
 import { createProgressRelay } from '../utils/progressIpc.js';
+import {
+  importRequestSchema,
+  listResumablePackagesRequestSchema,
+  packageDirSchema,
+} from '@shared/ipcSchemas.js';
 import type { HandlerDeps } from './shared.js';
 import { toPayload } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
 
 export function registerImageImportHandlers(deps: HandlerDeps): void {
   const { docker } = deps;
 
-  ipcMain.handle('dmig:import', async (event: IpcMainInvokeEvent, req: ImportRequest) => {
+  ipcMain.handle('dmig:import', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let req: ImportRequest;
+    try {
+      req = parseIpcArgs(importRequestSchema, raw, 'dmig:import');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const controller = jobRegistry.register(req.jobToken);
     const importer = new Importer(docker);
     const relay = createProgressRelay(event.sender);
@@ -33,7 +45,13 @@ export function registerImageImportHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:readManifest', async (_e, packageDir: string) => {
+  ipcMain.handle('dmig:readManifest', async (_e, raw: unknown) => {
+    let packageDir: string;
+    try {
+      packageDir = parseIpcArgs(packageDirSchema, raw, 'dmig:readManifest');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     try {
       const importer = new Importer(docker);
       return { ok: true as const, data: await importer.readManifest(packageDir) };
@@ -42,7 +60,13 @@ export function registerImageImportHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:probePackage', async (event: IpcMainInvokeEvent, packageDir: string) => {
+  ipcMain.handle('dmig:probePackage', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let packageDir: string;
+    try {
+      packageDir = parseIpcArgs(packageDirSchema, raw, 'dmig:probePackage');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const relay = createProgressRelay(event.sender);
     try {
       await relay.emit({
@@ -71,7 +95,13 @@ export function registerImageImportHandlers(deps: HandlerDeps): void {
 
   ipcMain.handle(
     'dmig:listResumablePackages',
-    async (event: IpcMainInvokeEvent, req: ListResumablePackagesRequest) => {
+    async (event: IpcMainInvokeEvent, raw: unknown) => {
+      let req: ListResumablePackagesRequest;
+      try {
+        req = parseIpcArgs(listResumablePackagesRequestSchema, raw, 'dmig:listResumablePackages');
+      } catch (e) {
+        return { ok: false as const, error: toPayload(e) };
+      }
       const relay = createProgressRelay(event.sender);
       try {
         await relay.emit({

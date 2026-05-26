@@ -31,8 +31,15 @@ import { DiffEngine } from '../core/diff/DiffEngine.js';
 import { SizeEstimator } from '../core/SizeEstimator.js';
 import { ProgressTaskIds } from '@shared/progress.js';
 import { createProgressRelay } from '../utils/progressIpc.js';
+import {
+  composeExportRequestSchema,
+  composeImportRequestSchema,
+  composeLifecycleRequestSchema,
+} from '@shared/ipcSchemas.js';
+import { writeChecksumsSha256 } from '../core/io/checksumsWriter.js';
 import type { HandlerDeps } from './shared.js';
 import { applyDeltaManifestInPlace, toPayload } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
 
 const execFile = promisify(execFileCb);
 
@@ -95,7 +102,13 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:composeLifecycle', async (event: IpcMainInvokeEvent, req: ComposeLifecycleRequest) => {
+  ipcMain.handle('dmig:composeLifecycle', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let req: ComposeLifecycleRequest;
+    try {
+      req = parseIpcArgs(composeLifecycleRequestSchema, raw, 'dmig:composeLifecycle');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const relay = createProgressRelay(event.sender);
     const actionLabel = req.action === 'stop' ? '停止' : 'イメージ取得';
     try {
@@ -206,7 +219,13 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     },
   );
 
-  ipcMain.handle('dmig:exportCompose', async (event: IpcMainInvokeEvent, req: ComposeExportRequest) => {
+  ipcMain.handle('dmig:exportCompose', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let req: ComposeExportRequest;
+    try {
+      req = parseIpcArgs(composeExportRequestSchema, raw, 'dmig:exportCompose');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const controller = jobRegistry.register(req.jobToken);
     const exporter = new Exporter(docker);
     const volumeExporter = new VolumeExporter(docker);
@@ -380,7 +399,7 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
       for (const vol of manifest.contents.volumes ?? []) {
         checksumLines.push(`${vol.sha256}  ${vol.filename}`);
       }
-      await fsp.writeFile(join(packDir, 'checksums.sha256'), `${checksumLines.join('\n')}\n`, 'utf-8');
+      await writeChecksumsSha256(packDir, checksumLines);
 
       const rollbackManager = new RollbackManager(docker);
       await rollbackManager.saveRecord(
@@ -411,7 +430,13 @@ export function registerComposeHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:importCompose', async (event: IpcMainInvokeEvent, req: ComposeImportRequest) => {
+  ipcMain.handle('dmig:importCompose', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let req: ComposeImportRequest;
+    try {
+      req = parseIpcArgs(composeImportRequestSchema, raw, 'dmig:importCompose');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const controller = jobRegistry.register(req.jobToken);
     const importer = new Importer(docker);
     const volumeExporter = new VolumeExporter(docker);

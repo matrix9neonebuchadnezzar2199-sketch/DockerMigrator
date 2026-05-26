@@ -97,6 +97,8 @@ export const ErrorCodes = {
   CHECKSUM_MISMATCH: 'E8001',
 
   UNKNOWN_ERROR: 'E9001',
+  /** Main IPC 入口: Zod によるリクエスト形状不正 */
+  IPC_REQUEST_INVALID: 'E9010',
 
   /** Renderer バリデーション（IPC 外の入力チェック） */
   UI_COMPOSE_NO_PROJECT: 'E9101',
@@ -181,6 +183,7 @@ export const ErrorMessages: Record<ErrorCode, string> = {
   E8001: 'ファイルの整合性検証に失敗しました (SHA-256 不一致)。',
 
   E9001: '予期しないエラーが発生しました。',
+  E9010: 'リクエストの形式が不正です。アプリを再起動して再試行してください。',
 
   E9101: 'プロジェクトが1つも選択されていません。',
   E9102: '出力先を選択してください。',

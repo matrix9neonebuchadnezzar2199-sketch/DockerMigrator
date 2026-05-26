@@ -13,13 +13,21 @@ import { SnapshotStore } from '../core/snapshot/SnapshotStore.js';
 import { Snapshotter } from '../core/snapshot/Snapshotter.js';
 import { DiffEngine } from '../core/diff/DiffEngine.js';
 import { createProgressRelay } from '../utils/progressIpc.js';
+import { exportRequestSchema, resumeExportRequestSchema } from '@shared/ipcSchemas.js';
 import type { HandlerDeps } from './shared.js';
 import { applyDeltaManifestInPlace, toPayload } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
 
 export function registerImageExportHandlers(deps: HandlerDeps): void {
   const { docker } = deps;
 
-  ipcMain.handle('dmig:export', async (event: IpcMainInvokeEvent, req: ExportRequest) => {
+  ipcMain.handle('dmig:export', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let req: ExportRequest;
+    try {
+      req = parseIpcArgs(exportRequestSchema, raw, 'dmig:export');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const controller = jobRegistry.register(req.jobToken);
     const exporter = new Exporter(docker);
     const relay = createProgressRelay(event.sender);
@@ -108,7 +116,13 @@ export function registerImageExportHandlers(deps: HandlerDeps): void {
     }
   });
 
-  ipcMain.handle('dmig:resumeExport', async (event: IpcMainInvokeEvent, req: ResumeExportRequest) => {
+  ipcMain.handle('dmig:resumeExport', async (event: IpcMainInvokeEvent, raw: unknown) => {
+    let req: ResumeExportRequest;
+    try {
+      req = parseIpcArgs(resumeExportRequestSchema, raw, 'dmig:resumeExport');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const controller = jobRegistry.register(req.jobToken);
     const importer = new Importer(docker);
     const exporter = new Exporter(docker);

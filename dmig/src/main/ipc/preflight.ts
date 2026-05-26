@@ -5,13 +5,21 @@ import { SizeEstimator } from '../core/SizeEstimator.js';
 import { SpaceChecker } from '../core/SpaceChecker.js';
 import { ErrorReporter } from '../core/ErrorReporter.js';
 import type { PreflightRequest, ErrorReportRequest } from '@shared/types.js';
+import { preflightRequestSchema } from '@shared/ipcSchemas.js';
 import type { HandlerDeps } from './shared.js';
 import { toPayload } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
 
 export function registerPreflightHandlers(deps: HandlerDeps): void {
   const { docker } = deps;
 
-  ipcMain.handle('dmig:preflight', async (_e, req: PreflightRequest) => {
+  ipcMain.handle('dmig:preflight', async (_e, raw: unknown) => {
+    let req: PreflightRequest;
+    try {
+      req = parseIpcArgs(preflightRequestSchema, raw, 'dmig:preflight');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     try {
       try {
         await fsp.access(req.outputDir);

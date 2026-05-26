@@ -14,7 +14,10 @@ import {
   normalizeProbe,
   normalizeSecrets,
 } from '../core/dryRunNormalizers.js';
+import { dryRunRequestSchema } from '@shared/ipcSchemas.js';
 import type { HandlerDeps } from './shared.js';
+import { parseIpcArgs } from './ipcValidate.js';
+import { toPayload } from './shared.js';
 
 type Result<T> = { ok: true; data: T } | { ok: false; error: DmigErrorPayload };
 
@@ -122,7 +125,13 @@ async function scanSecretsForProjects(
 }
 
 export function registerDryRunHandlers(deps: HandlerDeps): void {
-  ipcMain.handle('dmig:runDryRun', async (_e, req: DryRunRequest) => {
+  ipcMain.handle('dmig:runDryRun', async (_e, raw: unknown) => {
+    let req: DryRunRequest;
+    try {
+      req = parseIpcArgs(dryRunRequestSchema, raw, 'dmig:runDryRun');
+    } catch (e) {
+      return { ok: false as const, error: toPayload(e) };
+    }
     const startedAt = new Date().toISOString();
     const warnings: string[] = [];
     const findings: import('@shared/types.js').DryRunFinding[] = [];
