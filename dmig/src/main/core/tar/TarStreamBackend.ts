@@ -7,6 +7,7 @@ import { extract as createTarExtract, pack as createTarPack, type Pack } from 't
 import { DmigError, wrapError } from '../errors/DmigError.js';
 import { ErrorCodes } from '../errors/codes.js';
 import type { TarBackend, TarOpOptions } from './TarBackend.js';
+import { safeJoinUnder } from '../../security/safeJoinUnder.js';
 
 /**
  * tar-stream パッケージを用いた純 Node 実装。
@@ -93,19 +94,30 @@ export class TarStreamBackend implements TarBackend {
     signal?.addEventListener('abort', onAbort);
 
     extract.on('entry', (header, stream, next) => {
+      const failEntry = (err: unknown): void => {
+        stream.resume();
+        next(err instanceof Error ? err : new Error(String(err)));
+      };
+
+      let outPath: string;
+      try {
+        const entryRel = header.name.replace(/\/+$/, '') || '.';
+        outPath = safeJoinUnder(destDir, entryRel);
+      } catch (err) {
+        failEntry(err);
+        return;
+      }
+
       void (async () => {
         try {
           if (signal?.aborted) {
-            stream.resume();
-            next(
+            failEntry(
               new DmigError(ErrorCodes.JOB_CANCELLED, {
                 detail: 'tar-stream extract aborted',
               }),
             );
             return;
           }
-
-          const outPath = join(destDir, header.name);
 
           if (header.type === 'directory') {
             await fsp.mkdir(outPath, { recursive: true });
@@ -129,9 +141,9 @@ export class TarStreamBackend implements TarBackend {
           stream.resume();
           next();
         } catch (err) {
-          next(err);
+          failEntry(err);
         }
-      })();
+      })().catch(failEntry);
     });
 
     try {

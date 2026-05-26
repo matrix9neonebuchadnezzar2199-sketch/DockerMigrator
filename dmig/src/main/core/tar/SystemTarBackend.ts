@@ -5,6 +5,7 @@ import { Transform, type Writable } from 'node:stream';
 import { DmigError, wrapError } from '../errors/DmigError.js';
 import { ErrorCodes } from '../errors/codes.js';
 import type { TarBackend, TarBackendProbe, TarOpOptions } from './TarBackend.js';
+import { TarStreamBackend } from './TarStreamBackend.js';
 
 /**
  * ホストの `tar` コマンドを spawn する実装。
@@ -92,62 +93,12 @@ export class SystemTarBackend implements TarBackend, TarBackendProbe {
     }
   }
 
+  /**
+   * 展開は tar エントリごとにパス検証が必要なため、安全な TarStreamBackend に委譲する。
+   * pack は引き続きホスト tar を使用（高速）。
+   */
   async extract(input: NodeJS.ReadableStream, destDir: string, options?: TarOpOptions): Promise<void> {
-    const signal = options?.signal;
-    if (signal?.aborted) {
-      throw new DmigError(ErrorCodes.JOB_CANCELLED, { detail: 'before tar extract' });
-    }
-
-    let written = 0;
-    const counter = new Transform({
-      transform(chunk: Buffer, _enc, cb) {
-        written += chunk.length;
-        options?.onBytes?.(written);
-        cb(null, chunk);
-      },
-    });
-
-    const tarProc = spawn('tar', ['-C', destDir, '-xf', '-'], { shell: false });
-    tarProc.stderr.resume();
-
-    const onAbort = () => {
-      try {
-        tarProc.kill('SIGTERM');
-      } catch {
-        /* noop */
-      }
-    };
-    signal?.addEventListener('abort', onAbort);
-
-    const tarDone = new Promise<void>((resolve, reject) => {
-      tarProc.on('error', reject);
-      tarProc.on('close', (code) => {
-        if (signal?.aborted) {
-          reject(new DmigError(ErrorCodes.JOB_CANCELLED, { detail: 'tar extract aborted' }));
-        } else if (code === 0) {
-          resolve();
-        } else {
-          reject(new Error(`tar -x exited with code ${code}`));
-        }
-      });
-    });
-
-    try {
-      if (!tarProc.stdin) {
-        throw new DmigError(ErrorCodes.COMPOSE_IMPORT_FAILED, { detail: 'tar stdin unavailable' });
-      }
-      await Promise.all([pipeline(input, counter, tarProc.stdin, { signal }), tarDone]);
-      if (tarProc.stdout) {
-        tarProc.stdout.resume();
-      }
-    } catch (e: unknown) {
-      if (signal?.aborted || (e instanceof Error && e.name === 'AbortError') || e instanceof DmigError) {
-        if (e instanceof DmigError) throw e;
-        throw new DmigError(ErrorCodes.JOB_CANCELLED, { detail: 'tar extract aborted' });
-      }
-      throw wrapError(e, ErrorCodes.COMPOSE_IMPORT_FAILED, 'SystemTarBackend.extract');
-    } finally {
-      signal?.removeEventListener('abort', onAbort);
-    }
+    const streamBackend = new TarStreamBackend();
+    await streamBackend.extract(input, destDir, options);
   }
 }
