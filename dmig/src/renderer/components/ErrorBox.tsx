@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { DmigErrorPayload } from '../../shared/types.js';
+import { lookupErrorMessage } from '../lib/i18n/errorMessages.js';
 
 const COLLAPSE_THRESHOLD = 400;
 
@@ -14,8 +15,63 @@ function formatErrorBody(error: DmigErrorPayload): string {
   return parts.join('\n');
 }
 
+function GenericErrorBody({ error }: { error: DmigErrorPayload }): React.ReactElement {
+  const body = formatErrorBody(error);
+  const isLong = body.length > COLLAPSE_THRESHOLD;
+
+  if (isLong) {
+    return (
+      <details className="error-box-details">
+        <summary className="code">
+          [{error.code}] {error.message}
+          <span className="error-box-expand-hint"> …全文を表示</span>
+        </summary>
+        <pre className="error-box-long">{body}</pre>
+      </details>
+    );
+  }
+
+  return (
+    <>
+      <div className="code">
+        [{error.code}] {error.message}
+      </div>
+      {error.detail && <div className="detail">詳細: {error.detail}</div>}
+      {error.phase && <div className="detail">フェーズ: {error.phase}</div>}
+    </>
+  );
+}
+
+function CodeSpecificErrorBody({
+  error,
+  entry,
+}: {
+  error: DmigErrorPayload;
+  entry: NonNullable<ReturnType<typeof lookupErrorMessage>>;
+}): React.ReactElement {
+  return (
+    <>
+      <div className="error-box-title">{entry.title}</div>
+      <p className="error-box-description">{entry.description}</p>
+      <p className="error-box-suggestion">
+        <strong>対処:</strong> {entry.suggestion}
+      </p>
+      <div className="error-box-code-ref code">[{error.code}]</div>
+      {(error.detail || error.phase) && (
+        <details className="error-box-details error-box-tech-details">
+          <summary className="error-box-tech-summary">技術情報を表示</summary>
+          {error.detail && <div className="detail">詳細: {error.detail}</div>}
+          {error.phase && <div className="detail">フェーズ: {error.phase}</div>}
+          <div className="detail">メッセージ: {error.message}</div>
+        </details>
+      )}
+    </>
+  );
+}
+
 /**
  * エラー表示ボックス。Phase 5.1 第3回: エラーレポート ZIP 保存。
+ * UPDATE-04: 登録済み E コードはユーザー向け 3 段構成で表示。
  */
 export const ErrorBox: React.FC<{
   error: DmigErrorPayload | null;
@@ -26,6 +82,8 @@ export const ErrorBox: React.FC<{
   const [reportError, setReportError] = useState<string | null>(null);
 
   if (!error) return null;
+
+  const entry = lookupErrorMessage(error.code);
 
   const onSaveReport = async () => {
     setSaving(true);
@@ -58,27 +116,9 @@ export const ErrorBox: React.FC<{
     }
   };
 
-  const body = formatErrorBody(error);
-  const isLong = body.length > COLLAPSE_THRESHOLD;
-
   return (
     <div className="error-box">
-      {isLong ? (
-        <details className="error-box-details">
-          <summary className="code">
-            [{error.code}] {error.message}
-            <span className="error-box-expand-hint"> …全文を表示</span>
-          </summary>
-          <pre className="error-box-long">{body}</pre>
-        </details>
-      ) : (
-        <>
-          <div className="code">
-            [{error.code}] {error.message}
-          </div>
-          {error.detail && <div className="detail">詳細: {error.detail}</div>}
-        </>
-      )}
+      {entry ? <CodeSpecificErrorBody error={error} entry={entry} /> : <GenericErrorBody error={error} />}
       {reportError && (
         <div className="detail" style={{ marginTop: 6 }}>
           レポート保存: {reportError}

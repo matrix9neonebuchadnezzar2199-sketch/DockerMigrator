@@ -562,6 +562,33 @@ input[type='text'] {
   border-radius: 4px;
   margin: 8px 0;
 }
+.error-box-title {
+  font-weight: bold;
+  font-size: 15px;
+  margin-bottom: 6px;
+}
+.error-box-description,
+.error-box-suggestion {
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 8px;
+}
+.error-box-code-ref {
+  font-size: 11px;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+.error-box-tech-summary {
+  font-size: 12px;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.page-guide-lazy-placeholder {
+  min-height: 120px;
+  font-size: 12px;
+  color: #a6adc8;
+  padding: 8px 0;
+}
 .error-box .code {
   font-weight: bold;
 }
