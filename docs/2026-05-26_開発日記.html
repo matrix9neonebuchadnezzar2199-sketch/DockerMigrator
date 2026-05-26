@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>16:52</td>
+        <td>UPDATE-07 実装（manifest/IPC Zod、checksums atomic、compose 上限、alpine digest）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1652">詳細</a></td>
+      </tr>
+      <tr>
         <td>16:40</td>
         <td>UPDATE-06 実機スモーク OK（0.6.0-poc / §14 パターン A）</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -452,6 +458,30 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1652">
+  <h2>UPDATE-07 実装（0.7.0-poc 向け）</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 16:52</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>UPDATE-06 繰越分の検証・セキュリティ強化を実装。<strong>manifest Zod</strong>（U6-06）、<strong>IPC 入口 Zod</strong>（U6-04 / <code>E9010</code>）、<strong>checksums 原子的書き込み</strong>（U6-07）、<strong>compose 設定 2MB 上限</strong>（U6-08）、<strong>alpine digest 固定</strong>（U6-09）。<code>partialState</code> の意味論検証は Importer 側（E2075）のまま維持。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/shared/manifestSchema.ts</code>、<code>ipcSchemas.ts</code>、<code>limits.ts</code>、<code>dockerImages.ts</code></li>
+    <li><span class="op op-add">+</span> <code>dmig/src/main/ipc/ipcValidate.ts</code>、<code>dmig/src/main/core/io/checksumsWriter.ts</code>、<code>composeConfigGuard.ts</code></li>
+    <li><span class="op op-mod">M</span> <code>Importer.ts</code>、主要 IPC ハンドラ、<code>Exporter.ts</code> / <code>ComposeExporter.ts</code> / <code>DockerAdapter.ts</code></li>
+    <li><span class="op op-add">+</span> <code>docs/instructions/update-07-instructions.md</code></li>
+  </ul>
+  <h3>設計判断</h3>
+  <p>Zod は構文・型のゲートに限定し、空 <code>pendingChunks</code> や chunk 境界は <code>validatePartialState</code> で E2075 を返す（既存テスト互換）。<code>scanSecrets</code> は未 Zod 化（引数が複合型のため段階的）。</p>
+  <h3>検証</h3>
+  <p><code>typecheck</code> / <code>lint</code> / <code>test</code>（223 pass、2 skip）/ <code>build</code> OK。Commits: <code>cbe4b37</code> … <code>61911c7</code>（push 済み）。</p>
+  <h3>残課題</h3>
+  <p><code>0.7.0-poc</code> リリース・§14 実機スモーク、Delta RT / tar 直接テスト、IPC cancel 横展開、Importer UI 統合。</p>
+</section>
 <section class="entry" id="entry-1625">
   <h2>UPDATE-06 リリース: 0.6.0-poc</h2>
   <div class="meta">

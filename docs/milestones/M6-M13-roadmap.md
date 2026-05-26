@@ -205,9 +205,9 @@ flowchart TB
 | P1 | dev CSP 検証手順の整備（Console 違反の整理・本番同等チェック） | **完了** — `docs/testing/dev-csp-verification.md`、dev ヘッダ注入強化 |
 | P2 | tar 内エントリ path traversal の直接統合テスト（tar-stream async 要改善） | 低優先 — UPDATE-07 候補 |
 | — | ~~U6-03 Electron ハードニング~~ | **完了 (0.5.2.3-poc hotfix-3)** |
-| U6-04 | IPC 入口 Zod | **実装中** — `ipcSchemas` / `E9010` |
-| U6-06 | manifest Zod 一元化 | **実装中** — `manifestSchema.ts` |
-| U6-07〜09 | checksums atomic / compose 上限 / alpine digest | **実装中** |
+| U6-04 | IPC 入口 Zod | **完了** — `ipcSchemas` / `E9010`（`61911c7`） |
+| U6-06 | manifest Zod 一元化 | **完了** — `manifestSchema.ts`（`cbe4b37`） |
+| U6-07〜09 | checksums atomic / compose 上限 / alpine digest | **完了**（`ef23f04`） |
 | P2 | Delta RT / tar 直接テスト | 未着手 |
 | 繰越 | IPC cancel / Importer UI | 要件のみ（[ipc-cancel-scope](../notes/2026-05-26_ipc-cancel-scope.md)） |
 
