@@ -5,6 +5,32 @@
 
 ## [Unreleased]
 
+## [0.4.0-poc] - UPDATE-02
+
+### Changed
+
+- ComposePage の `composeVisited` 常時マウントを廃止し、遷移時のみマウント + `ComposePageStateContext` で状態保持 (B-02, B-27)
+
+### Added
+
+- `JobLockContext` — 同種ジョブの二重開始防止 (B-11)
+- `RollbackJobContext` — ロールバック実行状態のページ間共有 (B-10, B-31)
+- Settings の `defaultExportDir` クリアボタン (B-26)
+- NextStepFooter の Docker 再接続ボタン (B-22)
+- Sidebar ジョブ実行中バッジ、通読ノート `docs/notes/2026-05-27_update02-readnote.md`
+
+### Fixed
+
+- LogsPage のバッファ上限表示を `LOG_BUFFER_MAX` に連動 (B-15)
+- ResumeConfirmDialog の pending chunks プレビュー件数注記 (B-24)
+- ErrorBox の長文エラー折りたたみ (B-28)
+- RollbackResultSummary の全件ゼロ時メッセージ (B-29)
+
+### Notes
+
+- B-23（StaticPageGuides 遅延 import）は roadmap で保留。
+- B-20（resumeExport cancel 競合）は Main 監査を UPDATE-03 に送る。
+
 ## [0.3.1-poc] - UPDATE-01
 
 ### Fixed
