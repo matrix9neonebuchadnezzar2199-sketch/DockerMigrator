@@ -9,6 +9,7 @@ import { createZstdDecompressStream } from './compression/zstdStreams.js';
 import { DockerAdapter } from './DockerAdapter.js';
 import { DmigError, wrapError } from './errors/DmigError.js';
 import { ErrorCodes } from './errors/codes.js';
+import { formatManifestSchemaError, parseDmigManifestPayload } from '@shared/manifestSchema.js';
 import type {
   ChecksumPolicy,
   ChunkRef,
@@ -18,6 +19,7 @@ import type {
   ProgressEvent,
   ProbeSummary,
 } from '@shared/types.js';
+import { ZodError } from 'zod';
 import type { OpenedPackage, OpenedPackageBase, OpenedPackageResume } from './importer/OpenedPackage.js';
 import { RollbackManager } from './RollbackManager.js';
 import {
@@ -43,12 +45,25 @@ export class Importer extends EventEmitter {
     const manifestPath = join(packageDir, 'manifest.json');
     try {
       const txt = await fsp.readFile(manifestPath, 'utf-8');
-      const m = JSON.parse(txt) as DmigManifest;
-      if (!m.dmigVersion || !m.contents) {
-        throw new DmigError(ErrorCodes.PACK_FORMAT_INVALID, {
-          detail: 'missing required fields',
-        });
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(txt) as unknown;
+      } catch (e) {
+        throw wrapError(e, ErrorCodes.PACK_FORMAT_INVALID, 'readManifest/json');
       }
+
+      let m: DmigManifest;
+      try {
+        m = parseDmigManifestPayload(parsed);
+      } catch (e) {
+        if (e instanceof ZodError) {
+          throw new DmigError(ErrorCodes.PACK_FORMAT_INVALID, {
+            detail: formatManifestSchemaError(e),
+          });
+        }
+        throw e;
+      }
+
       const major = m.dmigVersion.split('.')[0];
       if (major !== '1') {
         throw new DmigError(ErrorCodes.PACK_VERSION_INCOMPATIBLE, {
