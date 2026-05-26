@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>16:25</td>
+        <td>UPDATE-06 リリース（0.6.0-poc / Phase 5）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1625">詳細</a></td>
+      </tr>
+      <tr>
         <td>16:22</td>
         <td>UPDATE-06 品質ゲート再確認（typecheck/lint/test/build）</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -440,6 +446,26 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1625">
+  <h2>UPDATE-06 リリース: 0.6.0-poc</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 16:25</span>
+    <span class="tag tag-type">release</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>Phase 5 として <code>0.6.0-poc</code> をリリース。U6-01 importCompose ゲート、U6-02 path traversal、U6-05 ラウンドトリップ拡張、dev CSP 整備を CHANGELOG / roadmap / §14 に反映。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">M</span> <code>dmig/package.json</code>、<code>CHANGELOG.md</code>、<code>README.md</code></li>
+    <li><span class="op op-mod">M</span> <code>docs/milestones/M6-M13-roadmap.md</code>、<code>update-06-instructions.md</code>、readnote §14</li>
+  </ul>
+  <h3>検証</h3>
+  <p><code>run_smoke_check.py</code> 自動点検 OK（214 tests）。Commit: <code>pending</code>（本エントリと同時）。手動スモークは §14 UPDATE-06 節（マスター確認待ち）。</p>
+  <h3>残課題</h3>
+  <p>UPDATE-07（U6-04/06、Delta RT、tar 直接テスト）。M7 は 0.6.0 完了後キックオフ。</p>
+</section>
 <section class="entry" id="entry-1622">
   <h2>UPDATE-06 品質ゲート再確認</h2>
   <div class="meta">

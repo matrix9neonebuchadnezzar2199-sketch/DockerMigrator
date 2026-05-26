@@ -1,6 +1,6 @@
 {
   "name": "dmig",
-  "version": "0.5.2.3-poc",
+  "version": "0.6.0-poc",
   "description": "Docker Desktop Migration Tool",
   "main": "out/main/index.js",
   "type": "module",

@@ -302,6 +302,17 @@ ErrorBoundary
 
 2026-05-26 hotfix-3（`0.5.2.3-poc`）適用後の実機スモークで **C1〜C4 全項目 OK**。`window.dmig` API、Image Export、Import probe、ファイル選択ダイアログ、ガイド遅延読み込みすべて **sandbox 下で正常動作**を確認。dev CSP のヘッダ注入・検証手順は **UPDATE-06（0.6.0-poc）** で整備（`docs/testing/dev-csp-verification.md`、`[::1]` / `ELECTRON_RENDERER_URL` 対応）。
 
+### UPDATE-06（0.6.0-poc）リリース（2026-05-26）
+
+- **リリース内容**: U6-01 `importCompose` → `openAsBase`、U6-02 path traversal（`safeJoinUnder`）、U6-05 Compose/Resume ラウンドトリップテスト、dev CSP 整備
+- **自動検証**: `typecheck` / `lint` / `test`（214 passed, 2 skipped）/ `build` OK（`python scripts/run_smoke_check.py` 推奨）
+- **設定画面**: 実行中バージョンが `0.6.0-poc` であること
+- **手動スモーク（マスター確認待ち）**:
+  1. `npm run dev` 完全再起動後、新規 Image/Compose Export → Import（E5002 なし）
+  2. Compose Import が `openAsBase` 経路であること（旧 `dmigVersion: 0.2.0-poc` パックは E5002 想定どおり）
+  3. [dev-csp-verification.md](../testing/dev-csp-verification.md) §1: Network で CSP ヘッダ、Console に violation 大量なし
+  4. （任意）`npm run build` 後 `out/renderer/index.html` の `connect-src 'none'` meta
+
 ### フェーズ1 対象コード確認（UPDATE-04 記録・参照用）
 
 | コード | 経路 | ImportPage の ErrorBox |
@@ -454,11 +465,11 @@ electron-vite は **renderer のみ HMR**。**main プロセスは `npm run dev`
 
 | 項目 | 状態 |
 |------|------|
-| 実ラウンドトリップテスト拡張（delta / resume / Compose Import） | UPDATE-06 P1 |
+| 実ラウンドトリップテスト拡張（Compose / Resume / openAsBase） | **0.6.0-poc UPDATE-06 完了**（Delta は UPDATE-07） |
 | `source.appVersion` 動的取得 | **0.5.2.2-poc 完了** |
 | 設定 UI バージョン表示 | **0.5.2.2-poc 完了** |
-| importCompose の `readManifest` ゲート | UPDATE-06 P0 |
-| path traversal 防御 | UPDATE-06 P0 |
+| importCompose の `readManifest` ゲート | **0.6.0-poc UPDATE-06 完了** |
+| path traversal 防御 | **0.6.0-poc UPDATE-06 完了** |
 | Electron ハードニング（CSP / navigation / sandbox） | **0.5.2.3-poc hotfix-3 完了** |
 | dev CSP 検証手順の整備 | **完了 (0.6.0-poc)** — `docs/testing/dev-csp-verification.md` |
 

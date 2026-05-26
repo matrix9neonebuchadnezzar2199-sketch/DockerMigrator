@@ -5,6 +5,34 @@
 
 ## [Unreleased]
 
+## [0.6.0-poc] - UPDATE-06 (data contracts, path traversal, roundtrip tests)
+
+### Added
+
+- `safeJoinUnder` / `assertPathUnderRoot` とエラーコード E5010（manifest 由来パス・tar 展開の traversal 防御）
+- Compose / Resume の export → `Importer.openAsBase` ラウンドトリップ統合テスト（`composeRoundtrip.test.ts`、`resumeRoundtrip.test.ts`、`roundtripContract`）
+- dev CSP 検証手順（`docs/testing/dev-csp-verification.md`）と `rendererCsp` 単一ソース化
+- dev 向け CSP ヘッダ注入の強化（`webRequest` `filter.urls`、`ELECTRON_RENDERER_URL` / `[::1]` 対応）
+
+### Fixed
+
+- **U6-01**: `importCompose` が `readFile` + `JSON.parse` で manifest を読んでいた問題を解消し、`Importer.openAsBase` 経由に統一（Image Import と同型。B-38 型の経路分岐を構造的に防止）
+- **U6-02**: `ComposeImporter`、`TarStreamBackend` / `SystemTarBackend`、`RollbackManager`、`Importer.importImages` に path traversal ガードを適用
+
+### Security
+
+- manifest 由来の相対パスおよび tar エントリ名に対する path traversal 防御（`safeJoinUnder`）
+
+### Docs
+
+- UPDATE-06 各フェーズ完了を roadmap / 通読ノート §14 / 開発日記に反映
+- smoke-checklist に CSP 確認節を追加
+
+### Known issues
+
+- Delta Export → Import のラウンドトリップ統合テストは未実装（IPC は実装済み。UPDATE-07 候補）
+- tar アーカイブ内 `../` エントリの直接統合テストは Vitest + tar-stream async の制約により UPDATE-07 候補
+
 ## [0.5.2.3-poc] - hotfix-3 (U6-03 Electron hardening)
 
 ### Added

@@ -30,7 +30,7 @@
 
 本リポジトリの本体アプリは **`dmig/`** 以下の **Electron + React + TypeScript** アプリケーションです。Docker Engine API（[dockerode](https://github.com/apocas/dockerode)）を用いてローカルの Docker Desktop と通信し、USB 等への退避や別マシンへの持ち込みを想定したワークフローを提供します。
 
-現行バージョン（`dmig/package.json` の `version`）: **`0.3.0-poc`**（概念実証。本番運用前提の保証はありません）。
+現行バージョン（`dmig/package.json` の `version`）: **`0.6.0-poc`**（概念実証。本番運用前提の保証はありません）。
 
 Git タグ: **`v0.3.0-poc`**（Phase 6 第3回 manifest 1.1 + 第4回 UI 改革）、**`v0.2.0-poc`**、**`v0.1.0-poc`**。詳細は [CHANGELOG.md](./CHANGELOG.md) と [GitHub Releases](https://github.com/matrix9neonebuchadnezzar2199-sketch/DockerMigrator/releases) を参照。
 
