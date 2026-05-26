@@ -187,6 +187,7 @@ flowchart TB
 | B-20 | resumeExport cancel（案B `cancelRequested`） | **完了 (0.5.0-poc)** |
 | — | `runRollback` の jobToken / cancel | **完了 (0.5.0-poc)** |
 | — | Importer / OpenedPackage 境界エラー UI | **完了 (0.5.1-poc)** ※E2075/E2071/E8001 の ErrorBox のみ。他コード・ProbeErrorPanel は UPDATE-05 以降 |
+| B-37 | Compose/Image Export 完了後の書き出しボタン非表示化（案 B） | **完了 (0.5.2-poc)** §15 参照、B-25 follow-up |
 
 通読ノート: [docs/notes/2026-05-27_update02-readnote.md](../notes/2026-05-27_update02-readnote.md)
 
@@ -198,6 +199,7 @@ flowchart TB
 |------|------|
 | 2026-05-27 | UPDATE-03 完了印（B-27/B-20/rollback cancel）、Importer UI を UPDATE-04 候補に |
 | 2026-05-26 | UPDATE-04 完了印（ErrorBox コード別文言、B-23 lazy guides、0.5.1-poc） |
+| 2026-05-26 | UPDATE-05 完了印（B-37、§14 パターン A、E5002、0.5.2-poc） |
 | 2026-05-27 | UPDATE-02 トラッキング節を追加（UPDATE-01 完了印・UPDATE-02 進行中） |
 | 2026-05-19 | 初版（チャットで合意した全体設計を文書化） |
 | 2026-05-19 | 確定方針 D-009〜D-012、着手順 M6→M8→…、案 B（§9.1）を M6 に内包 |
