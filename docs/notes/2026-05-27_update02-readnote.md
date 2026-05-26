@@ -126,3 +126,31 @@ Renderer: `useDmigProgress(scope)` が `matchesProgressScope` でフィルタ。
 - `Exporter.resume` の cancel 完了競合（B-20 確定）
 - `runRollback` の jobToken 化の要否
 - `Importer` / `OpenedPackage` の chunk 検証境界の UI 反映
+
+---
+
+## 11. B-20 再現マトリクス（UPDATE-03 フェーズ0）
+
+**実施日**: 2026-05-27  
+**テスト**: `dmig/src/main/ipc/exportImages.resume.cancel.test.ts`  
+**エラーコード**: 指示書の `EXPORT_CANCELLED` は未使用。実装は `E6010` / `ErrorCodes.JOB_CANCELLED`。
+
+| シナリオ | ok | partialState | progress 最終 | 判定 |
+|---------|-----|--------------|---------------|------|
+| 1 早期 cancel | false | `user-cancel`、pending 残存 | 完了系なし | **OK** |
+| 2 チャンク中 cancel | false | `user-cancel`、imgB が pending に残る | 完了系なし | **OK** |
+| 3 最終直後 cancel（本命） | **true** | **undefined**（完了扱い） | **taskId=done, 100%** | **P1** |
+| 4 Compose volume cancel | false | `user-cancel` | 完了系なし | **OK** |
+| 5 正常完了 | true | undefined | 完了系あり | **OK** |
+
+### 分類結論
+
+- **P0 確定なし**（`ok: true` かつ `partialState` がキャンセル扱い、または `ok: false` かつ完了 progress、の矛盾は観測されず）。
+- **P1 確定（シナリオ3）**: 最後の pending チャンクについて `exportSingleImagePublic` 完了**後**に `AbortSignal` を立てても、`resumeImagePack` はループ内の manifest 更新・checksum・完了 progress・`ok: true` まで進む。ユーザーが「中止」した直後に UI が成功完了になるギャップ。
+- **対応方針**: フェーズ1（Progress 集約）に進む。B-20 の P1 修正はフェーズ2-1（manifest 書き込み直前の `signal.aborted` チェック統一）で実施。
+
+### シナリオ3 の再現手順（テスト内）
+
+1. partial パック（pending は imgB のみ）。
+2. `exportSingleImagePublic` モック内でエントリ返却直前に `jobRegistry.cancel(jobToken)`。
+3. IPC は `ok: true`、`partialState` 消去、完了 progress 発火。
