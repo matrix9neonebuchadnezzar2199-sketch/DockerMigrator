@@ -1,24 +1,18 @@
 import { useCallback, useLayoutEffect, useState } from 'react';
-import { flushSync } from 'react-dom';
-import type { ProgressEvent } from '../../shared/types.js';
-import type { ProgressScope } from '../../shared/types.js';
-import { matchesProgressScope } from '../../shared/progress.js';
+import type { ProgressEvent, ProgressScope } from '../../shared/types.js';
+import { useProgressBus } from '../context/ProgressBusContext.js';
 
 /**
- * dmig:progress を scope でフィルタして購読する。
- * invoke 中の逐次更新は Main 側 createProgressRelay + flushSync で描画する。
+ * ProgressBus 経由で scope フィルタした進捗を購読する。
+ * flushSync は ProgressBusProvider 内に集約。
  */
 export function useDmigProgress(scope?: ProgressScope | ProgressScope[]) {
+  const { subscribe } = useProgressBus();
   const [progress, setProgress] = useState<ProgressEvent | null>(null);
 
   useLayoutEffect(() => {
-    return window.dmig.onProgress((ev) => {
-      if (scope && !matchesProgressScope(ev, scope)) {
-        return;
-      }
-      flushSync(() => setProgress(ev));
-    });
-  }, [scope]);
+    return subscribe(scope, (ev) => setProgress(ev));
+  }, [subscribe, scope]);
 
   const clear = useCallback(() => setProgress(null), []);
 
