@@ -1,3 +1,4 @@
+import { APP_VERSION } from '@shared/appVersion.js';
 import { DMIG_MANIFEST_VERSION } from '@shared/manifestVersion.js';
 import type {
   ChunkRef,
@@ -20,8 +21,6 @@ import {
   updatePartialState,
 } from './partialStateHelpers.js';
 import { safeComposeProjectDirName, safeImageFileStem, safeVolumeFileStem } from './packagingNames.js';
-
-const APP_VERSION = '0.1.0-poc';
 
 function recomputeTotal(m: DmigManifest): number {
   let t = 0;

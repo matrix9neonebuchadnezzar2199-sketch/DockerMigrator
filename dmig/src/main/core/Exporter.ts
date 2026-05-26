@@ -23,13 +23,12 @@ import type {
   ManifestImageEntry,
   ProgressEvent,
 } from '@shared/types.js';
+import { APP_VERSION } from '@shared/appVersion.js';
 import { DMIG_MANIFEST_VERSION } from '@shared/manifestVersion.js';
 import { buildProgressEvent } from '@shared/progress.js';
 import type { OpenedPackageResume } from './importer/OpenedPackage.js';
 import { RollbackManager } from './RollbackManager.js';
 import { buildExportPackDirectoryEntry, createRollbackRecord } from './rollbackRecordBuilder.js';
-
-const APP_VERSION = '0.1.0-poc';
 
 function isAbortLike(e: unknown, signal?: AbortSignal): boolean {
   if (signal?.aborted) return true;
