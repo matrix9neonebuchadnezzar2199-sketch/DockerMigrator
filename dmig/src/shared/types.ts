@@ -707,6 +707,8 @@ export interface ListRollbacksResult {
 export interface RunRollbackRequest {
   packageDir: string;
   entryIds?: string[];
+  /** 指定時は jobRegistry に登録し dmig:cancel で中断可能 */
+  jobToken?: JobToken;
 }
 
 /** イメージエクスポート IPC の成功ペイロード */
@@ -719,6 +721,8 @@ export interface RunRollbackResult {
   succeeded: string[];
   skipped: string[];
   failed: { id: string; error: string }[];
+  /** ユーザー中断により途中で終了した場合 true（部分結果は succeeded/skipped/failed に反映） */
+  cancelled?: boolean;
   /**
    * 予約警告コード:
    * - `already_executed` — 既にロールバック済み

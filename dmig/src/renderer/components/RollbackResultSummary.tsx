@@ -13,10 +13,16 @@ export const RollbackResultSummary: React.FC<{
     result.succeeded.length === 0 &&
     result.skipped.length === 0 &&
     result.failed.length === 0 &&
-    !showAlreadyExecuted;
+    !showAlreadyExecuted &&
+    !result.cancelled;
 
   return (
     <div className="rollback-result-summary card">
+      {result.cancelled ? (
+        <p className="rollback-warn" role="status">
+          ロールバックは中断されました。ここまで処理された項目の結果を表示しています。
+        </p>
+      ) : null}
       {isEmpty ? (
         <p className="rollback-warn" role="status">
           ロールバック対象が見つかりませんでした。

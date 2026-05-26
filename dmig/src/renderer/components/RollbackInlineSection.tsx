@@ -12,7 +12,16 @@ export interface RollbackInlineSectionProps {
 
 export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mode, packageDir }) => {
   const { tryBegin, end, blockedMessage } = useJobLock();
-  const { status, lastResult, error, wasAlreadyExecuted, runRollback, reset } = useRollbackJob();
+  const {
+    status,
+    lastResult,
+    error,
+    wasAlreadyExecuted,
+    rollbackJobToken,
+    runRollback,
+    cancelRollback,
+    reset,
+  } = useRollbackJob();
   const [record, setRecord] = useState<RollbackRecord | null | undefined>(undefined);
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -80,6 +89,11 @@ export const RollbackInlineSection: React.FC<RollbackInlineSectionProps> = ({ mo
       >
         {status === 'running' ? '実行中…' : 'ロールバック実行'}
       </button>
+      {status === 'running' && rollbackJobToken ? (
+        <button type="button" style={{ marginLeft: 8 }} onClick={cancelRollback}>
+          中止
+        </button>
+      ) : null}
       {blockedMessage ? (
         <p className="rollback-warn" role="status">
           {blockedMessage}

@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 
+import { jobRegistry } from '../core/JobRegistry.js';
 import { RollbackManager } from '../core/RollbackManager.js';
 import type {
   ListRollbacksRequest,
@@ -30,11 +31,18 @@ export function registerRollbackHandlers(deps: HandlerDeps): void {
   });
 
   ipcMain.handle('dmig:runRollback', async (_e, req: RunRollbackRequest) => {
+    const controller = jobRegistry.register(req.jobToken);
     try {
-      const data = await manager.executeRollback(req.packageDir, req.entryIds);
+      const data = await manager.executeRollback(
+        req.packageDir,
+        req.entryIds,
+        controller.signal,
+      );
       return { ok: true as const, data };
     } catch (e) {
       return { ok: false as const, error: toPayload(e) };
+    } finally {
+      jobRegistry.unregister(req.jobToken);
     }
   });
 }

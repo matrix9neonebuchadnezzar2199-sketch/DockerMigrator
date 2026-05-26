@@ -33,6 +33,8 @@ export const RollbackPage: React.FC = () => {
     wasAlreadyExecuted,
     listRecords,
     runRollback,
+    cancelRollback,
+    rollbackJobToken,
     reset,
   } = useRollback();
 
@@ -195,6 +197,13 @@ export const RollbackPage: React.FC = () => {
         <p className="rollback-warn card" role="status">
           {blockedMessage}
         </p>
+      ) : null}
+      {running && rollbackJobToken ? (
+        <div className="card">
+          <button type="button" onClick={cancelRollback}>
+            ロールバックを中止
+          </button>
+        </div>
       ) : null}
       <ErrorBox error={ipcError ?? (error ? { code: 'ROLLBACK', message: error } : null)} />
       {lastResult ? (

@@ -17,7 +17,9 @@ export function useRollback() {
     lastResult,
     error,
     wasAlreadyExecuted,
+    rollbackJobToken,
     runRollback,
+    cancelRollback,
     reset: resetJob,
   } = useRollbackJob();
 
@@ -72,6 +74,8 @@ export function useRollback() {
     wasAlreadyExecuted,
     listRecords,
     runRollback,
+    cancelRollback,
+    rollbackJobToken,
     reset,
   };
 }

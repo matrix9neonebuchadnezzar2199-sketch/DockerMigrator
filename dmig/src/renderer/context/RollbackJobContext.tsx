@@ -8,9 +8,11 @@ type RollbackJobContextValue = {
   lastResult: RunRollbackResult | null;
   error: string | null;
   wasAlreadyExecuted: boolean;
+  rollbackJobToken: string | null;
   runRollback: (packageDir: string, entryIds?: string[]) => Promise<
     Awaited<ReturnType<typeof window.dmig.runRollback>>
   >;
+  cancelRollback: () => void;
   reset: () => void;
 };
 
@@ -21,13 +23,21 @@ export const RollbackJobProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [lastResult, setLastResult] = useState<RunRollbackResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [wasAlreadyExecuted, setWasAlreadyExecuted] = useState(false);
+  const [rollbackJobToken, setRollbackJobToken] = useState<string | null>(null);
 
   const reset = useCallback(() => {
     setStatus('idle');
     setLastResult(null);
     setError(null);
     setWasAlreadyExecuted(false);
+    setRollbackJobToken(null);
   }, []);
+
+  const cancelRollback = useCallback(() => {
+    if (rollbackJobToken) {
+      void window.dmig.cancel(rollbackJobToken);
+    }
+  }, [rollbackJobToken]);
 
   const runRollback = useCallback(async (packageDir: string, entryIds?: string[]) => {
     if (status === 'running') {
@@ -36,11 +46,18 @@ export const RollbackJobProvider: React.FC<{ children: React.ReactNode }> = ({ c
         error: { code: 'ROLLBACK_BUSY', message: 'ロールバックは既に実行中です。' },
       };
     }
+    const jobToken = crypto.randomUUID();
+    setRollbackJobToken(jobToken);
     setStatus('running');
     setError(null);
     setLastResult(null);
     setWasAlreadyExecuted(false);
-    const r = await window.dmig.runRollback({ packageDir, entryIds });
+    let r;
+    try {
+      r = await window.dmig.runRollback({ packageDir, entryIds, jobToken });
+    } finally {
+      setRollbackJobToken(null);
+    }
     if (r.ok) {
       setLastResult(r.data);
       setStatus('done');
@@ -60,10 +77,12 @@ export const RollbackJobProvider: React.FC<{ children: React.ReactNode }> = ({ c
       lastResult,
       error,
       wasAlreadyExecuted,
+      rollbackJobToken,
       runRollback,
+      cancelRollback,
       reset,
     }),
-    [status, lastResult, error, wasAlreadyExecuted, runRollback, reset],
+    [status, lastResult, error, wasAlreadyExecuted, rollbackJobToken, runRollback, cancelRollback, reset],
   );
 
   return <RollbackJobContext.Provider value={value}>{children}</RollbackJobContext.Provider>;

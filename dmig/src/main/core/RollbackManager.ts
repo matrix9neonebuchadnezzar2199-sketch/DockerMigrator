@@ -163,7 +163,11 @@ export class RollbackManager {
     return { records, warnings };
   }
 
-  async executeRollback(packageDir: string, entryIds?: string[]): Promise<RunRollbackResult> {
+  async executeRollback(
+    packageDir: string,
+    entryIds?: string[],
+    signal?: AbortSignal,
+  ): Promise<RunRollbackResult> {
     const record = await this.loadRecord(packageDir);
     const result: RunRollbackResult = {
       succeeded: [],
@@ -186,6 +190,10 @@ export class RollbackManager {
     const targets = record.entries.filter((e) => !idSet || idSet.has(e.id));
 
     for (const entry of targets) {
+      if (signal?.aborted) {
+        result.cancelled = true;
+        break;
+      }
       try {
         const outcome = await this.executeOneEntry(entry, record.kind);
         if (outcome.status === 'succeeded') {
@@ -205,8 +213,10 @@ export class RollbackManager {
       }
     }
 
-    record.executedAt = new Date().toISOString();
-    await this.saveRecord(packageDir, record);
+    if (!result.cancelled) {
+      record.executedAt = new Date().toISOString();
+      await this.saveRecord(packageDir, record);
+    }
     return result;
   }
 
