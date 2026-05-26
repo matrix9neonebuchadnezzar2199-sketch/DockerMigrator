@@ -181,6 +181,8 @@ export class ComposeExporter extends EventEmitter {
 
     const allProjects = await this.docker.listComposeProjects();
 
+    let cancelRequestedOnDone = false;
+
     try {
       const queue = [...session.pending];
       for (const chunk of queue) {
@@ -239,6 +241,10 @@ export class ComposeExporter extends EventEmitter {
         }
       }
 
+      if (this.signal?.aborted) {
+        cancelRequestedOnDone = true;
+      }
+
       await session.finalizeSuccess();
 
       const checksumLines: string[] = [];
@@ -258,6 +264,7 @@ export class ComposeExporter extends EventEmitter {
         total: 1,
         percentage: 100,
         message: 'Compose 再エクスポートが完了しました。',
+        ...(cancelRequestedOnDone ? { cancelRequested: true } : {}),
       });
 
       const rollbackManager = new RollbackManager(this.docker);

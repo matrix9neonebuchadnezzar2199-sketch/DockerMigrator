@@ -208,6 +208,7 @@ export class Exporter extends EventEmitter {
     const queue = [...pending];
     const total = queue.filter((c) => c.contentKind === 'image').length;
     let done = 0;
+    let cancelRequestedOnDone = false;
 
     try {
       for (const chunk of queue) {
@@ -267,6 +268,10 @@ export class Exporter extends EventEmitter {
         await writer.write(packDir, manifest);
       }
 
+      if (signal?.aborted) {
+        cancelRequestedOnDone = true;
+      }
+
       manifest = updatePartialState(manifest, []);
       await writer.write(packDir, manifest);
     } catch (e) {
@@ -292,6 +297,7 @@ export class Exporter extends EventEmitter {
       total,
       percentage: 100,
       message: '再エクスポートが完了しました。',
+      ...(cancelRequestedOnDone ? { cancelRequested: true } : {}),
     });
 
     const rollbackManager = new RollbackManager(this.docker);
