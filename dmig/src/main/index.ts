@@ -40,6 +40,8 @@ function createWindow() {
       webSecurity: true,
       allowRunningInsecureContent: false,
       enableWebSQL: false,
+      // Renderer プロセスを OS サンドボックス内に隔離（preload は CJS + contextBridge）
+      sandbox: true,
     },
   });
 

@@ -256,6 +256,11 @@ sandbox: true,
 
 readnote §14 には 1 行: 「hotfix-3: U6-03 第 1 弾のみ。`sandbox: true` は実機で NG のため revert、次回検討。」
 
+### 8.2 CSP と dev / 本番の差（hotfix-3 時点）
+
+- **本番ビルド（packaged）**: Vite ビルド時に `index.html` へ CSP meta を注入（`connect-src 'none'` 等）。
+- **開発（`npm run dev`）**: ソース `index.html` には meta を置かず、`session.webRequest` で localhost:5173 応答に dev CSP ヘッダを付与（C1-fix2）。実機 Console で違反が残る場合の整理・本番同等の検証手順は **UPDATE-06** で対応予定。
+
 ---
 
 ## 9. 実装しないもの（スコープ外）
