@@ -4,20 +4,19 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Plugin } from 'vite';
 
-import { PROD_RENDERER_CONTENT_SECURITY_POLICY } from './src/shared/rendererCsp';
+import { injectProdRendererCspMeta } from './src/shared/rendererCsp';
 
 const root = dirname(fileURLToPath(import.meta.url));
 
 /** 本番ビルドの index.html のみ CSP meta を注入（dev では Vite HMR を阻害しない） */
 function prodRendererCspMetaPlugin(): Plugin {
-  const metaTag = `<meta http-equiv="Content-Security-Policy" content="${PROD_RENDERER_CONTENT_SECURITY_POLICY}" />`;
   return {
     name: 'dmig-prod-renderer-csp-meta',
     transformIndexHtml(html, ctx) {
       if (ctx.server) {
         return html;
       }
-      return html.replace('<head>', `<head>\n    ${metaTag}`);
+      return injectProdRendererCspMeta(html);
     },
   };
 }

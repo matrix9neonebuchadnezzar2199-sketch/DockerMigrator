@@ -1,31 +1,36 @@
 import { session } from 'electron';
 
 import {
-  DEV_RENDERER_PORT,
-  PROD_RENDERER_CONTENT_SECURITY_POLICY,
   buildDevRendererContentSecurityPolicy,
+  buildDevWebRequestFilterUrls,
+  resolveDevRendererCspConfig,
+  PROD_RENDERER_CONTENT_SECURITY_POLICY,
 } from '@shared/rendererCsp.js';
 
-export { DEV_RENDERER_PORT };
-
-const DEV_LOCALHOST = `http://localhost:${DEV_RENDERER_PORT}`;
-const DEV_LOOPBACK = `http://127.0.0.1:${DEV_RENDERER_PORT}`;
-
-/** 本番 CSP 文字列（@shared/rendererCsp と同一） */
-export const PROD_CONTENT_SECURITY_POLICY = PROD_RENDERER_CONTENT_SECURITY_POLICY;
+export { DEV_RENDERER_PORT } from '@shared/rendererCsp.js';
+export { PROD_RENDERER_CONTENT_SECURITY_POLICY as PROD_CONTENT_SECURITY_POLICY };
 
 /** @deprecated buildDevRendererContentSecurityPolicy を使用 */
 export function buildDevContentSecurityPolicy(): string {
   return buildDevRendererContentSecurityPolicy();
 }
 
-function isDevRendererUrl(url: string): boolean {
-  return (
-    url.startsWith(`${DEV_LOCALHOST}/`) ||
-    url === DEV_LOCALHOST ||
-    url.startsWith(`${DEV_LOOPBACK}/`) ||
-    url === DEV_LOOPBACK
-  );
+function mergeCspResponseHeaders(
+  responseHeaders: Record<string, string | string[] | undefined>,
+  cspValue: string,
+): Record<string, string | string[]> {
+  const headers: Record<string, string | string[]> = {};
+  for (const [key, value] of Object.entries(responseHeaders)) {
+    if (value === undefined) {
+      continue;
+    }
+    if (key.toLowerCase() === 'content-security-policy') {
+      continue;
+    }
+    headers[key] = value;
+  }
+  headers['Content-Security-Policy'] = [cspValue];
+  return headers;
 }
 
 /**
@@ -38,16 +43,13 @@ export function installContentSecurityPolicy(isPackaged: boolean): void {
     return;
   }
 
-  const devCsp = buildDevRendererContentSecurityPolicy();
+  const config = resolveDevRendererCspConfig();
+  const devCsp = buildDevRendererContentSecurityPolicy(config);
+  const filter = { urls: buildDevWebRequestFilterUrls(config) };
 
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    if (!isDevRendererUrl(details.url)) {
-      callback({ responseHeaders: details.responseHeaders });
-      return;
-    }
-
-    const headers = { ...details.responseHeaders };
-    headers['Content-Security-Policy'] = [devCsp];
-    callback({ responseHeaders: headers });
+  session.defaultSession.webRequest.onHeadersReceived(filter, (details, callback) => {
+    callback({
+      responseHeaders: mergeCspResponseHeaders(details.responseHeaders ?? {}, devCsp),
+    });
   });
 }
