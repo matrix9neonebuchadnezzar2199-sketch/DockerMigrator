@@ -19,9 +19,35 @@ export interface VolumeInfo {
 /** 進捗の用途分類（Renderer 購読フィルタ用。詳細は shared/progress.ts）。 */
 export type ProgressScope = 'discover' | 'scan' | 'snapshot' | 'transfer' | 'system';
 
+/** Main / Renderer 共通の進捗フェーズ（将来は段階的に絞る）。 */
+export type ProgressPhase =
+  | 'save'
+  | 'compress'
+  | 'write'
+  | 'verify'
+  | 'load'
+  | 'decompress'
+  | 'snapshot'
+  | 'discover';
+
+/**
+ * 既知の taskId（ProgressTaskIds + 完了）。イメージ名等の動的 ID は string として併用。
+ */
+export type KnownProgressTaskId =
+  | 'done'
+  | 'compose-discover'
+  | 'resumable-scan'
+  | 'secret-scan'
+  | 'compose-lifecycle'
+  | 'prune-dangling'
+  | 'image-list'
+  | 'probe-package';
+
+export type ProgressTaskId = KnownProgressTaskId | (string & {});
+
 export interface ProgressEvent {
-  taskId: string;
-  phase: 'save' | 'compress' | 'write' | 'verify' | 'load' | 'decompress' | 'snapshot' | 'discover';
+  taskId: ProgressTaskId;
+  phase: ProgressPhase;
   /** 処理済みバイト数 */
   current: number;
   /** 合計バイト数（不明時は 0） */
@@ -34,6 +60,11 @@ export interface ProgressEvent {
   bytesPerSec?: number;
   /** 推定残り時間（秒） */
   etaSeconds?: number;
+  /**
+   * 完了系イベントで、処理中にユーザーがキャンセルを要求した場合 true（B-20 P1）。
+   * フェーズ2-1 で Main が付与。未設定時は従来どおり。
+   */
+  cancelRequested?: boolean;
 }
 
 // =============================================================================
