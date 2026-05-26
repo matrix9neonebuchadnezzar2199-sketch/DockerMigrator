@@ -43,6 +43,18 @@ describe('ErrorBox', () => {
     expect(screen.getByText(/未知のエラー/)).toBeInTheDocument();
   });
 
+  it('E5002 のときコード別タイトルを表示する', () => {
+    render(
+      <ErrorBox
+        error={{
+          code: 'E5002',
+          message: 'パックのバージョンが非対応です',
+        }}
+      />,
+    );
+    expect(screen.getByText('パッケージのバージョンが対応していません')).toBeInTheDocument();
+  });
+
   it('code 未指定相当（空文字）は汎用表示になる', () => {
     render(
       <ErrorBox

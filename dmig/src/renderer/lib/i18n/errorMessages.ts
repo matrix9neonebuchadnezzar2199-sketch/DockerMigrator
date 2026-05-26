@@ -27,6 +27,13 @@ export const ERROR_MESSAGES: Record<string, ErrorMessageEntry> = {
     description: 'パッケージ内のファイルが転送中に破損した可能性があります。',
     suggestion: '元のパッケージを再度コピーして取り込み直してください。',
   },
+  E5002: {
+    title: 'パッケージのバージョンが対応していません',
+    description:
+      'このパッケージは現在のアプリケーションでは取り込めないバージョンで作成されています。',
+    suggestion:
+      'パッケージを作成した側のアプリケーションを最新版に揃えてから再度書き出してください。',
+  },
 };
 
 /**
