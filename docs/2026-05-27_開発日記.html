@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>2026-05-27 開発日記 - DockerMigrator</title>
+<style>
+:root {
+  --bg: #0f172a;
+  --card: #1e293b;
+  --text: #e2e8f0;
+  --muted: #94a3b8;
+  --heading: #cbd5e1;
+  --accent: #a78bfa;
+  --accent-deep: #7c3aed;
+  --border: #334155;
+  --code-bg: #0b1220;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --err: #f87171;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+
+body.diary {
+  margin: 0;
+  padding: 40px 20px 80px;
+  max-width: 960px;
+  margin: 0 auto;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+body.diary > header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+body.diary > header h1 {
+  margin: 0 0 6px;
+  font-size: 26px;
+  color: var(--accent);
+  font-weight: 600;
+}
+body.diary > header .subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+a:hover { border-bottom-color: var(--accent); }
+strong { color: var(--heading); font-weight: 600; }
+
+.diary-toc {
+  margin-bottom: 28px;
+  padding: 16px 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.diary-toc h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.diary-toc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.diary-toc th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border);
+}
+.diary-toc td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.diary-toc tr:last-child td { border-bottom: none; }
+.diary-toc td:first-child {
+  color: var(--muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.entry {
+  margin: 22px 0;
+  padding: 20px 24px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+.entry h2 {
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.entry .meta {
+  margin: 0 0 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.entry .meta .date { font-variant-numeric: tabular-nums; color: var(--text); }
+.entry h3 {
+  margin: 18px 0 8px;
+  font-size: 13px;
+  color: var(--heading);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.entry h3:first-of-type { margin-top: 0; }
+.entry p { margin: 8px 0; }
+.entry ul { margin: 8px 0; padding-left: 22px; }
+
+.tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-weight: 500;
+}
+.tag-scope { border-color: var(--accent); color: var(--accent); }
+.tag-ok { border-color: var(--ok); color: var(--ok); }
+.tag-type { border-color: var(--muted); color: var(--muted); }
+
+code {
+  background: var(--code-bg);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+}
+.changes {
+  list-style: none;
+  padding-left: 0;
+}
+.changes li {
+  padding: 3px 0;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 13px;
+}
+.changes .op {
+  display: inline-block;
+  width: 24px;
+  text-align: center;
+  font-weight: 600;
+}
+.op-mod { color: var(--warn); }
+.op-add { color: var(--ok); }
+
+footer {
+  margin-top: 40px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}
+</style>
+</head>
+<body class="diary">
+<header>
+  <h1>2026-05-27 開発日記</h1>
+  <p class="subtitle">DockerMigrator — UPDATE-02（0.4.0-poc）通読・Renderer 設計変更</p>
+</header>
+
+<section class="diary-toc">
+  <h2>目次</h2>
+  <table>
+    <thead>
+      <tr><th>時刻</th><th>概要</th><th>ステータス</th><th>詳細</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>09:12</td>
+        <td>UPDATE-02: Main 通読・Context 化・Compose アンマウント</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-0912">詳細</a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<main>
+<section class="entry" id="entry-0912">
+  <h2>UPDATE-02: 0.4.0-poc</h2>
+  <div class="meta">
+    <span class="date">2026-05-27 09:12</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>フェーズ A で Main/shared/ipc を通読し <code>docs/notes/2026-05-27_update02-readnote.md</code> を残したうえで、Renderer の設計変更（<strong>B-02</strong> Compose 常時マウント廃止、<strong>B-10/B-31</strong> RollbackJobContext、<strong>B-11</strong> JobLockContext）と軽量 UX 修正（B-15/22/24/26/28/29）を <code>0.4.0-poc</code> として実施。IPC は変更なし。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/context/JobLockContext.tsx</code> (B-11)</li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/context/RollbackJobContext.tsx</code> (B-10)</li>
+    <li><span class="op op-add">+</span> <code>dmig/src/renderer/context/ComposePageStateContext.tsx</code> (B-02)</li>
+    <li><span class="op op-mod">M</span> <code>dmig/src/renderer/App.tsx</code> — Provider 階層・ページ条件マウント</li>
+    <li><span class="op op-mod">M</span> 各 Page / Sidebar / hooks — ジョブロック・状態 Lift</li>
+    <li><span class="op op-mod">M</span> <code>docs/milestones/M6-M13-roadmap.md</code></li>
+    <li><span class="op op-mod">M</span> <code>CHANGELOG.md</code> / <code>dmig/package.json</code></li>
+  </ul>
+  <h3>設計判断</h3>
+  <p><strong>B-27</strong>（非表示ページでの progress listener 重複）は B-02 のアンマウントで緩和。Progress 集約の本実装は UPDATE-03 へ送る。<strong>ComposePageStateContext</strong> を採用し App 直下への巨大 lift は避けた。<strong>JobLockContext</strong> の <code>tryBegin</code> は ref 同期判定にし、Strict Mode 二重実行でも戻り値が狂わないようにした。</p>
+  <h3>検証</h3>
+  <p><code>typecheck</code> / <code>lint</code> / <code>test</code>（169 pass, 2 skipped）/ <code>build</code> / <code>python scripts/run_smoke_check.py</code> すべて成功。Commits: <code>22b0422</code>〜<code>644b379</code>（13 commits）</p>
+  <h3>残課題</h3>
+  <p>B-23（StaticPageGuides 遅延 import）は roadmap で保留。B-20（resumeExport cancel 競合）は Main 監査として UPDATE-03。B-27 の Progress 一本化も UPDATE-03。</p>
+</section>
+</main>
+
+<footer>
+  <p>generated by Cursor / one-file HTML</p>
+</footer>
+</body>
+</html>
