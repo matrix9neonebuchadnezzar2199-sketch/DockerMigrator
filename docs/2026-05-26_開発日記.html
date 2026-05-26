@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>16:22</td>
+        <td>UPDATE-06 品質ゲート再確認（typecheck/lint/test/build）</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1622">詳細</a></td>
+      </tr>
+      <tr>
         <td>16:20</td>
         <td>UPDATE-06 Phase 4: dev CSP 注入強化・検証手順</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -434,6 +440,25 @@ body.diary > footer {
 </section>
 
 <main>
+<section class="entry" id="entry-1622">
+  <h2>UPDATE-06 品質ゲート再確認</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 16:22</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>Phase 5 着手前の品質ゲートを再実行。main 最新（Phase 3/4 反映）で型・lint・テスト・ビルドの回帰なしを確認。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">M</span> <code>docs/2026-05-26_開発日記.html</code></li>
+  </ul>
+  <h3>検証</h3>
+  <p><code>npm run typecheck</code> / <code>npm run lint</code> / <code>npm test</code> / <code>npm run build</code> すべて成功。<code>Test Files 52 passed</code>、<code>Tests 214 passed (2 skipped)</code>。</p>
+  <h3>残課題</h3>
+  <p>Phase 5: <code>0.6.0-poc</code> リリース（version bump / CHANGELOG / 実機スモーク）を実施。</p>
+</section>
 <section class="entry" id="entry-1606">
   <h2>UPDATE-06 Phase 3: U6-05 ラウンドトリップテスト拡張</h2>
   <div class="meta">
