@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>16:20</td>
+        <td>UPDATE-06 Phase 4: dev CSP 注入強化・検証手順</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1620">詳細</a></td>
+      </tr>
+      <tr>
         <td>16:06</td>
         <td>UPDATE-06 U6-05: Compose / Resume ラウンドトリップテスト</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -446,7 +452,28 @@ body.diary > footer {
   <h3>検証</h3>
   <p><code>npm test</code> 207 passed（+2）、typecheck / lint / build OK。Commits: <code>eda43bb</code>、<code>f8fb103</code>（親 <code>162ef4e</code> U6-01）。</p>
   <h3>残課題</h3>
-  <p>Phase 4: dev CSP 整備。Phase 5: <code>0.6.0-poc</code> リリース。</p>
+  <p>Phase 5: <code>0.6.0-poc</code> リリース（CHANGELOG / version bump / 実機スモーク）。</p>
+</section>
+<section class="entry" id="entry-1620">
+  <h2>UPDATE-06 Phase 4: dev CSP 整備</h2>
+  <div class="meta">
+    <span class="date">2026-05-26 16:20</span>
+    <span class="tag tag-type">dev</span>
+    <span class="tag tag-scope">tool</span>
+    <span class="tag tag-ok">OK</span>
+  </div>
+  <h3>概要</h3>
+  <p>hotfix-3 残課題の dev CSP を整備。<code>webRequest</code> に <code>filter.urls</code> を指定し、<code>ELECTRON_RENDERER_URL</code> / <code>[::1]</code> を許可。検証手順を <code>docs/testing/dev-csp-verification.md</code> に集約。</p>
+  <h3>変更ファイル</h3>
+  <ul class="changes">
+    <li><span class="op op-mod">M</span> <code>rendererCsp.ts</code>、<code>csp.ts</code>、<code>csp.test.ts</code></li>
+    <li><span class="op op-add">+</span> <code>docs/testing/dev-csp-verification.md</code></li>
+    <li><span class="op op-mod">M</span> roadmap / readnote §14 / smoke-checklist</li>
+  </ul>
+  <h3>検証</h3>
+  <p><code>npm test</code> 214 passed（+7）。Commit: <code>a632089</code> + docs commit。</p>
+  <h3>残課題</h3>
+  <p>マスター実機: Network で CSP ヘッダ確認。Phase 5 リリース作業。</p>
 </section>
 <section class="entry" id="entry-1538">
   <h2>hotfix-3: Electron ハードニング（0.5.2.3-poc）</h2>
