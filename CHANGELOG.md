@@ -5,9 +5,24 @@
 
 ## [Unreleased]
 
+## [0.5.2.2-poc] - hotfix-2 (B-38 follow-up)
+
+### Added
+
+- `exportImport.roundtrip.test.ts`: 実 `Exporter.exportImages` / `ComposeExportManifestSession` が書いた `manifest.json` を `Importer.readManifest` で検証（legacy `0.2.0-poc` 拒否含む）
+- 設定画面に実行中アプリバージョン（`APP_VERSION`）表示
+
+### Fixed
+
+- `source.appVersion` を `package.json` の `version` から取得（`@shared/appVersion`）。古い main プロセス起動の診断用
+
 ### Docs
 
-- B-38 教訓の恒久化: `docs/architecture/dmig-serialized-data-contracts.md`、通読ノート §19、Cursor `54-dmig-data-contracts.mdc`
+- 通読ノート §20: ステイル main プロセス教訓、実 I/O ラウンドトリップテスト要件
+
+### Removed
+
+- `manifestVersion.roundtrip.test.ts`（手書き manifest のみの検証 → 上記統合テストへ）
 
 ## [0.5.2.1-poc] - hotfix B-38
 

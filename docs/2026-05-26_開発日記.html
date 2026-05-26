@@ -370,6 +370,12 @@ body.diary > footer {
     </thead>
     <tbody>
       <tr>
+        <td>14:01</td>
+        <td>hotfix-2 (0.5.2.2-poc): 実ラウンドトリップテスト・appVersion 一元化</td>
+        <td><span class="tag tag-ok">OK</span></td>
+        <td><a href="#entry-1401">詳細</a></td>
+      </tr>
+      <tr>
         <td>13:35</td>
         <td>B-38 教訓の恒久化（ルール・§19・アーキテクチャメモ）</td>
         <td><span class="tag tag-ok">OK</span></td>
@@ -533,6 +539,28 @@ body.diary > footer {
   <p><code>npm run typecheck</code> / <code>lint</code> / <code>test</code>（165 pass）/ <code>build</code> すべて成功。Commit: <code>cd6cdab</code></p>
   <h3>残課題</h3>
   <p>B-02/B-27（composeVisited 常時マウントと progress listener 重複）、B-10/B-11/B-31（Rollback 状態の Context 化）、B-20/B-23 等は Exporter 監査フェーズで対応。</p>
+</section>
+
+<section class="entry" id="entry-1401">
+  <h2>hotfix-2 (0.5.2.2-poc): B-38 フォローアップ</h2>
+  <p class="meta">
+    <span class="date">2026-05-26</span>
+    <span class="pill tag-scope">dev</span>
+    <span class="pill tag-scope">tool</span>
+    <span class="pill tag-ok">ok</span>
+  </p>
+  <h3>概要</h3>
+  <p>実機 B-38 NG はステイル main による偽陽性と確定。実 <code>Exporter</code> / <code>ComposeExportManifestSession</code> 経由のラウンドトリップテスト追加、<code>source.appVersion</code> を <code>package.json</code> から取得、設定画面に実行バージョン表示。</p>
+  <h3>変更ファイル</h3>
+  <ul>
+    <li><code>dmig/src/main/core/exportImport.roundtrip.test.ts</code>（新規、3 ケース）</li>
+    <li><code>dmig/src/shared/appVersion.ts</code></li>
+    <li><code>Exporter.ts</code> / <code>composeExportManifestSession.ts</code></li>
+    <li><code>SettingsPage.tsx</code></li>
+    <li><code>CHANGELOG.md</code> / 通読ノート §20 / <code>package.json</code> 0.5.2.2-poc</li>
+  </ul>
+  <h3>検証</h3>
+  <p>typecheck / lint / test 187 pass、build OK、<code>run_smoke_check.py</code> 自動点検 OK。実機 Export→Import はマスター再検証待ち。</p>
 </section>
 </main>
 

@@ -416,3 +416,33 @@ ErrorBoundary
 - 正本: `docs/architecture/dmig-serialized-data-contracts.md`
 - Cursor: `.cursor/rules/54-dmig-data-contracts.mdc`
 - UPDATE-06: Compose/Image/resume 各経路のラウンドトリップ拡張、スキーマ一元化検討
+
+---
+
+## 20. ステイル main プロセスと hotfix-2（0.5.2.2-poc）
+
+### 実機 NG の再切り分け（2026-05-26）
+
+- `dmig-2026-05-26T04-53-00.dmig` の `manifest.json`: `dmigVersion: "0.2.0-poc"`, `source.appVersion: "0.1.0-poc"`
+- リポジトリ grep: `src/main/` に `0.2.0-poc` ハードコード **0 件**（`Exporter` / `composeExportManifestSession` は `DMIG_MANIFEST_VERSION`）
+- **結論**: B-38 コード修正は正しい。実機 NG は **hotfix 前の main プロセスで Export した**（ステイルバイナリ）。B-38 の再発ではない。
+
+### 診断のスモーキングガン
+
+- `source.appVersion` が `0.1.0-poc` 固定だったため、UI が `0.5.2.1-poc` でも manifest だけ見ると世代が判別できなかった。
+- hotfix-2: `@shared/appVersion`（`package.json` import）、設定画面に実行バージョン表示。
+
+### テストの教訓（§19 補強）
+
+- `manifestVersion.roundtrip.test.ts` は **手書き JSON** のみで、実 Exporter を通さない → B-38 を検知できない。
+- hotfix-2: `exportImport.roundtrip.test.ts` で `Exporter.exportImages` / `ComposeExportManifestSession.create` → ディスク → `readManifest`。
+
+### 開発フロー
+
+- electron-vite **main は HMR されない**。hotfix 後は dmig 完全終了 → `npm run build` または `npm run dev` 再起動 → 新規 Export 必須。
+- 既存 `dmigVersion: 0.x` パックは再エクスポートが正攻法（手書き修正は非推奨）。
+
+### §14 更新（B-38 コード面）
+
+- B-38 hotfix **コード**: 検証 OK（grep + 再起動後 `0.5.2.1-poc` dev 起動）
+- B-38 **実機 Import**: マスター再検証待ち（新規 Export → `dmigVersion: 1.1` + `appVersion: 0.5.2.2-poc`）
