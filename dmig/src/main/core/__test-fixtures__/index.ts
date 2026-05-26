@@ -240,3 +240,5 @@ export function makeTempDirManager(): {
 export async function writePackageManifest(dir: string, manifest: DmigManifest): Promise<void> {
   await writeFile(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf-8');
 }
+
+export { expectCompletedPackManifest } from './roundtripContract.js';
